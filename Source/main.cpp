@@ -88,7 +88,7 @@ void DrawLine(Vec2<int> Start, Vec2<int> End, TGAImage& image, const TGAColor& c
 {
     int d = 1;
     //**** Corner cases
-    // Vertical line
+    // Divide by 0
     if (Start.x == End.x)
     {
         if (Start.y > End.y) Start.Swap(End);
@@ -99,16 +99,7 @@ void DrawLine(Vec2<int> Start, Vec2<int> End, TGAImage& image, const TGAColor& c
 
         return;
     }
-    // Divide by 0
-    if (Start.y == End.y)
-    {
-        if (Start.x > End.x) Start.Swap(End);
-        for (int i = Start.x; i <= End.x; i++)
-        {
-            image.set(i, Start.y, white);
-        }
-        return;
-    }
+
     // Always start from left marching toward right
     // Swap Start and End
     if (Start.x > End.x) Start.Swap(End);
@@ -175,7 +166,7 @@ int main(int argc, char** argv) {
     Vec2<int> V1(50, 160);
     Vec2<int> V2(70, 80);
 
-
+    DrawLine(Vec2<int>(10, 10), Vec2<int>(140, 10), image, TGAColor(30, 200, 100));
     DrawTriangle(V0, V1, V2, image, TGAColor(200, 50, 30, 255));
     
     image.set(52, 41, red);

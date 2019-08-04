@@ -136,7 +136,7 @@ void DrawLine(Vec2<int> Start, Vec2<int> End, TGAImage& image, const TGAColor& c
     StepA.y *= d;
     StepB.y *= d;
 
-    while (Next.x < End.x)
+    while (Next.x < End.x || Next.y != End.y)
     {
         //**** Slope < 1
         if (Slope >= -1 && Slope <= 1)
@@ -169,14 +169,54 @@ void DrawTriangle(Vec2<int> V0, Vec2<int> V1, Vec2<int> V2, TGAImage& image, con
     DrawLine(V2, V0, image, color);
 }
 
-int main(int argc, char** argv) {
+void RasterizeTriangle(Vec2<int>& V0, Vec2<int>& V1, Vec2<int>& V2, TGAImage& image, const TGAColor& color)
+{
+    // Sort the vertices according to their y value
+    if (V0.y > V1.y) V0.Swap(V1);
+    if (V1.y > V2.y) V1.Swap(V2);
+
+    // Rasterize the bottem half,
+    for (int y = V0.y; y < V1.y; y++)
+    {
+        int Left, Right;
+
+        // Triangle similarity
+        Left = (V2.x - V0.x) * (y - V0.y) / (V2.y - V0.y) + V0.x;
+        Right = (V1.x - V0.x) * (y - V0.y) / (V1.y - V0.y) + V0.x;
+
+        if (Left > Right) std::swap(Left, Right);
+
+        for (int x = Left; x < Right; x++)
+            image.set(x, y, color);
+    }
+
+    /// \TODO Cleanup and test for both cases when V2.x > V0.x and V2.x < V0.x
+    // Rasterize the upper half;
+    for (int y = V1.y; y < V2.y; y++)
+    {
+        int Left, Right;
+
+        //if (V2.x > V0.x)
+        //{ 
+            Left = V0.x + (V2.x - V0.x) * (y - V0.y) / (V2.y - V0.y);
+            Right = V2.x - (V2.x - V1.x) * (V2.y - y) / (V2.y - V1.y);
+        //}
+
+        if (Left > Right) std::swap(Left, Right);
+
+        for (int x = Left; x < Right; x++)
+            image.set(x, y, color);
+    }
+}
+
+int main(int argc, char* argv[]) {
     // Create an image for writing pixels
-    TGAImage image(200, 200, TGAImage::RGB);
+    TGAImage image(200, 200, TGAImage::RGB);    
 
     /// \Note --- Triangles ---
-    Vec2<int> V0(10, 70);
-    Vec2<int> V1(50, 160);
-    Vec2<int> V2(70, 80);
+    Vec2<int> V0(100, 50);
+    Vec2<int> V1(150, 1);
+    Vec2<int> V2(70, 180);
 
     Vec2<int> TriangleA[3];
     TriangleA[0] = Vec2<int>(10, 10);
@@ -189,8 +229,13 @@ int main(int argc, char** argv) {
     TriangleB[2] = Vec2<int>(90, 40);
        
     DrawTriangle(TriangleA[0], TriangleA[1], TriangleA[2], image, TGAColor(40, 150, 100));
-    DrawTriangle(TriangleB[0], TriangleB[1], TriangleB[2], image, TGAColor(40, 150, 100));
+    DrawTriangle(TriangleB[0], TriangleB[1], TriangleB[2], image, white);
+
     DrawTriangle(V0, V1, V2, image, TGAColor(200, 50, 30, 255));
+
+    RasterizeTriangle(V0, V1, V2, image, TGAColor(40, 150, 100));
+    RasterizeTriangle(TriangleA[0], TriangleA[1], TriangleA[2], image, TGAColor(40, 150, 100));
+    RasterizeTriangle(TriangleB[0], TriangleB[1], TriangleB[2], image, TGAColor(40, 100, 200));
 
     image.flip_vertically(); // i want to have the origin at the left bottom corner of the image
     image.write_tga_file("output.tga");

@@ -161,7 +161,6 @@ void DrawLine(Vec2<int> Start, Vec2<int> End, TGAImage& image, const TGAColor& c
     }
 }
 
-/// \Note Assuming that the vertices are given in counter-clockwise order
 void DrawTriangle(Vec2<int> V0, Vec2<int> V1, Vec2<int> V2, TGAImage& image, const TGAColor& color)
 {
     DrawLine(V0, V1, image, color);
@@ -169,6 +168,7 @@ void DrawTriangle(Vec2<int> V0, Vec2<int> V1, Vec2<int> V2, TGAImage& image, con
     DrawLine(V2, V0, image, color);
 }
 
+/// \Note Using naive scan-line method
 void RasterizeTriangle(Vec2<int>& V0, Vec2<int>& V1, Vec2<int>& V2, TGAImage& image, const TGAColor& color)
 {
     // Sort the vertices according to their y value
@@ -180,6 +180,9 @@ void RasterizeTriangle(Vec2<int>& V0, Vec2<int>& V1, Vec2<int>& V2, TGAImage& im
     {
         bool UpperHalf = (y >= V1.y);
         // Triangle similarity
+        /// \Note Speed-up: extract the constant part of the formula, 
+        ///  the only variable in this calculation that is changing during
+        ///  every iteration is y
         int Left = (V2.x - V0.x) * (y - V0.y) / (V2.y - V0.y) + V0.x;
         int Right = (UpperHalf ? 
             V2.x - (V2.x - V1.x) * (V2.y - y) / (V2.y - V1.y) : 

@@ -175,36 +175,19 @@ void RasterizeTriangle(Vec2<int>& V0, Vec2<int>& V1, Vec2<int>& V2, TGAImage& im
     if (V0.y > V1.y) V0.Swap(V1);
     if (V1.y > V2.y) V1.Swap(V2);
 
-    // Rasterize the bottem half,
-    for (int y = V0.y; y < V1.y; y++)
+    /// \Note Compress code for rasterizing bottom half and upper half into one chunk
+    for (int y = V0.y; y < V2.y; y++)
     {
-        int Left, Right;
-
+        bool UpperHalf = (y >= V1.y);
         // Triangle similarity
-        Left = (V2.x - V0.x) * (y - V0.y) / (V2.y - V0.y) + V0.x;
-        Right = (V1.x - V0.x) * (y - V0.y) / (V1.y - V0.y) + V0.x;
+        int Left = (V2.x - V0.x) * (y - V0.y) / (V2.y - V0.y) + V0.x;
+        int Right = (UpperHalf ? 
+            V2.x - (V2.x - V1.x) * (V2.y - y) / (V2.y - V1.y) : 
+            V0.x + (V1.x - V0.x) * (y - V0.y) / (V1.y - V0.y));
 
         if (Left > Right) std::swap(Left, Right);
 
-        for (int x = Left; x < Right; x++)
-            image.set(x, y, color);
-    }
-
-    /// \TODO Cleanup and test for both cases when V2.x > V0.x and V2.x < V0.x
-    // Rasterize the upper half;
-    for (int y = V1.y; y < V2.y; y++)
-    {
-        int Left, Right;
-
-        //if (V2.x > V0.x)
-        //{ 
-            Left = V0.x + (V2.x - V0.x) * (y - V0.y) / (V2.y - V0.y);
-            Right = V2.x - (V2.x - V1.x) * (V2.y - y) / (V2.y - V1.y);
-        //}
-
-        if (Left > Right) std::swap(Left, Right);
-
-        for (int x = Left; x < Right; x++)
+        for (int x = Left; x <= Right; x++)
             image.set(x, y, color);
     }
 }

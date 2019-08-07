@@ -13,6 +13,21 @@
 * My crappy implementation
   * Naively interpret the math of Bresenham's line drawing to C++, which is a lot slower than the version provided in "tinyrenderer"
   * Comparison
-    * placeholder
-    * placeholder
+    * 
+    * 
+
+###### Triangle Rasterization
+
+* Given three vertices of a triangle, define a bounding box to minimize number of pixels that we need to scan through
+
+* Then scan through every pixels within the bounding box
+
+  * ```pseudocode
+    For each pixel within BoundingBox：
+    	Compute pixel's barycentric coordinates
+    	Determine if the Pixel IsInside of the triangle:
+    		set pixel color
+    ```
+
+  * For computing the barycentric coordinates, I adopted Cramer's rule to solve the linear system
 

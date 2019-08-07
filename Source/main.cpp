@@ -1,77 +1,11 @@
-#include <cmath>
-#include <algorithm>
 #include <iostream>
 #include "../Include/tgaimage.h"
+#include "../Include/Math.h"
+
+/// \TODO Clean up code to get rid of all the warnings
 
 const TGAColor white = TGAColor(255, 255, 255, 255);
 const TGAColor red = TGAColor(255, 0, 0, 255);
-
-template <class T>
-struct Vec2
-{
-    T x;
-    T y;
-
-    //**** Constructor
-    Vec2()
-    {
-        
-    }
-
-    Vec2(T p, T q) 
-    {
-        x = p;
-        y = q;
-    }
-
-    Vec2(const Vec2<T>& Another)
-    {
-        this->x = Another.x;
-        this->y = Another.y;
-    }
-
-    //**** Operations
-    Vec2<T> operator-(const Vec2<T>& Another)
-    {
-        return Vec2(this->x - Another.x, this->y - Another.y);
-    }
-
-    Vec2<T> operator+(const Vec2<T>& Another)
-    {
-        return Vec2<T>(this->x + Another.x, this->y + Another.y);
-    }
-
-    Vec2<T> operator=(const Vec2<T>& Another)
-    {
-        this->x = Another.x;
-        this->y = Another.y;
-        return *this;
-    }
-
-    Vec2<T>& operator+=(const Vec2<T>& Another)
-    {
-        this->x += Another.x;
-        this->y += Another.y;
-
-        return *this;
-    }
-
-    void Swap(Vec2<T>& Another)
-    {
-        Vec2<T> Holder;
-        Holder = *this;
-        *this = Another;
-        Another = Holder;
-    }
-
-    void Transpose()
-    {
-        T Holder;
-        Holder = this->x;
-        this->x = this->y;
-        this->y = Holder;
-    }
-};
 
 /// \Note More optimized version of DrawLine, Inspired by GitHub ssloy/tinyrenderer
 void Line(Vec2<int> Start, Vec2<int> End, TGAImage& image, const TGAColor& color)
@@ -169,7 +103,7 @@ void DrawTriangle(Vec2<int> V0, Vec2<int> V1, Vec2<int> V2, TGAImage& image, con
 }
 
 /// \Note Using naive scan-line method
-void RasterizeTriangle(Vec2<int>& V0, Vec2<int>& V1, Vec2<int>& V2, TGAImage& image, const TGAColor& color)
+void FillTriangle(Vec2<int>& V0, Vec2<int>& V1, Vec2<int>& V2, TGAImage& image, const TGAColor& color)
 {
     // Sort the vertices according to their y value
     if (V0.y > V1.y) V0.Swap(V1);
@@ -195,6 +129,50 @@ void RasterizeTriangle(Vec2<int>& V0, Vec2<int>& V1, Vec2<int>& V2, TGAImage& im
     }
 }
 
+void RasterizeTriangle(Vec2<int> V0, Vec2<int> V1, Vec2<int> V2, TGAImage& image, TGAColor color)
+{
+    // Calculate the bounding box for the triangle
+    int Bottom = V0.y, Up = V0.y, Left = V0.x, Right = V0.x;
+    Vec2<int> E1 = V1 - V0;
+    Vec2<int> E2 = V2 - V0;
+    float Denom = E1.x * E2.y - E2.x * E1.y;
+    Vec2<int> T[3];
+    T[0] = V0;
+    T[1] = V1;
+    T[2] = V2;
+    
+    /// \TODO: I'm not sure if this is faster than calling std's min, max
+    for (int i = 0; i < 3; i++)
+    {
+        if (T[i].x < Left) Left = T[i].x;
+        if (T[i].x > Right) Right = T[i].x;
+        if (T[i].y < Bottom) Bottom = T[i].y;
+        if (T[i].y > Up) Up = T[i].y;
+    }
+    
+    // Rasterization
+    for (int x = Left; x <= Right; x++)
+    {
+        for (int y = Bottom; y <= Up; y++)
+        {
+            /// \Note Cramer's rule to solve for barycentric coordinates,
+            ///       can also use ratio of area between three sub-triangles to solve
+            ///       to solve for u,v,w
+            Vec2<int> PA = V0 - Vec2<int>(x, y);
+            float u = (-1 * PA.x * E2.y + PA.y * E2.x) / Denom;
+            float v = (-1 * PA.y * E1.x + PA.x * E1.y) / Denom;
+            float w = 1 - u - v;
+            // Point p is not inside of the triangle
+            if (u < 0 || v < 0 || w < 0 || u > 1 || v > 1 || w > 1)
+                continue;
+            
+            image.set(x, y, color);
+        }
+    }
+
+    return;
+}
+
 int main(int argc, char* argv[]) {
     // Create an image for writing pixels
     TGAImage image(200, 200, TGAImage::RGB);    
@@ -216,12 +194,11 @@ int main(int argc, char* argv[]) {
        
     DrawTriangle(TriangleA[0], TriangleA[1], TriangleA[2], image, TGAColor(40, 150, 100));
     DrawTriangle(TriangleB[0], TriangleB[1], TriangleB[2], image, white);
-
     DrawTriangle(V0, V1, V2, image, TGAColor(200, 50, 30, 255));
 
-    RasterizeTriangle(V0, V1, V2, image, TGAColor(40, 150, 100));
     RasterizeTriangle(TriangleA[0], TriangleA[1], TriangleA[2], image, TGAColor(40, 150, 100));
     RasterizeTriangle(TriangleB[0], TriangleB[1], TriangleB[2], image, TGAColor(40, 100, 200));
+    RasterizeTriangle(V0, V1, V2, image, TGAColor(40, 150, 100));
 
     image.flip_vertically(); // i want to have the origin at the left bottom corner of the image
     image.write_tga_file("output.tga");

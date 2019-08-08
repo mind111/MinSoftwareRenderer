@@ -1,4 +1,6 @@
 #include <iostream>
+#include <fstream>
+#include <string>
 #include "../Include/tgaimage.h"
 #include "../Include/Math.h"
 
@@ -6,6 +8,64 @@
 
 const TGAColor white = TGAColor(255, 255, 255, 255);
 const TGAColor red = TGAColor(255, 0, 0, 255);
+
+/// \TODO: Helper function for parsing wavefront .obj file
+///        and profile this implementation against using STL
+///        and stringstream
+/// \BUG: Debug this function
+void ParseObj(char* FileName, Vec2<float>* VertexBuffer)
+{
+    int NumOfVertices = 0;
+    std::ifstream File(FileName);
+    if (!File.is_open()) std::cerr << "Cannot open the file!" << std::endl;
+    while (File)
+    {
+        char Line[64];
+        File.getline(Line, 64);
+        if (Line[0] != 'v')
+            break;
+        NumOfVertices++;
+    }
+    VertexBuffer = new Vec2<float>[NumOfVertices];
+    Vec2<float>* VBufferPtr = VertexBuffer;
+    // Reset the file pointer
+    File.seekg(0);
+    while (File)
+    {
+        char Line[64];
+        File.getline(Line, 64);
+        char* CharPtr = Line;
+        // Found a vertex
+        if (Line[0] == 'v')
+        {
+            CharPtr++;
+            int NumOfComponents = 0;
+            while (CharPtr)
+            {
+                char NumString[32];
+                char* NumCharPtr = NumString;
+                while (*CharPtr != '\t')
+                {
+                    *NumCharPtr = *CharPtr;
+                }
+                *NumCharPtr = '\0';
+                /// \TODO: Research about fast method of converting a string to integer and float
+                float Num = std::stof(NumString);
+                NumOfComponents++;
+                switch (NumOfComponents % 2)
+                {
+                    case 0:
+                        VBufferPtr->y = Num;
+                    case 1:
+                        VBufferPtr->x = Num;
+                    default:
+                        break;
+                }
+                CharPtr++;
+            }
+        }
+    }
+}
 
 /// \Note More optimized version of DrawLine, Inspired by GitHub ssloy/tinyrenderer
 void Line(Vec2<int> Start, Vec2<int> End, TGAImage& image, const TGAColor& color)
@@ -199,7 +259,9 @@ int main(int argc, char* argv[]) {
     RasterizeTriangle(TriangleA[0], TriangleA[1], TriangleA[2], image, TGAColor(40, 150, 100));
     RasterizeTriangle(TriangleB[0], TriangleB[1], TriangleB[2], image, TGAColor(40, 100, 200));
     RasterizeTriangle(V0, V1, V2, image, TGAColor(40, 150, 100));
-
+    char ModelPath[64] = { "../Graphx/Assets/Model.obj" };
+    Vec2<float>* Triangles = nullptr;
+    ParseObj(ModelPath, Triangles);
     image.flip_vertically(); // i want to have the origin at the left bottom corner of the image
     image.write_tga_file("output.tga");
 

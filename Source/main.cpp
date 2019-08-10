@@ -13,22 +13,26 @@ const TGAColor red = TGAColor(255, 0, 0, 255);
 ///        and profile this implementation against using STL
 ///        and stringstream
 /// \BUG: Debug this function
-void ParseObj(char* FileName, Vec2<float>* VertexBuffer)
+void ParseObj(char* FileName, Vec2<float>** VertexBuffer, int** Indices)
 {
-    int NumOfVertices = 0;
+    int NumOfVertices = 0, NumOfTriangles = 0;
     std::ifstream File(FileName);
     if (!File.is_open()) std::cerr << "Cannot open the file!" << std::endl;
     while (File)
     {
         char Line[64];
         File.getline(Line, 64);
-        if (Line[0] != 'v')
-            break;
-        NumOfVertices++;
+        if (Line[0] == 'v' && Line[1] == ' ')
+            NumOfVertices++;
+        if (Line[0] == 'f' && Line[1] == ' ')
+            NumOfTriangles++;
     }
-    VertexBuffer = new Vec2<float>[NumOfVertices];
-    Vec2<float>* VBufferPtr = VertexBuffer;
+    *VertexBuffer = new Vec2<float>[NumOfVertices];
+    Vec2<float>* VBufferPtr = *VertexBuffer;
+    *Indices = new int[NumOfTriangles * 3];
+    int* IndexPtr = *Indices;
     // Reset the file pointer
+    File.clear();
     File.seekg(0);
     while (File)
     {
@@ -36,17 +40,20 @@ void ParseObj(char* FileName, Vec2<float>* VertexBuffer)
         File.getline(Line, 64);
         char* CharPtr = Line;
         // Found a vertex
-        if (Line[0] == 'v')
+        if (Line[0] == 'v' && Line[1] == ' ')
         {
-            CharPtr++;
+            bool NextLine = false;
+            CharPtr += 2;
             int NumOfComponents = 0;
-            while (CharPtr)
+            while (CharPtr && !NextLine)
             {
                 char NumString[32];
                 char* NumCharPtr = NumString;
-                while (*CharPtr != '\t')
+                while (*CharPtr != ' ')
                 {
                     *NumCharPtr = *CharPtr;
+                    CharPtr++;
+                    NumCharPtr++;
                 }
                 *NumCharPtr = '\0';
                 /// \TODO: Research about fast method of converting a string to integer and float
@@ -54,13 +61,43 @@ void ParseObj(char* FileName, Vec2<float>* VertexBuffer)
                 NumOfComponents++;
                 switch (NumOfComponents % 2)
                 {
-                    case 0:
-                        VBufferPtr->y = Num;
-                    case 1:
-                        VBufferPtr->x = Num;
-                    default:
-                        break;
+                case 0:
+                    VBufferPtr->y = Num;
+                    NextLine = true;
+                    break;
+                case 1:
+                    VBufferPtr->x = Num;
+                    break;
+                default:
+                    break;
                 }
+                CharPtr++;
+            }
+            VBufferPtr++;
+        }
+
+        // Reading Indicies
+        else if (Line[0] == 'f')
+        {
+            int VertexCount = 0;
+            CharPtr += 2;
+            while (CharPtr)
+            {
+                char NumString[16];
+                char* NumCharPtr = NumString;
+                while (*CharPtr != '/')
+                {
+                    *NumCharPtr = *CharPtr;
+                    NumCharPtr++;
+                    CharPtr++;
+                }
+                *NumCharPtr = '\0';
+                int Num = std::stoi(NumString);
+                *IndexPtr = Num;
+                IndexPtr++;
+                VertexCount++;
+                if (VertexCount == 3) break;
+                while (*CharPtr != ' ') CharPtr++;
                 CharPtr++;
             }
         }
@@ -261,7 +298,8 @@ int main(int argc, char* argv[]) {
     RasterizeTriangle(V0, V1, V2, image, TGAColor(40, 150, 100));
     char ModelPath[64] = { "../Graphx/Assets/Model.obj" };
     Vec2<float>* Triangles = nullptr;
-    ParseObj(ModelPath, Triangles);
+    int* Indices = nullptr;
+    ParseObj(ModelPath, &Triangles, &Indices);
     image.flip_vertically(); // i want to have the origin at the left bottom corner of the image
     image.write_tga_file("output.tga");
 

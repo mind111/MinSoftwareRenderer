@@ -31,3 +31,11 @@
 
   * For computing the barycentric coordinates, I adopted Cramer's rule to solve the linear system
 
+###### Wavefront .obj file
+
+* I wrote a crappy function that read vertex data from a `.obj` file, it only reads vertex positions
+* When implementing this `ParseObj()` function, I learned another lesson on pointers
+  * **Gotcha**
+    * Passing pointers as parameter into a function and allocate memory on the pointer does not work because
+      * Inside the function, the pointer is passed in as a copy, so if you allocate memory for the "copy", the original pointer will still point to where it used to point to. Instead, the "copy" will point to the allocated memory
+      * In this case, to pass pointers as parameters and correctly allocate memory for them, I had to pass in pointer to those pointers.

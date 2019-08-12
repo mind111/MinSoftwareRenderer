@@ -1,5 +1,4 @@
 #pragma once
-
 #include <cmath>
 #include <algorithm>
 
@@ -43,6 +42,12 @@ struct Vec2
         this->x = Another.x;
         this->y = Another.y;
         return *this;
+    }
+    
+    void operator*=(const T Scalar)
+    {
+        this->x *= Scalar;
+        this->y *= Scalar;
     }
 
     Vec2<T>& operator+=(const Vec2<T>& Another)

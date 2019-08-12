@@ -2,7 +2,9 @@
 #include <fstream>
 #include <string>
 #include "../Include/tgaimage.h"
+#include "../Include/Globals.h"
 #include "../Include/Math.h"
+#include "../Include/Model.h"
 
 /// \TODO Clean up code to get rid of all the warnings
 
@@ -12,97 +14,7 @@ const TGAColor red = TGAColor(255, 0, 0, 255);
 /// \TODO: Helper function for parsing wavefront .obj file
 ///        and profile this implementation against using STL
 ///        and stringstream
-/// \BUG: Debug this function
-void ParseObj(char* FileName, Vec2<float>** VertexBuffer, int** Indices)
-{
-    int NumOfVertices = 0, NumOfTriangles = 0;
-    std::ifstream File(FileName);
-    if (!File.is_open()) std::cerr << "Cannot open the file!" << std::endl;
-    while (File)
-    {
-        char Line[64];
-        File.getline(Line, 64);
-        if (Line[0] == 'v' && Line[1] == ' ')
-            NumOfVertices++;
-        if (Line[0] == 'f' && Line[1] == ' ')
-            NumOfTriangles++;
-    }
-    *VertexBuffer = new Vec2<float>[NumOfVertices];
-    Vec2<float>* VBufferPtr = *VertexBuffer;
-    *Indices = new int[NumOfTriangles * 3];
-    int* IndexPtr = *Indices;
-    // Reset the file pointer
-    File.clear();
-    File.seekg(0);
-    while (File)
-    {
-        char Line[64];
-        File.getline(Line, 64);
-        char* CharPtr = Line;
-        // Found a vertex
-        if (Line[0] == 'v' && Line[1] == ' ')
-        {
-            bool NextLine = false;
-            CharPtr += 2;
-            int NumOfComponents = 0;
-            while (CharPtr && !NextLine)
-            {
-                char NumString[32];
-                char* NumCharPtr = NumString;
-                while (*CharPtr != ' ')
-                {
-                    *NumCharPtr = *CharPtr;
-                    CharPtr++;
-                    NumCharPtr++;
-                }
-                *NumCharPtr = '\0';
-                /// \TODO: Research about fast method of converting a string to integer and float
-                float Num = std::stof(NumString);
-                NumOfComponents++;
-                switch (NumOfComponents % 2)
-                {
-                case 0:
-                    VBufferPtr->y = Num;
-                    NextLine = true;
-                    break;
-                case 1:
-                    VBufferPtr->x = Num;
-                    break;
-                default:
-                    break;
-                }
-                CharPtr++;
-            }
-            VBufferPtr++;
-        }
-
-        // Reading Indicies
-        else if (Line[0] == 'f')
-        {
-            int VertexCount = 0;
-            CharPtr += 2;
-            while (CharPtr)
-            {
-                char NumString[16];
-                char* NumCharPtr = NumString;
-                while (*CharPtr != '/')
-                {
-                    *NumCharPtr = *CharPtr;
-                    NumCharPtr++;
-                    CharPtr++;
-                }
-                *NumCharPtr = '\0';
-                int Num = std::stoi(NumString);
-                *IndexPtr = Num;
-                IndexPtr++;
-                VertexCount++;
-                if (VertexCount == 3) break;
-                while (*CharPtr != ' ') CharPtr++;
-                CharPtr++;
-            }
-        }
-    }
-}
+/// \TODO: Maybe turn this into a class and clean up the code
 
 /// \Note More optimized version of DrawLine, Inspired by GitHub ssloy/tinyrenderer
 void Line(Vec2<int> Start, Vec2<int> End, TGAImage& image, const TGAColor& color)
@@ -199,19 +111,19 @@ void DrawTriangle(Vec2<int> V0, Vec2<int> V1, Vec2<int> V2, TGAImage& image, con
     DrawLine(V2, V0, image, color);
 }
 
-/// \Note Using naive scan-line method
+/// \Note: Using naive scan-line method
 void FillTriangle(Vec2<int>& V0, Vec2<int>& V1, Vec2<int>& V2, TGAImage& image, const TGAColor& color)
 {
     // Sort the vertices according to their y value
     if (V0.y > V1.y) V0.Swap(V1);
     if (V1.y > V2.y) V1.Swap(V2);
 
-    /// \Note Compress code for rasterizing bottom half and upper half into one chunk
+    /// \Note: Compress code for rasterizing bottom half and upper half into one chunk
     for (int y = V0.y; y < V2.y; y++)
     {
         bool UpperHalf = (y >= V1.y);
         // Triangle similarity
-        /// \Note Speed-up: extract the constant part of the formula, 
+        /// \Note: Speed-up: extract the constant part of the formula, 
         ///  the only variable in this calculation that is changing during
         ///  every iteration is y
         int Left = (V2.x - V0.x) * (y - V0.y) / (V2.y - V0.y) + V0.x;
@@ -252,7 +164,7 @@ void RasterizeTriangle(Vec2<int> V0, Vec2<int> V1, Vec2<int> V2, TGAImage& image
     {
         for (int y = Bottom; y <= Up; y++)
         {
-            /// \Note Cramer's rule to solve for barycentric coordinates,
+            /// \Note: Cramer's rule to solve for barycentric coordinates,
             ///       can also use ratio of area between three sub-triangles to solve
             ///       to solve for u,v,w
             Vec2<int> PA = V0 - Vec2<int>(x, y);
@@ -270,37 +182,46 @@ void RasterizeTriangle(Vec2<int> V0, Vec2<int> V1, Vec2<int> V2, TGAImage& image
     return;
 }
 
+Vec2<int> WorldToScreenOrtho(Vec2<float>& Vertex)
+{
+    return Vec2<int>((int)(Vertex.x * 400 + 400), (int)(Vertex.y * 400 + 400));
+}
+
+void DrawMesh(Graphx::Model& Model, TGAImage& image, TGAColor color)
+{
+    int* IndexPtr = Model.Indices + 1;
+    int TriangleRendered = 0;
+    while (TriangleRendered < 2492)
+    {
+        DrawTriangle(WorldToScreenOrtho(Model.VertexBuffer[*IndexPtr]),
+            WorldToScreenOrtho(Model.VertexBuffer[*(IndexPtr + 1)]),
+            WorldToScreenOrtho(Model.VertexBuffer[*(IndexPtr + 2)]),
+            image, color);
+        /// \Note: I ran into a gotcha here, I was using while(IndexPtr)
+        ///         to dictate whether all the indices are traversed without
+        ///         relizing that the memory right pass the last element in
+        ///         Indices can as well be valid using memory using by something
+        ///         else. Therefore, need to very careful with pointer arithmetic!!!
+        IndexPtr += 3;
+        TriangleRendered++;
+    }
+}
+
 int main(int argc, char* argv[]) {
     // Create an image for writing pixels
-    TGAImage image(200, 200, TGAImage::RGB);    
-
-    /// \Note --- Triangles ---
-    Vec2<int> V0(100, 50);
-    Vec2<int> V1(150, 1);
-    Vec2<int> V2(70, 180);
-
-    Vec2<int> TriangleA[3];
-    TriangleA[0] = Vec2<int>(10, 10);
-    TriangleA[1] = Vec2<int>(10, 70);
-    TriangleA[2] = Vec2<int>(60, 40);
-
-    Vec2<int> TriangleB[3];
-    TriangleB[0] = Vec2<int>(10, 20);
-    TriangleB[1] = Vec2<int>(30, 120);
-    TriangleB[2] = Vec2<int>(90, 40);
-       
-    DrawTriangle(TriangleA[0], TriangleA[1], TriangleA[2], image, TGAColor(40, 150, 100));
-    DrawTriangle(TriangleB[0], TriangleB[1], TriangleB[2], image, white);
-    DrawTriangle(V0, V1, V2, image, TGAColor(200, 50, 30, 255));
-
-    RasterizeTriangle(TriangleA[0], TriangleA[1], TriangleA[2], image, TGAColor(40, 150, 100));
-    RasterizeTriangle(TriangleB[0], TriangleB[1], TriangleB[2], image, TGAColor(40, 100, 200));
-    RasterizeTriangle(V0, V1, V2, image, TGAColor(40, 150, 100));
+    TGAImage image(ImageWidth, ImageHeight, TGAImage::RGB);
     char ModelPath[64] = { "../Graphx/Assets/Model.obj" };
-    Vec2<float>* Triangles = nullptr;
-    int* Indices = nullptr;
-    ParseObj(ModelPath, &Triangles, &Indices);
-    image.flip_vertically(); // i want to have the origin at the left bottom corner of the image
+    // Load the model data from a .obj file
+    // Only loads vertex position
+    Graphx::Model Model;
+    Model.Parse(ModelPath);
+    // Draw the mesh
+    DrawMesh(Model, image, white);
+    /// \TODO: Maybe instead of writing to an image,
+    ///         can draw to a buffer, and display it using
+    ///         a Win32 window
+    // Draw the output to a file
+    image.flip_vertically();
     image.write_tga_file("output.tga");
 
     return 0;

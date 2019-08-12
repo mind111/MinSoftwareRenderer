@@ -39,3 +39,4 @@
     * Passing pointers as parameter into a function and allocate memory on the pointer does not work because
       * Inside the function, the pointer is passed in as a copy, so if you allocate memory for the "copy", the original pointer will still point to where it used to point to. Instead, the "copy" will point to the allocated memory
       * In this case, to pass pointers as parameters and correctly allocate memory for them, I had to pass in pointer to those pointers.
+    * I ran into another gotcha when using a `int*` to traverse an `int[]`. I was assuming that once the pointer passes the end of the array, it would point to null, and thus was using ``` while (ptr)``` to dictate when traversal should stop without realizing that even if `ptr` went pass the end of the array, it can still point to a non-null memory that is used by something else in the program or whatever and thus trigger an access violation. Be careful with pointer arithmetic!!!  

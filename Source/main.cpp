@@ -7,9 +7,12 @@
 #include "../Include/Model.h"
 
 /// \TODO Clean up code to get rid of all the warnings
+std::random_device RandomDevice;
+std::uniform_real_distribution<float> dist(0, 1);
 
 const TGAColor white = TGAColor(255, 255, 255, 255);
 const TGAColor red = TGAColor(255, 0, 0, 255);
+Vec3<float> LightPos(0.0f, 0.5f, 1.0f);
 
 /// \TODO: Helper function for parsing wavefront .obj file
 ///        and profile this implementation against using STL
@@ -182,7 +185,7 @@ void RasterizeTriangle(Vec2<int> V0, Vec2<int> V1, Vec2<int> V2, TGAImage& image
     return;
 }
 
-Vec2<int> WorldToScreenOrtho(Vec2<float>& Vertex)
+Vec2<int> WorldToScreenOrtho(Vec3<float>& Vertex)
 {
     return Vec2<int>((int)(Vertex.x * 400 + 400), (int)(Vertex.y * 400 + 400));
 }
@@ -193,10 +196,15 @@ void DrawMesh(Graphx::Model& Model, TGAImage& image, TGAColor color)
     int TriangleRendered = 0;
     while (TriangleRendered < 2492)
     {
-        DrawTriangle(WorldToScreenOrtho(Model.VertexBuffer[*IndexPtr]),
-            WorldToScreenOrtho(Model.VertexBuffer[*(IndexPtr + 1)]),
-            WorldToScreenOrtho(Model.VertexBuffer[*(IndexPtr + 2)]),
-            image, color);
+        Vec2<int> V0 = WorldToScreenOrtho(Model.VertexBuffer[*IndexPtr]);
+        Vec2<int> V1 = WorldToScreenOrtho(Model.VertexBuffer[*(IndexPtr + 1)]);
+        Vec2<int> V2 = WorldToScreenOrtho(Model.VertexBuffer[*(IndexPtr + 2)]);
+
+        Vec3<float> V0V1 = Model.VertexBuffer[*(IndexPtr + 1)] - Model.VertexBuffer[*IndexPtr];
+        // Randomize the color to visualize the difference
+        int R = (int)(dist(RandomDevice) * 255), G = (int)(dist(RandomDevice) * 255), B = (int)(dist(RandomDevice) * 255);
+        DrawTriangle(V0, V1, V2, image, TGAColor(R, G, B));
+        RasterizeTriangle(V0, V1, V2, image, TGAColor(R, G, B));
         /// \Note: I ran into a gotcha here, I was using while(IndexPtr)
         ///         to dictate whether all the indices are traversed without
         ///         relizing that the memory right pass the last element in

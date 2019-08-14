@@ -201,6 +201,9 @@ void DrawMesh(Graphx::Model& Model, TGAImage& image, TGAColor color)
         Vec2<int> V2 = WorldToScreenOrtho(Model.VertexBuffer[*(IndexPtr + 2)]);
 
         Vec3<float> V0V1 = Model.VertexBuffer[*(IndexPtr + 1)] - Model.VertexBuffer[*IndexPtr];
+        Vec3<float> V0V2 = Model.VertexBuffer[*(IndexPtr + 2)] - Model.VertexBuffer[*IndexPtr];
+        Vec3<float> Normal = MathFunctionLibrary::CrossProduct(V0V1, V0V2);
+
         // Randomize the color to visualize the difference
         int R = (int)(dist(RandomDevice) * 255), G = (int)(dist(RandomDevice) * 255), B = (int)(dist(RandomDevice) * 255);
         DrawTriangle(V0, V1, V2, image, TGAColor(R, G, B));

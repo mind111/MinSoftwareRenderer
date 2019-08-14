@@ -138,3 +138,11 @@ struct Vec3
         Another = Holder;
     }
 };
+
+
+class MathFunctionLibrary
+{
+public:
+    static Vec3<float> CrossProduct(const Vec3<float>& V0, const Vec3<float>& V1);
+    static Vec3<float> Normalize(const Vec3<float>& v);
+};

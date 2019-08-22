@@ -51,6 +51,11 @@ struct Vec2
         this->y *= Scalar;
     }
 
+    void operator/(const T Scalar)
+    {
+	return Vec2<T>(this.x / Scalar, this.y / Scalar);
+    }
+
     Vec2<T>& operator+=(const Vec2<T>& Another)
     {
         this->x += Another.x;
@@ -113,7 +118,17 @@ struct Vec3
     {
         return Vec3<T>(this->x + Another.x, this->y + Another.y, this->z + Another.z);
     }
+   
+    Vec3<T> operator*(T Scalar)
+    {
+        return Vec3<T>(this->x * Scalar, this->y * Scalar, this->z * Scalar);        
+    }
 
+    Vec3<T> operator/(T Scalar)
+    {
+      return Vec3<T>(this->x / Scalar, this->y / Scalar, this->z / Scalar);
+    }
+  
     Vec3<T> operator=(const Vec3<T>& Another)
     {
         this->x = Another.x;
@@ -139,10 +154,16 @@ struct Vec3
     }
 };
 
-
 class MathFunctionLibrary
 {
 public:
     static Vec3<float> CrossProduct(const Vec3<float>& V0, const Vec3<float>& V1);
     static Vec3<float> Normalize(const Vec3<float>& v);
+    template <class T>
+    static float Length(const Vec3<T>& V0);
+    template <class T>
+    static T DotProduct(const Vec3<T>& V0, const Vec3<T>& V1)
+    {
+            return (V0.x * V1.x + V0.y * V1.y + V0.z * V1.z);
+    }
 };

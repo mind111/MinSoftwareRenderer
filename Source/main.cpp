@@ -7,12 +7,10 @@
 #include "../Include/Model.h"
 
 /// \TODO Clean up code to get rid of all the warnings
-std::random_device RandomDevice;
-std::uniform_real_distribution<float> dist(0, 1);
-
 const TGAColor white = TGAColor(255, 255, 255, 255);
 const TGAColor red = TGAColor(255, 0, 0, 255);
 Vec3<float> LightPos(0.0f, 0.5f, 1.0f);
+Vec3<float> LightColor(1.0f, 1.0f, 1.0f);
 
 /// \TODO: Helper function for parsing wavefront .obj file
 ///        and profile this implementation against using STL
@@ -42,7 +40,7 @@ void Line(Vec2<int> Start, Vec2<int> End, TGAImage& image, const TGAColor& color
     }
 }
 
-/// \TODO Simplify logic and optimization
+/// \TODO: Simplify logic and optimization
 void DrawLine(Vec2<int> Start, Vec2<int> End, TGAImage& image, const TGAColor& color)
 {
     int d = 1;
@@ -72,7 +70,6 @@ void DrawLine(Vec2<int> Start, Vec2<int> End, TGAImage& image, const TGAColor& c
         d *= -1;
         StepA.Swap(StepB);
     }
-
     if (Slope > 1 || Slope < -1)
     {
         StepA.Transpose();
@@ -93,7 +90,7 @@ void DrawLine(Vec2<int> Start, Vec2<int> End, TGAImage& image, const TGAColor& c
             else
                 Next += StepB;
         }
-        /// \Bug When slope is greater than 0, can invert x, y
+        /// \Bug: When slope is greater than 0, can invert x, y
         else
         {
             // Eval F(x+0.5, y+1)
@@ -124,7 +121,7 @@ void FillTriangle(Vec2<int>& V0, Vec2<int>& V1, Vec2<int>& V2, TGAImage& image, 
     /// \Note: Compress code for rasterizing bottom half and upper half into one chunk
     for (int y = V0.y; y < V2.y; y++)
     {
-        bool UpperHalf = (y >= V1.y);
+         bool UpperHalf = (y >= V1.y);
         // Triangle similarity
         /// \Note: Speed-up: extract the constant part of the formula, 
         ///  the only variable in this calculation that is changing during
@@ -137,7 +134,7 @@ void FillTriangle(Vec2<int>& V0, Vec2<int>& V1, Vec2<int>& V2, TGAImage& image, 
         if (Left > Right) std::swap(Left, Right);
 
         for (int x = Left; x <= Right; x++)
-            image.set(x, y, color);
+          image.set(x, y, color);
     }
 }
 
@@ -161,7 +158,6 @@ void RasterizeTriangle(Vec2<int> V0, Vec2<int> V1, Vec2<int> V2, TGAImage& image
         if (T[i].y < Bottom) Bottom = T[i].y;
         if (T[i].y > Up) Up = T[i].y;
     }
-    
     // Rasterization
     for (int x = Left; x <= Right; x++)
     {
@@ -202,12 +198,21 @@ void DrawMesh(Graphx::Model& Model, TGAImage& image, TGAColor color)
 
         Vec3<float> V0V1 = Model.VertexBuffer[*(IndexPtr + 1)] - Model.VertexBuffer[*IndexPtr];
         Vec3<float> V0V2 = Model.VertexBuffer[*(IndexPtr + 2)] - Model.VertexBuffer[*IndexPtr];
-        Vec3<float> Normal = MathFunctionLibrary::CrossProduct(V0V1, V0V2);
-
+        Vec3<float> Normal = MathFunctionLibrary::Normalize(MathFunctionLibrary::CrossProduct(V0V1, V0V2));
+	    // Use center of a triangle to compute incident light dir 
+        Vec3<float> Center = ((Model.VertexBuffer[*IndexPtr] + Model.VertexBuffer[*(IndexPtr + 1)]) / 2 + Model.VertexBuffer[*(IndexPtr + 2)]) * 1 / 3; 
+	    // Incident light dir
+	    Vec3<float> IncidentLightDir = LightPos - Center;
+	    float ShadingCoef = MathFunctionLibrary::DotProduct(IncidentLightDir, Normal); 
+        // Clamping
+        if (ShadingCoef < 0.0f) ShadingCoef = 0.0f;
+        if (ShadingCoef > 1.0f) ShadingCoef = 1.0f;
+        
+	    Vec3<float> Color = LightColor * ShadingCoef;
+	
         // Randomize the color to visualize the difference
-        int R = (int)(dist(RandomDevice) * 255), G = (int)(dist(RandomDevice) * 255), B = (int)(dist(RandomDevice) * 255);
-        DrawTriangle(V0, V1, V2, image, TGAColor(R, G, B));
-        RasterizeTriangle(V0, V1, V2, image, TGAColor(R, G, B));
+        DrawTriangle(V0, V1, V2, image, TGAColor(255 * Color.x, 255 * Color.y, 255 * Color.z));
+        RasterizeTriangle(V0, V1, V2, image, TGAColor(255 * Color.x, 255 * Color.y, 255 * Color.z));
         /// \Note: I ran into a gotcha here, I was using while(IndexPtr)
         ///         to dictate whether all the indices are traversed without
         ///         relizing that the memory right pass the last element in

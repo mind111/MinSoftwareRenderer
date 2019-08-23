@@ -198,14 +198,23 @@ void DrawMesh(Graphx::Model& Model, TGAImage& image, TGAColor color)
 
         Vec3<float> V0V1 = Model.VertexBuffer[*(IndexPtr + 1)] - Model.VertexBuffer[*IndexPtr];
         Vec3<float> V0V2 = Model.VertexBuffer[*(IndexPtr + 2)] - Model.VertexBuffer[*IndexPtr];
+
+        ///\BUG: The winding order of vertices may affect the calculation of normal 
         Vec3<float> Normal = MathFunctionLibrary::Normalize(MathFunctionLibrary::CrossProduct(V0V1, V0V2));
+
 	    // Use center of a triangle to compute incident light dir 
         Vec3<float> Center = ((Model.VertexBuffer[*IndexPtr] + Model.VertexBuffer[*(IndexPtr + 1)]) / 2 + Model.VertexBuffer[*(IndexPtr + 2)]) * 1 / 3; 
 	    // Incident light dir
-	    Vec3<float> IncidentLightDir = LightPos - Center;
-	    float ShadingCoef = MathFunctionLibrary::DotProduct(IncidentLightDir, Normal); 
-        // Clamping
-        if (ShadingCoef < 0.0f) ShadingCoef = 0.0f;
+	    //Vec3<float> IncidentLightDir = LightPos - Center;
+        Vec3<float> LightDir(0, 0, 1);
+	    float ShadingCoef = MathFunctionLibrary::DotProduct(LightDir, Normal);
+        
+        // ShadingCoef < 0 means that the triangle is facing away from the light, simply discard
+        if (ShadingCoef < 0.0f) 
+        {
+            TriangleRendered++;
+            continue;
+        }
         if (ShadingCoef > 1.0f) ShadingCoef = 1.0f;
         
 	    Vec3<float> Color = LightColor * ShadingCoef;

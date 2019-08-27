@@ -213,6 +213,7 @@ void DrawMesh(Graphx::Model& Model, TGAImage& image, TGAColor color)
         if (ShadingCoef < 0.0f) 
         {
             TriangleRendered++;
+            IndexPtr += 3;
             continue;
         }
         if (ShadingCoef > 1.0f) ShadingCoef = 1.0f;

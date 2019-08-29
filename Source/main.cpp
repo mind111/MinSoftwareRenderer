@@ -10,7 +10,7 @@
 const TGAColor white = TGAColor(255, 255, 255, 255);
 const TGAColor red = TGAColor(255, 0, 0, 255);
 Vec3<float> LightPos(0.0f, 0.5f, 1.0f);
-Vec3<float> LightColor(1.0f, 1.0f, 1.0f);
+Vec3<float> LightColor(0.7f, 0.7f, 0.7f);
 
 /// \TODO: Helper function for parsing wavefront .obj file
 ///        and profile this implementation against using STL
@@ -138,17 +138,53 @@ void FillTriangle(Vec2<int>& V0, Vec2<int>& V1, Vec2<int>& V2, TGAImage& image, 
     }
 }
 
-void RasterizeTriangle(Vec2<int> V0, Vec2<int> V1, Vec2<int> V2, TGAImage& image, TGAColor color)
+/** 
+ * Given a point P on triangle's projection on screen space, use barycentric
+ * coordinates to derive/interpolate P's actual position in world space.
+ * 2D -> 3D. 
+ * ** Orthographic case **
+ * projection still preserves same barycentric coordinates as projected triangle
+ * in 3D space
+ * ** Perspective case **
+ * TODO:
+ */
+bool UpdateDepthBuffer(Vec3<float> V0, Vec3<float> V1, Vec3<float> V2, 
+                int ScreenX, int ScreenY, Vec3<float> Weights, float* ZBuffer)
 {
+    int Index = ScreenY * ImageWidth + ScreenX;
+    float z = V0.z * Weights.x + V1.z * Weights.y + V2.z * Weights.z;
+
+    if (z > ZBuffer[Index]) 
+    {
+        ZBuffer[Index] = z;
+        return true;
+    }
+
+    return false;
+}
+
+Vec2<int> WorldToScreenOrtho(Vec3<float>& Vertex)
+{
+    return Vec2<int>((int)(Vertex.x * 400 + 400), (int)(Vertex.y * 400 + 400));
+}
+
+void RasterizeTriangle(Vec3<float> V0, Vec3<float> V1, Vec3<float> V2, TGAImage& image, TGAColor color, float* ZBuffer)
+{
+    // Project vertices of the triangle onto screen space using
+    // orthographic projection
+    Vec2<int> V0Screen = WorldToScreenOrtho(V0);
+    Vec2<int> V1Screen = WorldToScreenOrtho(V1);
+    Vec2<int> V2Screen = WorldToScreenOrtho(V2);
+
     // Calculate the bounding box for the triangle
-    int Bottom = V0.y, Up = V0.y, Left = V0.x, Right = V0.x;
-    Vec2<int> E1 = V1 - V0;
-    Vec2<int> E2 = V2 - V0;
+    int Bottom = V0Screen.y, Up = V0Screen.y, Left = V0Screen.x, Right = V0Screen.x;
+    Vec2<int> E1 = V1Screen - V0Screen;
+    Vec2<int> E2 = V2Screen - V0Screen;
     float Denom = E1.x * E2.y - E2.x * E1.y;
     Vec2<int> T[3];
-    T[0] = V0;
-    T[1] = V1;
-    T[2] = V2;
+    T[0] = V0Screen;
+    T[1] = V1Screen;
+    T[2] = V2Screen;
     
     /// \TODO: I'm not sure if this is faster than calling std's min, max
     for (int i = 0; i < 3; i++)
@@ -166,30 +202,33 @@ void RasterizeTriangle(Vec2<int> V0, Vec2<int> V1, Vec2<int> V2, TGAImage& image
             /// \Note: Cramer's rule to solve for barycentric coordinates,
             ///       can also use ratio of area between three sub-triangles to solve
             ///       to solve for u,v,w
-            Vec2<int> PA = V0 - Vec2<int>(x, y);
+            Vec2<int> PA = V0Screen - Vec2<int>(x, y);
+
             float u = (-1 * PA.x * E2.y + PA.y * E2.x) / Denom;
             float v = (-1 * PA.y * E1.x + PA.x * E1.y) / Denom;
             float w = 1 - u - v;
+
+            Vec3<float> Weights(u, v, w);
+
             // Point p is not inside of the triangle
             if (u < 0 || v < 0 || w < 0 || u > 1 || v > 1 || w > 1)
                 continue;
-            
-            image.set(x, y, color);
+
+            // Depth test to see if current pixel is visible 
+            if (UpdateDepthBuffer(V0, V1, V2, x, y, Weights, ZBuffer)) image.set(x, y, color);
         }
     }
 
     return;
 }
 
-Vec2<int> WorldToScreenOrtho(Vec3<float>& Vertex)
-{
-    return Vec2<int>((int)(Vertex.x * 400 + 400), (int)(Vertex.y * 400 + 400));
-}
-
-void DrawMesh(Graphx::Model& Model, TGAImage& image, TGAColor color)
+///\TODO: Flat shading visuals still look a bit wierd, maybe it's an issue with surface
+//        normal, need to further investigate
+void DrawMesh(Graphx::Model& Model, TGAImage& image, TGAColor color, float* ZBuffer)
 {
     int* IndexPtr = Model.Indices + 1;
     int TriangleRendered = 0;
+
     while (TriangleRendered < 2492)
     {
         Vec2<int> V0 = WorldToScreenOrtho(Model.VertexBuffer[*IndexPtr]);
@@ -216,13 +255,15 @@ void DrawMesh(Graphx::Model& Model, TGAImage& image, TGAColor color)
             IndexPtr += 3;
             continue;
         }
+        
         if (ShadingCoef > 1.0f) ShadingCoef = 1.0f;
         
 	    Vec3<float> Color = LightColor * ShadingCoef;
-	
         // Randomize the color to visualize the difference
-        DrawTriangle(V0, V1, V2, image, TGAColor(255 * Color.x, 255 * Color.y, 255 * Color.z));
-        RasterizeTriangle(V0, V1, V2, image, TGAColor(255 * Color.x, 255 * Color.y, 255 * Color.z));
+        RasterizeTriangle(Model.VertexBuffer[*IndexPtr], 
+                          Model.VertexBuffer[*(IndexPtr + 1)], 
+                          Model.VertexBuffer[*(IndexPtr + 2)],
+                          image, TGAColor(255 * Color.x, 255 * Color.y, 255 * Color.z), ZBuffer);
         /// \Note: I ran into a gotcha here, I was using while(IndexPtr)
         ///         to dictate whether all the indices are traversed without
         ///         relizing that the memory right pass the last element in
@@ -234,6 +275,7 @@ void DrawMesh(Graphx::Model& Model, TGAImage& image, TGAColor color)
 }
 
 int main(int argc, char* argv[]) {
+    int ImageSize = ImageWidth * ImageHeight;    
     // Create an image for writing pixels
     TGAImage image(ImageWidth, ImageHeight, TGAImage::RGB);
     char ModelPath[64] = { "../Graphx/Assets/Model.obj" };
@@ -241,8 +283,12 @@ int main(int argc, char* argv[]) {
     // Only loads vertex position
     Graphx::Model Model;
     Model.Parse(ModelPath);
+
+    float* ZBuffer = new float[ImageWidth * ImageHeight];
+    for (int i = 0; i < ImageSize; i++) ZBuffer[i] = -100.0f;
+
     // Draw the mesh
-    DrawMesh(Model, image, white);
+    DrawMesh(Model, image, white, ZBuffer);
     /// \TODO: Maybe instead of writing to an image,
     ///         can draw to a buffer, and display it using
     ///         a Win32 window

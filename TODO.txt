@@ -1,0 +1,5 @@
+//TODO:
+* Apply texture on the current model
+* Clean up
+* Add notes for Z-value interpolation for orthographc projection to README.md
+* Mark some one liner functions with "inline"

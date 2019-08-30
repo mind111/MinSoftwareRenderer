@@ -1,20 +1,20 @@
 #include "../Include/Math.h"
  
 template <class T>
-float MathFunctionLibrary::Length(const Vec3<T>& V0)
+inline float MathFunctionLibrary::Length(const Vec3<T>& V0)
 {
     return sqrt(V0.x * V0.x + V0.y * V0.y + V0.z * V0.z);
 }
 
 Vec3<float> MathFunctionLibrary::CrossProduct(const Vec3<float>& V0, const Vec3<float>& V1)
 {
-    /// \Note: |i     j      k|
+    /// \Note: |i     -j     k|
     ///        |v0.x v0.y v0.z|
-    ///        |v1.x v1.y v0.z|
+    ///        |v1.x v1.y v1.z|
     Vec3<float> Result;
 
-    Result.x = V0.y * V0.z - V0.z * V1.y;
-    Result.y = V0.z * V1.x - V0.x * V0.z;
+    Result.x = V0.y * V1.z - V0.z * V1.y;
+    Result.y = V0.z * V1.x - V0.x * V1.z;
     Result.z = V0.x * V1.y - V0.y * V1.x;
 
     return Result;

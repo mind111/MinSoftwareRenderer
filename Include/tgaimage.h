@@ -58,6 +58,14 @@ struct TGAColor {
         for (int i = 0; i < 4; i++) res.bgra[i] = bgra[i] * intensity;
         return res;
     }
+
+    TGAColor operator +(const TGAColor& Other)
+    {
+        TGAColor Res = *this;
+        for (int i = 0; i < 4; i++)
+            Res.bgra[i] = this->bgra[i] + Other.bgra[i]; 
+        return Res; 
+    }
 };
 
 class TGAImage {

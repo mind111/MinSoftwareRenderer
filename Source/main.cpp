@@ -169,7 +169,13 @@ Vec2<int> WorldToScreenOrtho(Vec3<float>& Vertex)
     return Vec2<int>((int)(Vertex.x * 400 + 400), (int)(Vertex.y * 400 + 400));
 }
 
-void RasterizeTriangle(Vec3<float> V0, Vec3<float> V1, Vec3<float> V2, TGAImage& image, TGAColor color, float* ZBuffer)
+void RasterizeTriangle(Vec3<float> V0, Vec3<float> V1, Vec3<float> V2, 
+        TGAImage& image, 
+        Vec2<float>& V0_UV, 
+        Vec2<float>& V1_UV, 
+        Vec2<float>& V2_UV, 
+        TGAImage* TextureImage,
+        float* ZBuffer)
 {
     // Project vertices of the triangle onto screen space using
     // orthographic projection
@@ -195,6 +201,7 @@ void RasterizeTriangle(Vec3<float> V0, Vec3<float> V1, Vec3<float> V2, TGAImage&
         if (T[i].y < Bottom) Bottom = T[i].y;
         if (T[i].y > Up) Up = T[i].y;
     }
+
     // Rasterization
     for (int x = Left; x <= Right; x++)
     {
@@ -216,7 +223,25 @@ void RasterizeTriangle(Vec3<float> V0, Vec3<float> V1, Vec3<float> V2, TGAImage&
                 continue;
 
             // Depth test to see if current pixel is visible 
-            if (UpdateDepthBuffer(V0, V1, V2, x, y, Weights, ZBuffer)) image.set(x, y, color);
+            if (UpdateDepthBuffer(V0, V1, V2, x, y, Weights, ZBuffer)) 
+            {
+
+                Vec2<float> MappedTexturePos(
+                        Weights.z * V0_UV.x + Weights.x * V1_UV.x + Weights.y * V2_UV.x,
+                        Weights.z * V0_UV.y + Weights.x * V1_UV.y + Weights.y * V2_UV.y
+                );
+
+                TGAColor Color = TextureImage->get(
+                        TextureImage->get_width() * MappedTexturePos.x, 
+                        TextureImage->get_height() * MappedTexturePos.y
+                );
+
+                image.set(x, y, TGAColor(
+                            Color.bgra[2], 
+                            Color.bgra[1], 
+                            Color.bgra[0], 255
+                ));
+            }
         }
     }
 
@@ -227,17 +252,17 @@ void RasterizeTriangle(Vec3<float> V0, Vec3<float> V1, Vec3<float> V2, TGAImage&
 //        normal, need to further investigate
 void DrawMesh(Graphx::Model& Model, TGAImage& image, TGAColor color, float* ZBuffer)
 {
-    int* IndexPtr = Model.Indices + 1;
+    Vec3<int>* IndexPtr = Model.Indices;
     int TriangleRendered = 0;
 
     while (TriangleRendered < 2492)
     {
-        Vec2<int> V0 = WorldToScreenOrtho(Model.VertexBuffer[*IndexPtr]);
-        Vec2<int> V1 = WorldToScreenOrtho(Model.VertexBuffer[*(IndexPtr + 1)]);
-        Vec2<int> V2 = WorldToScreenOrtho(Model.VertexBuffer[*(IndexPtr + 2)]);
+        Vec2<int> V0 = WorldToScreenOrtho(Model.VertexBuffer[IndexPtr->x]);
+        Vec2<int> V1 = WorldToScreenOrtho(Model.VertexBuffer[(IndexPtr + 1)->x]);
+        Vec2<int> V2 = WorldToScreenOrtho(Model.VertexBuffer[(IndexPtr + 2)->x]);
 
-        Vec3<float> V0V1 = Model.VertexBuffer[*(IndexPtr + 1)] - Model.VertexBuffer[*IndexPtr];
-        Vec3<float> V0V2 = Model.VertexBuffer[*(IndexPtr + 2)] - Model.VertexBuffer[*IndexPtr];
+        Vec3<float> V0V1 = Model.VertexBuffer[(IndexPtr + 1)->x] - Model.VertexBuffer[IndexPtr->x];
+        Vec3<float> V0V2 = Model.VertexBuffer[(IndexPtr + 2)->x] - Model.VertexBuffer[IndexPtr->x];
 
         ///Note: Counter-clockwise vertex winding order
         Vec3<float> Normal = MathFunctionLibrary::Normalize(MathFunctionLibrary::CrossProduct(V0V1, V0V2));
@@ -255,11 +280,24 @@ void DrawMesh(Graphx::Model& Model, TGAImage& image, TGAColor color, float* ZBuf
         if (ShadingCoef > 1.0f) ShadingCoef = 1.0f;
         
 	    Vec3<float> Color = LightColor * ShadingCoef;
-        // Randomize the color to visualize the difference
-        RasterizeTriangle(Model.VertexBuffer[*IndexPtr], 
-                          Model.VertexBuffer[*(IndexPtr + 1)], 
-                          Model.VertexBuffer[*(IndexPtr + 2)],
-                          image, TGAColor(255 * Color.x, 255 * Color.y, 255 * Color.z), ZBuffer);
+
+        // Hardcode to index 0 for now, need to add a ActiveTexture or something
+        // Instead of fetch the color at vertices and interpolate them at each
+        // overlapped pixel, interpolate uv coordinates and then use interpolated
+        // uv to fetch color
+        Vec2<float> V0_UV = Model.TextureBuffer[IndexPtr->y];
+        Vec2<float> V1_UV = Model.TextureBuffer[(IndexPtr + 1)->y];
+        Vec2<float> V2_UV = Model.TextureBuffer[(IndexPtr + 2)->y];
+
+        RasterizeTriangle(Model.VertexBuffer[IndexPtr->x], 
+                          Model.VertexBuffer[(IndexPtr + 1)->x], 
+                          Model.VertexBuffer[(IndexPtr + 2)->x],
+                          image, 
+                          V0_UV,
+                          V1_UV,
+                          V2_UV, 
+                          Model.TextureAssets[0],
+                          ZBuffer);
         /// \Note: I ran into a gotcha here, I was using while(IndexPtr)
         ///         to dictate whether all the indices are traversed without
         ///         relizing that the memory right pass the last element in
@@ -275,16 +313,24 @@ int main(int argc, char* argv[]) {
     // Create an image for writing pixels
     TGAImage image(ImageWidth, ImageHeight, TGAImage::RGB);
     char ModelPath[64] = { "../Graphx/Assets/Model.obj" };
-    // Load the model data from a .obj file
-    // Only loads vertex position
-    Graphx::Model Model;
-    Model.Parse(ModelPath);
+    char TexturePath[64] = { "../Graphx/Assets/Textures/african_head_diffuse.tga" };
 
-    float* ZBuffer = new float[ImageWidth * ImageHeight];
-    for (int i = 0; i < ImageSize; i++) ZBuffer[i] = -100.0f;
+    // Add a scope here to help trigger Model's destructor
+    {
+        Graphx::Model Model;
+        Model.Parse(ModelPath);
+        TGAImage Sample;
+        Model.LoadTexture(&Sample, TexturePath);
+        Sample.flip_vertically();
 
-    // Draw the mesh
-    DrawMesh(Model, image, white, ZBuffer);
+        float* ZBuffer = new float[ImageWidth * ImageHeight];
+        for (int i = 0; i < ImageSize; i++) ZBuffer[i] = -100.0f;
+
+        // Draw the mesh
+        ///\FIXME: This function call cause Heap corruption
+        DrawMesh(Model, image, white, ZBuffer);
+    }
+
     /// \TODO: Maybe instead of writing to an image,
     ///         can draw to a buffer, and display it using
     ///         a Win32 window

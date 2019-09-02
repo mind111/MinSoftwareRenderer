@@ -12,11 +12,51 @@ const TGAColor red = TGAColor(255, 0, 0, 255);
 Vec3<float> LightPos(0.0f, 0.5f, 1.0f);
 Vec3<float> LightColor(0.7f, 0.7f, 0.7f);
 Vec3<float> LightDir(0, 0, 1);
+Vec3<float> CameraPos(0, 0, 3);
 
-/// \TODO: Helper function for parsing wavefront .obj file
-///        and profile this implementation against using STL
-///        and stringstream
-/// \TODO: Maybe turn this into a class and clean up the code
+struct Camera
+{
+    Vec3<float> Position;
+    Vec3<float> Translation;
+
+    //Vec3<float> LookingAt;
+    
+    Vec3<float> Up;
+    Vec3<float> Forward;
+    Vec3<float> Right;
+
+    Mat4x4<float> LookAt(Vec3<float> Point)
+    {
+        Mat4x4<float> ModelView;
+
+        // Assuming that world up direction is always (0, 1, 0)
+        this->Forward = MathFunctionLibrary::Normalize(Point - Position);
+        this->Right = MathFunctionLibrary::Normalize(MathFunctionLibrary::CrossProduct(
+                    this->Forward, Vec3<float>(0.f, 1.f, 0.f)));
+        this->Up = MathFunctionLibrary::Normalize(MathFunctionLibrary::CrossProduct(
+                    this->Forward, this->Right));
+
+        // Construct the matrix using these three axes as basis
+        ModelView.Mat[0][0] = Right.x;
+        ModelView.Mat[0][1] = Right.y;
+        ModelView.Mat[0][2] = Right.z;
+
+        ModelView.Mat[0][0] = Up.x;
+        ModelView.Mat[0][1] = Up.y;
+        ModelView.Mat[0][2] = Up.z;
+
+        ModelView.Mat[0][1] = Forward.x;
+        ModelView.Mat[0][1] = Forward.y;
+        ModelView.Mat[0][2] = Forward.z;
+
+        Mat4x4<float> TransMatrix;
+        TransMatrix.Mat[0][3] = this->Translation.x;
+        TransMatrix.Mat[1][3] = this->Translation.y;
+        TransMatrix.Mat[2][3] = this->Translation.z;
+        
+        return ModelView * TransMatrix; 
+    }
+};
 
 /// \Note More optimized version of DrawLine, Inspired by GitHub ssloy/tinyrenderer
 void Line(Vec2<int> Start, Vec2<int> End, TGAImage& image, const TGAColor& color)
@@ -169,6 +209,18 @@ Vec2<int> WorldToScreenOrtho(Vec3<float>& Vertex)
     return Vec2<int>((int)(Vertex.x * 400 + 400), (int)(Vertex.y * 400 + 400));
 }
 
+Vec2<int> PerspectiveProjection(Vec3<float>& Vertex)
+{
+    // For now, default ZNear to z = 1
+    float PerspectiveRatio = (CameraPos.z - 1) / (CameraPos.z - Vertex.z);
+    // Perspective deform
+    Vec3<float> CameraSpace_VertPos(Vertex.x * PerspectiveRatio,
+                                    Vertex.y * PerspectiveRatio,
+                                    Vertex.z);
+    // Orthographic projection onto screen space
+    return WorldToScreenOrtho(CameraSpace_VertPos);
+}
+
 void RasterizeTriangle(Vec3<float> V0, Vec3<float> V1, Vec3<float> V2, 
         TGAImage& image, 
         Vec2<float>& V0_UV, 
@@ -179,9 +231,9 @@ void RasterizeTriangle(Vec3<float> V0, Vec3<float> V1, Vec3<float> V2,
 {
     // Project vertices of the triangle onto screen space using
     // orthographic projection
-    Vec2<int> V0Screen = WorldToScreenOrtho(V0);
-    Vec2<int> V1Screen = WorldToScreenOrtho(V1);
-    Vec2<int> V2Screen = WorldToScreenOrtho(V2);
+    Vec2<int> V0Screen = PerspectiveProjection(V0);
+    Vec2<int> V1Screen = PerspectiveProjection(V1);
+    Vec2<int> V2Screen = PerspectiveProjection(V2);
 
     // Calculate the bounding box for the triangle
     int Bottom = V0Screen.y, Up = V0Screen.y, Left = V0Screen.x, Right = V0Screen.x;

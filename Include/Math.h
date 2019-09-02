@@ -154,6 +154,65 @@ struct Vec3
     }
 };
 
+template <class T>
+struct Vec4
+{
+    T x;
+    T y;
+    T z;
+    T w;
+};
+
+template <class T>
+struct Mat4x4
+{
+    T Mat[4][4];
+
+    Mat4x4()    
+    {
+        for (int i = 0; i < 4; i++)
+        {
+            for (int j = 0; j < 4; j++)
+                Mat[i][j] = 0;
+        }
+
+        Mat[0][0] = 1;
+        Mat[1][1] = 1;
+        Mat[2][2] = 1;
+        Mat[3][3] = 1;
+    }
+
+    Vec4<T> operator*(const Vec4<T>& v)
+    {
+        Vec4<T> Res;
+
+        for (int i = 0; i < 4; i++)
+        {
+            Res.x = Mat[0][0] * v.x + Mat[0][1] * v.y + 
+                    Mat[0][2] * v.z + Mat[0][3] * v.w;
+
+            Res.y = Mat[1][0] * v.x + Mat[1][1] * v.y + 
+                    Mat[1][2] * v.z + Mat[1][3] * v.w;
+
+            Res.z = Mat[2][0] * v.x + Mat[2][1] * v.y + 
+                    Mat[2][2] * v.z + Mat[2][3] * v.w;
+
+            Res.w = Mat[3][0] * v.x + Mat[3][1] * v.y + 
+                    Mat[3][2] * v.z + Mat[3][3] * v.w;
+        }
+    }
+
+    Mat4x4<T> operator*(const Mat4x4<T>& v)
+    {
+        Mat4x4<T> Res;
+        return Res;
+    }
+
+    void SetTranslation();
+    void SetRotation();
+    void Inverse();
+};
+
 class MathFunctionLibrary
 {
 public:

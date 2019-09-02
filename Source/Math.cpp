@@ -1,5 +1,5 @@
 #include "../Include/Math.h"
- 
+
 template <class T>
 inline float MathFunctionLibrary::Length(const Vec3<T>& V0)
 {

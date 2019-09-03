@@ -161,6 +161,9 @@ struct Vec4
     T y;
     T z;
     T w;
+
+    Vec4() {}
+    Vec4(T x, T y, T z, T w): x(x), y(y), z(z), w(w) {}
 };
 
 template <class T>
@@ -176,12 +179,8 @@ struct Mat4x4
                 Mat[i][j] = 0;
         }
 
-        Mat[0][0] = 1;
-        Mat[1][1] = 1;
-        Mat[2][2] = 1;
-        Mat[3][3] = 1;
     }
-
+    
     Vec4<T> operator*(const Vec4<T>& v)
     {
         Vec4<T> Res;
@@ -200,17 +199,56 @@ struct Mat4x4
             Res.w = Mat[3][0] * v.x + Mat[3][1] * v.y + 
                     Mat[3][2] * v.z + Mat[3][3] * v.w;
         }
+        
+        return Res;
     }
 
     Mat4x4<T> operator*(const Mat4x4<T>& v)
     {
         Mat4x4<T> Res;
+
+        for (int i = 0 ; i < 4; i++)
+        {
+            for(int j = 0; j < 4; j++)
+            {
+                int Row = i;
+                int Col = j;
+
+                for (int k = 0; k < 4; k++)
+                    Res.Mat[i][j] += this->Mat[Row][k] * v.Mat[k][Col];
+            }
+        }
+
         return Res;
+    }
+
+    void operator=(const Mat4x4& Other)
+    {
+        for (int i = 0; i < 4; i++)
+        {
+            for (int j = 0; j < 4; j++)
+                this->Mat[i][j] = Other.Mat[i][j];
+        }
     }
 
     void SetTranslation();
     void SetRotation();
     void Inverse();
+    void Identity()
+    {
+        this->Mat[0][0] = 1;
+        this->Mat[1][1] = 1;
+        this->Mat[2][2] = 1;
+        this->Mat[3][3] = 1;
+    }
+
+
+    /**
+     * ---------- Utils ----------
+     *
+     */
+    void Print();
+    static Mat4x4<float> GenViewPort(float VP_Width, float VP_Height);
 };
 
 class MathFunctionLibrary

@@ -14,6 +14,8 @@ Vec3<float> LightColor(0.7f, 0.7f, 0.7f);
 Vec3<float> LightDir(0, 0, 1);
 Vec3<float> CameraPos(0, 0, 3);
 
+Mat4x4<float> ViewPort = Mat4x4<float>::GenViewPort(ImageWidth, ImageHeight);
+
 struct Camera
 {
     Vec3<float> Position;
@@ -29,6 +31,9 @@ struct Camera
     {
         Mat4x4<float> ModelView;
 
+        // Update Camera's position in world accoridng to its translation
+        this->Position += Translation;
+
         // Assuming that world up direction is always (0, 1, 0)
         this->Forward = MathFunctionLibrary::Normalize(Point - Position);
         this->Right = MathFunctionLibrary::Normalize(MathFunctionLibrary::CrossProduct(
@@ -41,18 +46,21 @@ struct Camera
         ModelView.Mat[0][1] = Right.y;
         ModelView.Mat[0][2] = Right.z;
 
-        ModelView.Mat[0][0] = Up.x;
-        ModelView.Mat[0][1] = Up.y;
-        ModelView.Mat[0][2] = Up.z;
+        ModelView.Mat[1][0] = Up.x;
+        ModelView.Mat[1][1] = Up.y;
+        ModelView.Mat[1][2] = Up.z;
 
-        ModelView.Mat[0][1] = Forward.x;
-        ModelView.Mat[0][1] = Forward.y;
-        ModelView.Mat[0][2] = Forward.z;
+        ModelView.Mat[2][0] = Forward.x;
+        ModelView.Mat[2][1] = Forward.y;
+        ModelView.Mat[2][2] = Forward.z;
+
+        ModelView.Mat[3][3] = 1;
 
         Mat4x4<float> TransMatrix;
-        TransMatrix.Mat[0][3] = this->Translation.x;
-        TransMatrix.Mat[1][3] = this->Translation.y;
-        TransMatrix.Mat[2][3] = this->Translation.z;
+        TransMatrix.Identity();
+        TransMatrix.Mat[0][3] = -1 * this->Translation.x;
+        TransMatrix.Mat[1][3] = -1 * this->Translation.y;
+        TransMatrix.Mat[2][3] = -1 * this->Translation.z; 
         
         return ModelView * TransMatrix; 
     }
@@ -309,10 +317,19 @@ void DrawMesh(Graphx::Model& Model, TGAImage& image, TGAColor color, float* ZBuf
 
     while (TriangleRendered < 2492)
     {
-        Vec2<int> V0 = WorldToScreenOrtho(Model.VertexBuffer[IndexPtr->x]);
-        Vec2<int> V1 = WorldToScreenOrtho(Model.VertexBuffer[(IndexPtr + 1)->x]);
-        Vec2<int> V2 = WorldToScreenOrtho(Model.VertexBuffer[(IndexPtr + 2)->x]);
+        Vec3<float> V0_Vec3 = Model.VertexBuffer[IndexPtr->x];
+        Vec3<float> V1_Vec3 = Model.VertexBuffer[(IndexPtr + 1)->x];
+        Vec3<float> V2_Vec3 = Model.VertexBuffer[(IndexPtr + 2)->x];
 
+        Vec4<float> V0(V0_Vec3.x, V0_Vec3.y, V0_Vec3.z, 1.0f);
+        Vec4<float> V1(V1_Vec3.x, V1_Vec3.y, V1_Vec3.z, 1.0f);
+        Vec4<float> V2(V2_Vec3.x, V2_Vec3.y, V2_Vec3.z, 1.0f);
+
+        // Model->World->Camera->Viewport
+        Vec4<float> V0Screen_Vec4 = ViewPort * V0;
+        Vec4<float> V1Screen_Vec4 = ViewPort * V1;
+        Vec4<float> V2Screen_Vec4 = ViewPort * V2;
+        
         Vec3<float> V0V1 = Model.VertexBuffer[(IndexPtr + 1)->x] - Model.VertexBuffer[IndexPtr->x];
         Vec3<float> V0V2 = Model.VertexBuffer[(IndexPtr + 2)->x] - Model.VertexBuffer[IndexPtr->x];
 
@@ -361,11 +378,22 @@ void DrawMesh(Graphx::Model& Model, TGAImage& image, TGAColor color, float* ZBuf
 }
 
 int main(int argc, char* argv[]) {
+    // Testing Matrix multiplication
+    Camera Camera;
+
     int ImageSize = ImageWidth * ImageHeight;    
     // Create an image for writing pixels
     TGAImage image(ImageWidth, ImageHeight, TGAImage::RGB);
     char ModelPath[64] = { "../Graphx/Assets/Model.obj" };
     char TexturePath[64] = { "../Graphx/Assets/Textures/african_head_diffuse.tga" };
+
+    Mat4x4<float> ViewMat;
+    ViewMat.Print();
+    Camera.Position = CameraPos;
+    Camera.Translation = Vec3<float>(0.0, 0.0, 0.0);
+    ViewMat.Identity();
+    ViewMat = Camera.LookAt(Vec3<float>(0.0f, 1.0f, -1.0f));
+    ViewMat.Print();
 
     // Add a scope here to help trigger Model's destructor
     {

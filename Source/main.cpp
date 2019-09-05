@@ -217,7 +217,7 @@ Vec2<int> WorldToScreenOrtho(Vec3<float>& Vertex)
     return Vec2<int>((int)(Vertex.x * 400 + 400), (int)(Vertex.y * 400 + 400));
 }
 
-Vec2<int> PerspectiveProjection(Vec3<float>& Vertex)
+Vec3<float> PerspectiveProjection(Vec3<float>& Vertex)
 {
     // For now, default ZNear to z = 1
     float PerspectiveRatio = (CameraPos.z - 1) / (CameraPos.z - Vertex.z);
@@ -226,7 +226,7 @@ Vec2<int> PerspectiveProjection(Vec3<float>& Vertex)
                                     Vertex.y * PerspectiveRatio,
                                     Vertex.z);
     // Orthographic projection onto screen space
-    return WorldToScreenOrtho(CameraSpace_VertPos);
+    return CameraSpace_VertPos;
 }
 
 void RasterizeTriangle(Vec3<float> V0, Vec3<float> V1, Vec3<float> V2, 
@@ -239,9 +239,33 @@ void RasterizeTriangle(Vec3<float> V0, Vec3<float> V1, Vec3<float> V2,
 {
     // Project vertices of the triangle onto screen space using
     // orthographic projection
-    Vec2<int> V0Screen = PerspectiveProjection(V0);
-    Vec2<int> V1Screen = PerspectiveProjection(V1);
-    Vec2<int> V2Screen = PerspectiveProjection(V2);
+    Vec3<float> V0_Projection = PerspectiveProjection(V0);
+    Vec3<float> V1_Projection = PerspectiveProjection(V1);
+    Vec3<float> V2_Projection = PerspectiveProjection(V2);
+
+    // Viewport transform
+    Vec4<float> V0_Augmented = Vec4<float>(V0_Projection.x,
+                                           V0_Projection.y,
+                                           V0_Projection.z,
+                                           1.f);
+
+    Vec4<float> V1_Augmented = Vec4<float>(V1_Projection.x,
+                                           V1_Projection.y,
+                                           V1_Projection.z,
+                                           1.f);
+
+    Vec4<float> V2_Augmented = Vec4<float>(V2_Projection.x,
+                                           V2_Projection.y,
+                                           V2_Projection.z,
+                                           1.f);
+    
+    Vec4<float> V0Screen_Vec4 = ViewPort * V0_Augmented;
+    Vec4<float> V1Screen_Vec4 = ViewPort * V1_Augmented;
+    Vec4<float> V2Screen_Vec4 = ViewPort * V2_Augmented;
+    
+    Vec2<int> V0Screen = Vec2<int>((int)V0Screen_Vec4.x, (int)V0Screen_Vec4.y); 
+    Vec2<int> V1Screen = Vec2<int>((int)V1Screen_Vec4.x, (int)V1Screen_Vec4.y);
+    Vec2<int> V2Screen = Vec2<int>((int)V2Screen_Vec4.x, (int)V2Screen_Vec4.y);
 
     // Calculate the bounding box for the triangle
     int Bottom = V0Screen.y, Up = V0Screen.y, Left = V0Screen.x, Right = V0Screen.x;

@@ -1,6 +1,14 @@
 #include <iostream>
 #include "../Include/Math.h"
 
+void Vec4<float>::Print()
+{
+    std::cout << "[ " << this->x << " "
+                      << this->y << " "
+                      << this->z << " "
+                      << this->w << " ]" << std::endl;
+}
+
 void Mat4x4<float>::Print()
 {
     std::cout << "-- Mat4x4 --" << std::endl;

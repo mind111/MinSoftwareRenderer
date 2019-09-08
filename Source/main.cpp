@@ -252,11 +252,16 @@ void RasterizeTriangle(Vec2<int> V0Screen, Vec2<int> V1Screen, Vec2<int> V2Scree
         TGAImage* TextureImage,
         float* ZBuffer)
 {
+    Vec2<int> E1 = V1Screen - V0Screen;
+    Vec2<int> E2 = V2Screen - V0Screen;
+
+    // Ignore triangles whose three vertices lie in the same line
+    // in screen space
+    // (V1.x - V0.x) * (V2.y - V0.y) == (V2.x - V0.x) * (V1.y - V0.y)
+    if (E1.x * E2.y == E2.x * E1.y) return;
 
     // Calculate the bounding box for the triangle
     int Bottom = V0Screen.y, Up = V0Screen.y, Left = V0Screen.x, Right = V0Screen.x;
-    Vec2<int> E1 = V1Screen - V0Screen;
-    Vec2<int> E2 = V2Screen - V0Screen;
     float Denom = E1.x * E2.y - E2.x * E1.y;
     Vec2<int> T[3];
     T[0] = V0Screen;
@@ -389,7 +394,7 @@ void DrawMesh(Graphx::Model& Model, TGAImage& image, TGAColor color, float* ZBuf
         ///Note: Counter-clockwise vertex winding order
         Vec3<float> Normal = MathFunctionLibrary::Normalize(MathFunctionLibrary::CrossProduct(V0V1, V0V2));
 
-	    float ShadingCoef = MathFunctionLibrary::DotProduct(LightDir, Normal);
+	    float ShadingCoef = MathFunctionLibrary::DotProduct_Vec3(LightDir, Normal);
         
         // ShadingCoef < 0 means that the triangle is facing away from the light, simply discard
         if (ShadingCoef < 0.0f) 

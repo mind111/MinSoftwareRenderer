@@ -1,6 +1,7 @@
 #include <iostream>
 #include <fstream>
 #include <string>
+#include <cmath>
 #include "../Include/tgaimage.h"
 #include "../Include/Globals.h"
 #include "../Include/Math.h"
@@ -14,18 +15,25 @@ Vec3<float> LightColor(0.7f, 0.7f, 0.7f);
 Vec3<float> LightDir(0, 0, 1);
 Vec3<float> CameraPos(0, 0, 3);
 
-Mat4x4<float> ViewPort = Mat4x4<float>::GenViewPort(ImageWidth, ImageHeight);
+Mat4x4<float> ViewPort = Mat4x4<float>::ViewPort(ImageWidth, ImageHeight);
 
 struct Camera
 {
     Vec3<float> Position;
     Vec3<float> Translation;
 
-    //Vec3<float> LookingAt;
-    
     Vec3<float> Up;
     Vec3<float> Forward;
     Vec3<float> Right;
+
+    Camera()
+    {
+        this->Position = Vec3<float>(0.f, 0.f, 0.f);
+        this->Translation = Vec3<float>(0.f, 0.f, 0.f);
+        this->Up = Vec3<float>(0.f, 1.f, 0.f);
+        this->Forward = Vec3<float>(0.f, 0.f, -1.f);
+        this->Right = Vec3<float>(1.f, 0.f, 0.f);
+    }
 
     Mat4x4<float> LookAt(Vec3<float> Point)
     {
@@ -39,9 +47,12 @@ struct Camera
         this->Right = MathFunctionLibrary::Normalize(MathFunctionLibrary::CrossProduct(
                     this->Forward, Vec3<float>(0.f, 1.f, 0.f)));
         this->Up = MathFunctionLibrary::Normalize(MathFunctionLibrary::CrossProduct(
-                    this->Forward, this->Right));
+                    this->Right, this->Forward));
 
         // Construct the matrix using these three axes as basis
+        // --- Right ---
+        // --- Up ------
+        // --- Forward -
         ModelView.Mat[0][0] = Right.x;
         ModelView.Mat[0][1] = Right.y;
         ModelView.Mat[0][2] = Right.z;
@@ -229,7 +240,11 @@ Vec3<float> PerspectiveProjection(Vec3<float>& Vertex)
     return CameraSpace_VertPos;
 }
 
-void RasterizeTriangle(Vec3<float> V0, Vec3<float> V1, Vec3<float> V2, 
+///\TODO: Should not handle vertex transformation here, need to clean up
+void RasterizeTriangle(Vec2<int> V0Screen, Vec2<int> V1Screen, Vec2<int> V2Screen, 
+        Vec3<float> V0_World,
+        Vec3<float> V1_World,
+        Vec3<float> V2_World,
         TGAImage& image, 
         Vec2<float>& V0_UV, 
         Vec2<float>& V1_UV, 
@@ -237,35 +252,6 @@ void RasterizeTriangle(Vec3<float> V0, Vec3<float> V1, Vec3<float> V2,
         TGAImage* TextureImage,
         float* ZBuffer)
 {
-    // Project vertices of the triangle onto screen space using
-    // orthographic projection
-    Vec3<float> V0_Projection = PerspectiveProjection(V0);
-    Vec3<float> V1_Projection = PerspectiveProjection(V1);
-    Vec3<float> V2_Projection = PerspectiveProjection(V2);
-
-    // Viewport transform
-    Vec4<float> V0_Augmented = Vec4<float>(V0_Projection.x,
-                                           V0_Projection.y,
-                                           V0_Projection.z,
-                                           1.f);
-
-    Vec4<float> V1_Augmented = Vec4<float>(V1_Projection.x,
-                                           V1_Projection.y,
-                                           V1_Projection.z,
-                                           1.f);
-
-    Vec4<float> V2_Augmented = Vec4<float>(V2_Projection.x,
-                                           V2_Projection.y,
-                                           V2_Projection.z,
-                                           1.f);
-    
-    Vec4<float> V0Screen_Vec4 = ViewPort * V0_Augmented;
-    Vec4<float> V1Screen_Vec4 = ViewPort * V1_Augmented;
-    Vec4<float> V2Screen_Vec4 = ViewPort * V2_Augmented;
-    
-    Vec2<int> V0Screen = Vec2<int>((int)V0Screen_Vec4.x, (int)V0Screen_Vec4.y); 
-    Vec2<int> V1Screen = Vec2<int>((int)V1Screen_Vec4.x, (int)V1Screen_Vec4.y);
-    Vec2<int> V2Screen = Vec2<int>((int)V2Screen_Vec4.x, (int)V2Screen_Vec4.y);
 
     // Calculate the bounding box for the triangle
     int Bottom = V0Screen.y, Up = V0Screen.y, Left = V0Screen.x, Right = V0Screen.x;
@@ -307,7 +293,7 @@ void RasterizeTriangle(Vec3<float> V0, Vec3<float> V1, Vec3<float> V2,
                 continue;
 
             // Depth test to see if current pixel is visible 
-            if (UpdateDepthBuffer(V0, V1, V2, x, y, Weights, ZBuffer)) 
+            if (UpdateDepthBuffer(V0_World, V1_World, V2_World, x, y, Weights, ZBuffer)) 
             {
 
                 Vec2<float> MappedTexturePos(
@@ -338,7 +324,27 @@ void DrawMesh(Graphx::Model& Model, TGAImage& image, TGAColor color, float* ZBuf
 {
     Vec3<int>* IndexPtr = Model.Indices;
     int TriangleRendered = 0;
+    Mat4x4<float> ModelToWorld;
+    ModelToWorld.Identity();
+    // Translate the model further back
+    ModelToWorld.SetTranslation(Vec3<float>(0.f, 0.f, -2.f));
+    Mat4x4<float> Perspective = Mat4x4<float>::Perspective(-1.f, -10.f, 0.f);
+    Camera LocalCamera;
+    Mat4x4<float> View = LocalCamera.LookAt(Vec3<float>(0.f, 0.f, -1.f));
 
+    ///\Note: Should not include 
+    Mat4x4<float> MVP = Perspective 
+                      //* View 
+                      * ModelToWorld;
+    //-- Debug --------
+    ModelToWorld.Print();
+    View.Print();
+    ViewPort.Print();
+    Perspective.Print();
+    Mat4x4<float> Debug = View * ModelToWorld;
+    MVP.Print();
+    //-- Debug finish--
+    
     while (TriangleRendered < 2492)
     {
         Vec3<float> V0_Vec3 = Model.VertexBuffer[IndexPtr->x];
@@ -349,11 +355,34 @@ void DrawMesh(Graphx::Model& Model, TGAImage& image, TGAColor color, float* ZBuf
         Vec4<float> V1(V1_Vec3.x, V1_Vec3.y, V1_Vec3.z, 1.0f);
         Vec4<float> V2(V2_Vec3.x, V2_Vec3.y, V2_Vec3.z, 1.0f);
 
-        // Model->World->Camera->Viewport
-        Vec4<float> V0Screen_Vec4 = ViewPort * V0;
-        Vec4<float> V1Screen_Vec4 = ViewPort * V1;
-        Vec4<float> V2Screen_Vec4 = ViewPort * V2;
+        // Model->World->Camera->Clip
+        Vec4<float> V0Clip_Vec4 = MVP * V0;
+        Vec4<float> V1Clip_Vec4 = MVP * V1;
+        Vec4<float> V2Clip_Vec4 = MVP * V2;
         
+        // Need to divde (w-component - 1) of transformed points
+        V0Clip_Vec4.x = V0Clip_Vec4.x / (V0Clip_Vec4.w - 1);
+        V0Clip_Vec4.y = V0Clip_Vec4.y / (V0Clip_Vec4.w - 1);
+        V1Clip_Vec4.x = V1Clip_Vec4.x / (V1Clip_Vec4.w - 1);
+        V1Clip_Vec4.y = V1Clip_Vec4.y / (V1Clip_Vec4.w - 1);
+        V2Clip_Vec4.x = V2Clip_Vec4.x / (V2Clip_Vec4.w - 1);
+        V2Clip_Vec4.y = V2Clip_Vec4.y / (V2Clip_Vec4.w - 1);
+        
+        // Resetting the w back to 1 or else would mess up the computation
+        // for Viewport transformation
+        V0Clip_Vec4.w = 1.f;
+        V1Clip_Vec4.w = 1.f;
+        V2Clip_Vec4.w = 1.f;
+
+        // Then apply viewport transformation
+        Vec4<float> V0Screen_Vec4 = ViewPort * V0Clip_Vec4;
+        Vec4<float> V1Screen_Vec4 = ViewPort * V1Clip_Vec4;
+        Vec4<float> V2Screen_Vec4 = ViewPort * V2Clip_Vec4;
+        
+        Vec2<int> V0Screen(std::ceil(V0Screen_Vec4.x), std::ceil(V0Screen_Vec4.y));
+        Vec2<int> V1Screen(std::ceil(V1Screen_Vec4.x), std::ceil(V1Screen_Vec4.y));
+        Vec2<int> V2Screen(std::ceil(V2Screen_Vec4.x), std::ceil(V2Screen_Vec4.y));
+
         Vec3<float> V0V1 = Model.VertexBuffer[(IndexPtr + 1)->x] - Model.VertexBuffer[IndexPtr->x];
         Vec3<float> V0V2 = Model.VertexBuffer[(IndexPtr + 2)->x] - Model.VertexBuffer[IndexPtr->x];
 
@@ -382,8 +411,11 @@ void DrawMesh(Graphx::Model& Model, TGAImage& image, TGAColor color, float* ZBuf
         Vec2<float> V1_UV = Model.TextureBuffer[(IndexPtr + 1)->y];
         Vec2<float> V2_UV = Model.TextureBuffer[(IndexPtr + 2)->y];
 
-        RasterizeTriangle(Model.VertexBuffer[IndexPtr->x], 
-                          Model.VertexBuffer[(IndexPtr + 1)->x], 
+        RasterizeTriangle(V0Screen, 
+                          V1Screen, 
+                          V2Screen,
+                          Model.VertexBuffer[IndexPtr->x],
+                          Model.VertexBuffer[(IndexPtr + 1)->x],                    
                           Model.VertexBuffer[(IndexPtr + 2)->x],
                           image, 
                           V0_UV,

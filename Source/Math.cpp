@@ -1,6 +1,18 @@
 #include <iostream>
 #include "../Include/Math.h"
 
+void Mat4x4<float>::SetTranslation(Vec3<float> v)
+{
+    this->Mat[0][3] = v.x;
+    this->Mat[1][3] = v.y;
+    this->Mat[2][3] = v.z;
+}
+
+void Mat4x4<float>::SetRotation(Vec3<float> r) 
+{
+
+}
+
 void Vec4<float>::Print()
 {
     std::cout << "[ " << this->x << " "
@@ -21,7 +33,25 @@ void Mat4x4<float>::Print()
     }
 }
 
-Mat4x4<float> Mat4x4<float>::GenViewPort(float VP_Width, float VP_Height)
+// TODO: Think of how to use FOV
+Mat4x4<float> Mat4x4<float>::Perspective(float Near, float Far, float FOV)
+{ 
+    Mat4x4<float> Res;
+
+    Res.Identity();
+    
+    // ---------------------
+    // [ 1, 0, 0,        0]
+    // [ 0, 1, 0,        0]
+    // [ 0, 0, 1,        0]
+    // [ 0, 0, 1 / Near, 1]
+    // ---------------------
+    Res.Mat[3][2] = 1 / Near;
+
+    return Res;
+}
+
+Mat4x4<float> Mat4x4<float>::ViewPort(float VP_Width, float VP_Height)
 {
    // Map [-1, 1] to [0, VP_Width]
    //

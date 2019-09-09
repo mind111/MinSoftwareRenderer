@@ -58,10 +58,10 @@ Mat4x4<float> Mat4x4<float>::ViewPort(float VP_Width, float VP_Height)
    Mat4x4<float> Res;
 
    Res.Identity();
-   Res.Mat[0][0] = .5f * VP_Width;
-   Res.Mat[0][3] = .5f * VP_Width;
-   Res.Mat[1][1] = .5f * VP_Height;
-   Res.Mat[1][3] = .5f * VP_Height;
+   Res.Mat[0][0] = .5f * (VP_Width  - 1);
+   Res.Mat[0][3] = .5f * (VP_Width  - 1);
+   Res.Mat[1][1] = .5f * (VP_Height - 1);
+   Res.Mat[1][3] = .5f * (VP_Height - 1);
 
    return Res;
 }

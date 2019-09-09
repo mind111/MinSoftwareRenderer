@@ -241,7 +241,8 @@ Vec3<float> PerspectiveProjection(Vec3<float>& Vertex)
 }
 
 ///\TODO: Should not handle vertex transformation here, need to clean up
-void RasterizeTriangle(Vec2<int> V0Screen, Vec2<int> V1Screen, Vec2<int> V2Screen, 
+void RasterizeTriangle(Vec2<float> V0Screen, Vec2<float> V1Screen, 
+        Vec2<float> V2Screen, 
         Vec3<float> V0_World,
         Vec3<float> V1_World,
         Vec3<float> V2_World,
@@ -252,8 +253,8 @@ void RasterizeTriangle(Vec2<int> V0Screen, Vec2<int> V1Screen, Vec2<int> V2Scree
         TGAImage* TextureImage,
         float* ZBuffer)
 {
-    Vec2<int> E1 = V1Screen - V0Screen;
-    Vec2<int> E2 = V2Screen - V0Screen;
+    Vec2<float> E1 = V1Screen - V0Screen;
+    Vec2<float> E2 = V2Screen - V0Screen;
 
     // Ignore triangles whose three vertices lie in the same line
     // in screen space
@@ -263,12 +264,12 @@ void RasterizeTriangle(Vec2<int> V0Screen, Vec2<int> V1Screen, Vec2<int> V2Scree
     // Calculate the bounding box for the triangle
     int Bottom = V0Screen.y, Up = V0Screen.y, Left = V0Screen.x, Right = V0Screen.x;
     float Denom = E1.x * E2.y - E2.x * E1.y;
-    Vec2<int> T[3];
+
+    Vec2<float> T[3];
     T[0] = V0Screen;
     T[1] = V1Screen;
     T[2] = V2Screen;
     
-    /// \TODO: I'm not sure if this is faster than calling std's min, max
     for (int i = 0; i < 3; i++)
     {
         if (T[i].x < Left) Left = T[i].x;
@@ -276,6 +277,11 @@ void RasterizeTriangle(Vec2<int> V0Screen, Vec2<int> V1Screen, Vec2<int> V2Scree
         if (T[i].y < Bottom) Bottom = T[i].y;
         if (T[i].y > Up) Up = T[i].y;
     }
+
+    Right = std::ceil(Right);
+    Up = std::ceil(Up);
+
+    //DrawTriangle(V0Screen, V1Screen, V2Screen, image, TGAColor(255, 255, 255, 255));
 
     // Rasterization
     for (int x = Left; x <= Right; x++)
@@ -285,7 +291,7 @@ void RasterizeTriangle(Vec2<int> V0Screen, Vec2<int> V1Screen, Vec2<int> V2Scree
             /// \Note: Cramer's rule to solve for barycentric coordinates,
             ///       can also use ratio of area between three sub-triangles to solve
             ///       to solve for u,v,w
-            Vec2<int> PA = V0Screen - Vec2<int>(x, y);
+            Vec2<float> PA = V0Screen - Vec2<float>(x, y);
 
             float u = (-1 * PA.x * E2.y + PA.y * E2.x) / Denom;
             float v = (-1 * PA.y * E1.x + PA.x * E1.y) / Denom;
@@ -294,13 +300,12 @@ void RasterizeTriangle(Vec2<int> V0Screen, Vec2<int> V1Screen, Vec2<int> V2Scree
             Vec3<float> Weights(u, v, w);
 
             // Point p is not inside of the triangle
-            if (u < 0 || v < 0 || w < 0 || u > 1 || v > 1 || w > 1)
+            if (u < 0.f || v < 0.f || w < 0.f)
                 continue;
 
             // Depth test to see if current pixel is visible 
-            if (UpdateDepthBuffer(V0_World, V1_World, V2_World, x, y, Weights, ZBuffer)) 
+            if (UpdateDepthBuffer(V0_World, V1_World, V2_World, x, y, Weights, ZBuffer))
             {
-
                 Vec2<float> MappedTexturePos(
                         Weights.z * V0_UV.x + Weights.x * V1_UV.x + Weights.y * V2_UV.x,
                         Weights.z * V0_UV.y + Weights.x * V1_UV.y + Weights.y * V2_UV.y
@@ -384,9 +389,9 @@ void DrawMesh(Graphx::Model& Model, TGAImage& image, TGAColor color, float* ZBuf
         Vec4<float> V1Screen_Vec4 = ViewPort * V1Clip_Vec4;
         Vec4<float> V2Screen_Vec4 = ViewPort * V2Clip_Vec4;
         
-        Vec2<int> V0Screen(std::ceil(V0Screen_Vec4.x), std::ceil(V0Screen_Vec4.y));
-        Vec2<int> V1Screen(std::ceil(V1Screen_Vec4.x), std::ceil(V1Screen_Vec4.y));
-        Vec2<int> V2Screen(std::ceil(V2Screen_Vec4.x), std::ceil(V2Screen_Vec4.y));
+        Vec2<float> V0Screen(V0Screen_Vec4.x, V0Screen_Vec4.y);
+        Vec2<float> V1Screen(V1Screen_Vec4.x, V1Screen_Vec4.y);
+        Vec2<float> V2Screen(V2Screen_Vec4.x, V2Screen_Vec4.y);
 
         Vec3<float> V0V1 = Model.VertexBuffer[(IndexPtr + 1)->x] - Model.VertexBuffer[IndexPtr->x];
         Vec3<float> V0V2 = Model.VertexBuffer[(IndexPtr + 2)->x] - Model.VertexBuffer[IndexPtr->x];

@@ -164,6 +164,25 @@ struct Vec4
 
     Vec4() {}
     Vec4(T x, T y, T z, T w): x(x), y(y), z(z), w(w) {}
+
+    void operator=(const Vec4& RHS)
+    {
+        this->x = RHS.x;
+        this->y = RHS.y;
+        this->z = RHS.z;
+        this->w = RHS.w;
+    }
+
+    void operator-=(const Vec4& RHS)
+    {
+        this->x -= RHS.x;
+        this->y -= RHS.y;
+        this->z -= RHS.z;
+        this->w -= RHS.w;
+    }
+
+    void Print();
+
 };
 
 template <class T>
@@ -185,21 +204,18 @@ struct Mat4x4
     {
         Vec4<T> Res;
 
-        for (int i = 0; i < 4; i++)
-        {
-            Res.x = Mat[0][0] * v.x + Mat[0][1] * v.y + 
-                    Mat[0][2] * v.z + Mat[0][3] * v.w;
+        Res.x = Mat[0][0] * v.x + Mat[0][1] * v.y + 
+                Mat[0][2] * v.z + Mat[0][3] * v.w;
 
-            Res.y = Mat[1][0] * v.x + Mat[1][1] * v.y + 
-                    Mat[1][2] * v.z + Mat[1][3] * v.w;
+        Res.y = Mat[1][0] * v.x + Mat[1][1] * v.y + 
+                Mat[1][2] * v.z + Mat[1][3] * v.w;
 
-            Res.z = Mat[2][0] * v.x + Mat[2][1] * v.y + 
-                    Mat[2][2] * v.z + Mat[2][3] * v.w;
+        Res.z = Mat[2][0] * v.x + Mat[2][1] * v.y + 
+                Mat[2][2] * v.z + Mat[2][3] * v.w;
 
-            Res.w = Mat[3][0] * v.x + Mat[3][1] * v.y + 
-                    Mat[3][2] * v.z + Mat[3][3] * v.w;
-        }
-        
+        Res.w = Mat[3][0] * v.x + Mat[3][1] * v.y + 
+                Mat[3][2] * v.z + Mat[3][3] * v.w;
+
         return Res;
     }
 
@@ -221,7 +237,7 @@ struct Mat4x4
 
         return Res;
     }
-
+    
     void operator=(const Mat4x4& Other)
     {
         for (int i = 0; i < 4; i++)
@@ -231,8 +247,8 @@ struct Mat4x4
         }
     }
 
-    void SetTranslation();
-    void SetRotation();
+    void SetTranslation(Vec3<float> v);
+    void SetRotation(Vec3<float> r);
     void Inverse();
     void Identity()
     {
@@ -248,7 +264,8 @@ struct Mat4x4
      *
      */
     void Print();
-    static Mat4x4<float> GenViewPort(float VP_Width, float VP_Height);
+    static Mat4x4<float> ViewPort(float VP_Width, float VP_Height);
+    static Mat4x4<float> Perspective(float Near, float Far, float FOV);
 };
 
 class MathFunctionLibrary
@@ -259,8 +276,13 @@ public:
     template <class T>
     static float Length(const Vec3<T>& V0);
     template <class T>
-    static T DotProduct(const Vec3<T>& V0, const Vec3<T>& V1)
+    inline static T DotProduct_Vec3(const Vec3<T>& V0, const Vec3<T>& V1)
     {
             return (V0.x * V1.x + V0.y * V1.y + V0.z * V1.z);
+    }
+    template <class T>
+    inline static T DotProduct_Vec2(const Vec2<T>& V0, const Vec2<T>& V1)
+    {
+            return (V0.x * V1.x + V0.y * V1.y);
     }
 };

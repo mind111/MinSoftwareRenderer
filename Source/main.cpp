@@ -2,6 +2,7 @@
 #include <fstream>
 #include <string>
 #include <cmath>
+#include <algorithm>
 #include "../Include/tgaimage.h"
 #include "../Include/Globals.h"
 #include "../Include/Math.h"
@@ -278,20 +279,22 @@ void RasterizeTriangle(Vec2<float> V0Screen, Vec2<float> V1Screen,
         if (T[i].y > Up) Up = T[i].y;
     }
 
-    Right = std::ceil(Right);
-    Up = std::ceil(Up);
+    if (Left > 799.f)   Left   = 799.f;
+    if (Right > 799.f)  Right  = 799.f;
+    if (Up > 799.f)     Up     = 799.f;
+    if (Bottom > 799.f) Bottom = 799.f;
 
-    //DrawTriangle(V0Screen, V1Screen, V2Screen, image, TGAColor(255, 255, 255, 255));
-
+    ///\TODO: Need to further refine rounding issue when deciding if a pixel
+    //        overlaps a triangle
     // Rasterization
-    for (int x = Left; x <= Right; x++)
+    for (int x = Left; x <= (int)Right; x++)
     {
-        for (int y = Bottom; y <= Up; y++)
+        for (int y = Bottom; y <= (int)Up; y++)
         {
             /// \Note: Cramer's rule to solve for barycentric coordinates,
             ///       can also use ratio of area between three sub-triangles to solve
             ///       to solve for u,v,w
-            Vec2<float> PA = V0Screen - Vec2<float>(x, y);
+            Vec2<float> PA = V0Screen - Vec2<float>(x + .5f, y + .5f);
 
             float u = (-1 * PA.x * E2.y + PA.y * E2.x) / Denom;
             float v = (-1 * PA.y * E1.x + PA.x * E1.y) / Denom;

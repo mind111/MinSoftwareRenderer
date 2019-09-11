@@ -41,12 +41,12 @@ Mat4x4<float> Mat4x4<float>::Perspective(float Near, float Far, float FOV)
     Res.Identity();
     
     // ---------------------
-    // [ 1, 0, 0,        0]
-    // [ 0, 1, 0,        0]
-    // [ 0, 0, 1,        0]
-    // [ 0, 0, 1 / Near, 1]
+    // [ 1, 0, 0,         0]
+    // [ 0, 1, 0,         0]
+    // [ 0, 0, 1,         0]
+    // [ 0, 0, -1 / Near, 1]
     // ---------------------
-    Res.Mat[3][2] = 1 / Near;
+    Res.Mat[3][2] = -1.f / Near;
 
     return Res;
 }
@@ -54,7 +54,7 @@ Mat4x4<float> Mat4x4<float>::Perspective(float Near, float Far, float FOV)
 Mat4x4<float> Mat4x4<float>::ViewPort(float VP_Width, float VP_Height)
 {
    // Map [-1, 1] to [0, VP_Width]
-   //
+   
    Mat4x4<float> Res;
 
    Res.Identity();

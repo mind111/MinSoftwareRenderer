@@ -7,6 +7,7 @@
 #include "../Include/Globals.h"
 #include "../Include/Math.h"
 #include "../Include/Model.h"
+#include "../Include/Shader.h"
 
 /// \TODO Clean up code to get rid of all the warnings
 const TGAColor white = TGAColor(255, 255, 255, 255);
@@ -16,7 +17,6 @@ Vec3<float> LightColor(0.7f, 0.7f, 0.7f);
 Vec3<float> LightDir(0, 0, 1);
 Vec3<float> CameraPos(0, 0, 3);
 
-Mat4x4<float> ViewPort = Mat4x4<float>::ViewPort(ImageWidth, ImageHeight);
 
 struct Camera
 {
@@ -199,253 +199,6 @@ void FillTriangle(Vec2<int>& V0, Vec2<int>& V1, Vec2<int>& V2, TGAImage& image, 
     }
 }
 
-/** 
- * Given a point P on triangle's projection on screen space, use barycentric
- * coordinates to derive/interpolate P's actual position in world space.
- * 2D -> 3D. 
- * ** Orthographic case **
- * projection still preserves same barycentric coordinates as projected triangle
- * in 3D space
- * ** Perspective case **
- * TODO:
- */
-bool UpdateDepthBuffer(Vec3<float> V0, Vec3<float> V1, Vec3<float> V2, 
-                int ScreenX, int ScreenY, Vec3<float> Weights, float* ZBuffer)
-{
-    int Index = ScreenY * ImageWidth + ScreenX;
-    float z = V0.z * Weights.x + V1.z * Weights.y + V2.z * Weights.z;
-
-    if (z > ZBuffer[Index]) 
-    {
-        ZBuffer[Index] = z;
-        return true;
-    }
-
-    return false;
-}
-
-Vec2<int> WorldToScreenOrtho(Vec3<float>& Vertex)
-{
-    return Vec2<int>((int)(Vertex.x * 400 + 400), (int)(Vertex.y * 400 + 400));
-}
-
-Vec3<float> PerspectiveProjection(Vec3<float>& Vertex)
-{
-    // For now, default ZNear to z = 1
-    float PerspectiveRatio = (CameraPos.z - 1) / (CameraPos.z - Vertex.z);
-    // Perspective deform
-    Vec3<float> CameraSpace_VertPos(Vertex.x * PerspectiveRatio,
-                                    Vertex.y * PerspectiveRatio,
-                                    Vertex.z);
-    // Orthographic projection onto screen space
-    return CameraSpace_VertPos;
-}
-
-///\TODO: Should not handle vertex transformation here, need to clean up
-void RasterizeTriangle(Vec2<float> V0Screen, Vec2<float> V1Screen, 
-        Vec2<float> V2Screen, 
-        Vec3<float> V0_World,
-        Vec3<float> V1_World,
-        Vec3<float> V2_World,
-        TGAImage& image, 
-        Vec2<float>& V0_UV, 
-        Vec2<float>& V1_UV, 
-        Vec2<float>& V2_UV, 
-        TGAImage* TextureImage,
-        float* ZBuffer)
-{
-    Vec2<float> E1 = V1Screen - V0Screen;
-    Vec2<float> E2 = V2Screen - V0Screen;
-
-    // Ignore triangles whose three vertices lie in the same line
-    // in screen space
-    // (V1.x - V0.x) * (V2.y - V0.y) == (V2.x - V0.x) * (V1.y - V0.y)
-    if (E1.x * E2.y == E2.x * E1.y) return;
-
-    // Calculate the bounding box for the triangle
-    int Bottom = V0Screen.y, Up = V0Screen.y, Left = V0Screen.x, Right = V0Screen.x;
-    float Denom = E1.x * E2.y - E2.x * E1.y;
-
-    Vec2<float> T[3];
-    T[0] = V0Screen;
-    T[1] = V1Screen;
-    T[2] = V2Screen;
-    
-    for (int i = 0; i < 3; i++)
-    {
-        if (T[i].x < Left) Left = T[i].x;
-        if (T[i].x > Right) Right = T[i].x;
-        if (T[i].y < Bottom) Bottom = T[i].y;
-        if (T[i].y > Up) Up = T[i].y;
-    }
-
-    if (Left > 799.f)   Left   = 799.f;
-    if (Right > 799.f)  Right  = 799.f;
-    if (Up > 799.f)     Up     = 799.f;
-    if (Bottom > 799.f) Bottom = 799.f;
-
-    ///\TODO: Need to further refine rounding issue when deciding if a pixel
-    //        overlaps a triangle
-    // Rasterization
-    for (int x = Left; x <= (int)Right; x++)
-    {
-        for (int y = Bottom; y <= (int)Up; y++)
-        {
-            /// \Note: Cramer's rule to solve for barycentric coordinates,
-            ///       can also use ratio of area between three sub-triangles to solve
-            ///       to solve for u,v,w
-            Vec2<float> PA = V0Screen - Vec2<float>(x + .5f, y + .5f);
-
-            float u = (-1 * PA.x * E2.y + PA.y * E2.x) / Denom;
-            float v = (-1 * PA.y * E1.x + PA.x * E1.y) / Denom;
-            float w = 1 - u - v;
-
-            Vec3<float> Weights(u, v, w);
-
-            // Point p is not inside of the triangle
-            if (u < 0.f || v < 0.f || w < 0.f)
-                continue;
-
-            // Depth test to see if current pixel is visible 
-            if (UpdateDepthBuffer(V0_World, V1_World, V2_World, x, y, Weights, ZBuffer))
-            {
-                Vec2<float> MappedTexturePos(
-                        Weights.z * V0_UV.x + Weights.x * V1_UV.x + Weights.y * V2_UV.x,
-                        Weights.z * V0_UV.y + Weights.x * V1_UV.y + Weights.y * V2_UV.y
-                );
-
-                TGAColor Color = TextureImage->get(
-                        TextureImage->get_width() * MappedTexturePos.x, 
-                        TextureImage->get_height() * MappedTexturePos.y
-                );
-
-                image.set(x, y, TGAColor(
-                            Color.bgra[2], 
-                            Color.bgra[1], 
-                            Color.bgra[0], 255
-                ));
-            }
-        }
-    }
-
-    return;
-}
-
-///\TODO: Flat shading visuals still look a bit wierd, maybe it's an issue with surface
-//        normal, need to further investigate
-void DrawMesh(Graphx::Model& Model, TGAImage& image, TGAColor color, float* ZBuffer)
-{
-    Vec3<int>* IndexPtr = Model.Indices;
-    int TriangleRendered = 0;
-    Mat4x4<float> ModelToWorld;
-    ModelToWorld.Identity();
-    // Translate the model further back
-    ModelToWorld.SetTranslation(Vec3<float>(0.f, 0.f, -2.f));
-    Mat4x4<float> Perspective = Mat4x4<float>::Perspective(-1.f, -10.f, 0.f);
-    Camera LocalCamera;
-    Mat4x4<float> View = LocalCamera.LookAt(Vec3<float>(0.f, 0.f, -1.f));
-
-    ///\Note: Should not include 
-    Mat4x4<float> MVP = Perspective 
-                      //* View 
-                      * ModelToWorld;
-    //-- Debug --------
-    ModelToWorld.Print();
-    View.Print();
-    ViewPort.Print();
-    Perspective.Print();
-    Mat4x4<float> Debug = View * ModelToWorld;
-    MVP.Print();
-    //-- Debug finish--
-    
-    while (TriangleRendered < 2492)
-    {
-        Vec3<float> V0_Vec3 = Model.VertexBuffer[IndexPtr->x];
-        Vec3<float> V1_Vec3 = Model.VertexBuffer[(IndexPtr + 1)->x];
-        Vec3<float> V2_Vec3 = Model.VertexBuffer[(IndexPtr + 2)->x];
-
-        Vec4<float> V0(V0_Vec3.x, V0_Vec3.y, V0_Vec3.z, 1.0f);
-        Vec4<float> V1(V1_Vec3.x, V1_Vec3.y, V1_Vec3.z, 1.0f);
-        Vec4<float> V2(V2_Vec3.x, V2_Vec3.y, V2_Vec3.z, 1.0f);
-
-        // Model->World->Camera->Clip
-        Vec4<float> V0Clip_Vec4 = MVP * V0;
-        Vec4<float> V1Clip_Vec4 = MVP * V1;
-        Vec4<float> V2Clip_Vec4 = MVP * V2;
-        
-        // Need to divde (w-component - 1) of transformed points
-        V0Clip_Vec4.x = V0Clip_Vec4.x / (V0Clip_Vec4.w - 1);
-        V0Clip_Vec4.y = V0Clip_Vec4.y / (V0Clip_Vec4.w - 1);
-        V1Clip_Vec4.x = V1Clip_Vec4.x / (V1Clip_Vec4.w - 1);
-        V1Clip_Vec4.y = V1Clip_Vec4.y / (V1Clip_Vec4.w - 1);
-        V2Clip_Vec4.x = V2Clip_Vec4.x / (V2Clip_Vec4.w - 1);
-        V2Clip_Vec4.y = V2Clip_Vec4.y / (V2Clip_Vec4.w - 1);
-        
-        // Resetting the w back to 1 or else would mess up the computation
-        // for Viewport transformation
-        V0Clip_Vec4.w = 1.f;
-        V1Clip_Vec4.w = 1.f;
-        V2Clip_Vec4.w = 1.f;
-
-        // Then apply viewport transformation
-        Vec4<float> V0Screen_Vec4 = ViewPort * V0Clip_Vec4;
-        Vec4<float> V1Screen_Vec4 = ViewPort * V1Clip_Vec4;
-        Vec4<float> V2Screen_Vec4 = ViewPort * V2Clip_Vec4;
-        
-        Vec2<float> V0Screen(V0Screen_Vec4.x, V0Screen_Vec4.y);
-        Vec2<float> V1Screen(V1Screen_Vec4.x, V1Screen_Vec4.y);
-        Vec2<float> V2Screen(V2Screen_Vec4.x, V2Screen_Vec4.y);
-
-        Vec3<float> V0V1 = Model.VertexBuffer[(IndexPtr + 1)->x] - Model.VertexBuffer[IndexPtr->x];
-        Vec3<float> V0V2 = Model.VertexBuffer[(IndexPtr + 2)->x] - Model.VertexBuffer[IndexPtr->x];
-
-        ///Note: Counter-clockwise vertex winding order
-        Vec3<float> Normal = MathFunctionLibrary::Normalize(MathFunctionLibrary::CrossProduct(V0V1, V0V2));
-
-	    float ShadingCoef = MathFunctionLibrary::DotProduct_Vec3(LightDir, Normal);
-        
-        // ShadingCoef < 0 means that the triangle is facing away from the light, simply discard
-        if (ShadingCoef < 0.0f) 
-        {
-            TriangleRendered++;
-            IndexPtr += 3;
-            continue;
-        }
-        
-        if (ShadingCoef > 1.0f) ShadingCoef = 1.0f;
-        
-	    Vec3<float> Color = LightColor * ShadingCoef;
-
-        // Hardcode to index 0 for now, need to add a ActiveTexture or something
-        // Instead of fetch the color at vertices and interpolate them at each
-        // overlapped pixel, interpolate uv coordinates and then use interpolated
-        // uv to fetch color
-        Vec2<float> V0_UV = Model.TextureBuffer[IndexPtr->y];
-        Vec2<float> V1_UV = Model.TextureBuffer[(IndexPtr + 1)->y];
-        Vec2<float> V2_UV = Model.TextureBuffer[(IndexPtr + 2)->y];
-
-        RasterizeTriangle(V0Screen, 
-                          V1Screen, 
-                          V2Screen,
-                          Model.VertexBuffer[IndexPtr->x],
-                          Model.VertexBuffer[(IndexPtr + 1)->x],                    
-                          Model.VertexBuffer[(IndexPtr + 2)->x],
-                          image, 
-                          V0_UV,
-                          V1_UV,
-                          V2_UV, 
-                          Model.TextureAssets[0],
-                          ZBuffer);
-        /// \Note: I ran into a gotcha here, I was using while(IndexPtr)
-        ///         to dictate whether all the indices are traversed without
-        ///         relizing that the memory right pass the last element in
-        ///         Indices can as well be valid using memory using by something
-        ///         else. Therefore, need to very careful with pointer arithmetic!!!
-        IndexPtr += 3;
-        TriangleRendered++;
-    }
-}
-
 int main(int argc, char* argv[]) {
     // Testing Matrix multiplication
     Camera Camera;
@@ -455,18 +208,25 @@ int main(int argc, char* argv[]) {
     TGAImage image(ImageWidth, ImageHeight, TGAImage::RGB);
     char ModelPath[64] = { "../Graphx/Assets/Model.obj" };
     char TexturePath[64] = { "../Graphx/Assets/Textures/african_head_diffuse.tga" };
-
-    Mat4x4<float> ViewMat;
-    ViewMat.Print();
+    
+    // Model
+    Mat4x4<float> ModelToWorld;
+    ModelToWorld.Identity();
+    ModelToWorld.SetTranslation(Vec3<float>(0.f, 0.f, -2.f));
+    // View
     Camera.Position = CameraPos;
     Camera.Translation = Vec3<float>(0.0, 0.0, 0.0);
-    ViewMat.Identity();
-    ViewMat = Camera.LookAt(Vec3<float>(0.0f, 1.0f, -1.0f));
-    ViewMat.Print();
-
+    Mat4x4<float> View = Camera.LookAt(Vec3<float>(0.0f, 0.0f, -1.0f));
+    // Projection
+    Mat4x4<float> Perspective = Mat4x4<float>::Perspective(-1.f, -10.f, 0.f);
+    
+    Shader Shader;
+    Shader.VS.MVP = Perspective * View * ModelToWorld;
+    Shader.VS.Viewport = Mat4x4<float>::ViewPort(ImageWidth, ImageHeight);
+    
     // Add a scope here to help trigger Model's destructor
     {
-        Graphx::Model Model;
+        Model Model;
         Model.Parse(ModelPath);
         TGAImage Sample;
         Model.LoadTexture(&Sample, TexturePath);
@@ -475,9 +235,8 @@ int main(int argc, char* argv[]) {
         float* ZBuffer = new float[ImageWidth * ImageHeight];
         for (int i = 0; i < ImageSize; i++) ZBuffer[i] = -100.0f;
 
-        // Draw the mesh
-        ///\FIXME: This function call cause Heap corruption
-        DrawMesh(Model, image, white, ZBuffer);
+        Shader.ZBuffer = ZBuffer;
+        Shader.Draw(Model, image, ZBuffer);
     }
 
     /// \TODO: Maybe instead of writing to an image,

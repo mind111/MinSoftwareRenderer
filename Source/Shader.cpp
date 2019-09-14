@@ -36,21 +36,115 @@ void VertexShader::Vertex_Shader(Vec3<float> V0,
     Vec2<float> V0Screen(V0Screen_Vec4.x, V0Screen_Vec4.y);
     Vec2<float> V1Screen(V1Screen_Vec4.x, V1Screen_Vec4.y);
     Vec2<float> V2Screen(V2Screen_Vec4.x, V2Screen_Vec4.y);
-    
+   
+    // Arrange the vertices based on their y-coordinates
     *(Out) = V0Screen;
     *(Out + 1) = V1Screen;
     *(Out + 2) = V2Screen;
 }
 
-void Fragment_Shader(int ScreenX, int ScreenY)
+void Gouraud_Shader(Vec2<float> V0, Vec2<float> V1, Vec2<float> V2, 
+                    int x, int y, TGAColor Color)
 {
-
+    // Insertion sort
+    /*
+    for (int i = 0; i < 3; i++)
+    {
+        if (i == 2) break;
+        if (Out[i].y > Out[i + 1].y)
+        {
+            Vec2<float> PlaceHolder = Out[i + 1];
+            Out[i + 1] = Out[i];
+            int j = i - 1;
+            while(j >= 0 && Out[j].y > PlaceHolder.y) 
+            {
+                Out[j + 1] = Out[j];
+                j--;
+            }
+            Out[j + 1] = PlaceHolder;
+        }
+    }
+    */
 }
 
-TGAColor FragmentShader::SampleTexture(TGAImage* TextureImage, Vec3<float> Weights, 
-                   Vec2<float> V0_UV, Vec2<float> V1_UV, Vec2<float> V2_UV)
+void FragmentShader::Fragment_Shader(Vec2<float> *In, 
+                                     Vec2<float> V0_UV,
+                                     Vec2<float> V1_UV, 
+                                     Vec2<float> V2_UV,
+                                     Vec3<float> V0_World,
+                                     Vec3<float> V1_World,
+                                     Vec3<float> V2_World,
+                                     TGAImage* TextureAsset,
+                                     TGAImage& image)
 {
+    Vec2<float> E1 = In[1] - In[0];
+    Vec2<float> E2 = In[2] - In[0];
 
+    // Ignore triangles whose three vertices lie in the same line
+    // in screen space
+    // (V1.x - V0.x) * (V2.y - V0.y) == (V2.x - V0.x) * (V1.y - V0.y)
+    float Denom = E1.x * E2.y - E2.x * E1.y;
+    if (Denom == 0) return;
+    
+    // Calculate the bounding box for the triangle
+    int Bottom = In[0].y, Up = In[0].y, Left = In[0].x, Right = In[0].x;
+
+    for (int i = 0; i < 3; i++)
+    {
+        if (In[i].x < Left) Left = In[i].x;
+        if (In[i].x > Right) Right = In[i].x;
+        if (In[i].y < Bottom) Bottom = In[i].y;
+        if (In[i].y > Up) Up = In[i].y;
+    }
+
+    if (Left > 799.f)   Left   = 799.f;
+    if (Right > 799.f)  Right  = 799.f;
+    if (Up > 799.f)     Up     = 799.f;
+    if (Bottom > 799.f) Bottom = 799.f;
+
+    for (int x = Left; x <= (int)Right; x++)
+    {
+        for (int y = Bottom; y <= (int)Up; y++)
+        {
+            /// \Note: Cramer's rule to solve for barycentric coordinates,
+            ///       can also use ratio of area between three sub-triangles to solve
+            ///       to solve for u,v,w
+            Vec2<float> PA = In[0] - Vec2<float>(x + .5f, y + .5f);
+
+            float u = (-1 * PA.x * E2.y + PA.y * E2.x) / Denom;
+            float v = (-1 * PA.y * E1.x + PA.x * E1.y) / Denom;
+            float w = 1 - u - v;
+
+            Vec3<float> Weights(u, v, w);
+
+            // Point p is not inside of the triangle
+            if (u < 0.f || v < 0.f || w < 0.f)
+                continue;
+
+            // Depth test to see if current pixel is visible 
+            if (UpdateDepthBuffer(V0_World,
+                                  V1_World, 
+                                  V2_World,  
+                                  x, y, Weights))
+            {
+                TGAColor Color = this->SampleTexture(TextureAsset, Weights, V0_UV, V1_UV, V2_UV);
+
+                image.set(x, y, TGAColor(Color.bgra[2], 
+                                         Color.bgra[1], 
+                                         Color.bgra[0], 
+                                         255
+                                        ));
+            }
+        }
+    }
+}
+
+TGAColor FragmentShader::SampleTexture(TGAImage* TextureImage, 
+                                       Vec3<float> Weights, 
+                                       Vec2<float> V0_UV, 
+                                       Vec2<float> V1_UV, 
+                                       Vec2<float> V2_UV)
+{
     Vec2<float> MappedTexturePos(
             Weights.z * V0_UV.x + Weights.x * V1_UV.x + Weights.y * V2_UV.x,
             Weights.z * V0_UV.y + Weights.x * V1_UV.y + Weights.y * V2_UV.y
@@ -74,8 +168,12 @@ TGAColor FragmentShader::SampleTexture(TGAImage* TextureImage, Vec3<float> Weigh
  * ** Perspective case **
  * TODO:
  */
-bool Shader::UpdateDepthBuffer(Vec3<float> V0, Vec3<float> V1, Vec3<float> V2, 
-                               int ScreenX, int ScreenY, Vec3<float> Weights)
+bool FragmentShader::UpdateDepthBuffer(Vec3<float> V0, 
+                                       Vec3<float> V1, 
+                                       Vec3<float> V2, 
+                                       int ScreenX, 
+                                       int ScreenY, 
+                                       Vec3<float> Weights)
 {
     int Index = ScreenY * 800 + ScreenX;
     float z = V0.z * Weights.x + V1.z * Weights.y + V2.z * Weights.z;
@@ -90,7 +188,7 @@ bool Shader::UpdateDepthBuffer(Vec3<float> V0, Vec3<float> V1, Vec3<float> V2,
 }
 
 
-void Shader::Draw(Model& Model, TGAImage& image, float* ZBuffer)
+void Shader::Draw(Model& Model, TGAImage& image)
 {
     
     Vec3<int>* IndexPtr = Model.Indices;
@@ -116,78 +214,22 @@ void Shader::Draw(Model& Model, TGAImage& image, float* ZBuffer)
         if (ShadingCoef > 1.0f) ShadingCoef = 1.0f;
 
         VS.Vertex_Shader(Model.VertexBuffer[IndexPtr->x],      
-                           Model.VertexBuffer[(IndexPtr + 1)->x],
-                           Model.VertexBuffer[(IndexPtr + 2)->x],
-                           Triangle);
+                         Model.VertexBuffer[(IndexPtr + 1)->x],
+                         Model.VertexBuffer[(IndexPtr + 2)->x],
+                         this->Triangle);
 
         Vec2<float> V0_UV = Model.TextureBuffer[IndexPtr->y];
         Vec2<float> V1_UV = Model.TextureBuffer[(IndexPtr + 1)->y];
         Vec2<float> V2_UV = Model.TextureBuffer[(IndexPtr + 2)->y];
 
-        Vec2<float> E1 = Triangle[1] - Triangle[0];
-        Vec2<float> E2 = Triangle[2] - Triangle[0];
+        FS.Fragment_Shader(this->Triangle, V0_UV, V1_UV, V2_UV, 
+                           Model.VertexBuffer[IndexPtr->x],
+                           Model.VertexBuffer[(IndexPtr + 1)->x],
+                           Model.VertexBuffer[(IndexPtr + 2)->x],
+                           Model.TextureAssets[0],
+                           image);
 
-        // Ignore triangles whose three vertices lie in the same line
-        // in screen space
-        // (V1.x - V0.x) * (V2.y - V0.y) == (V2.x - V0.x) * (V1.y - V0.y)
-        float Denom = E1.x * E2.y - E2.x * E1.y;
-        if (Denom == 0) continue;
-
-        // Calculate the bounding box for the triangle
-        int Bottom = Triangle[0].y, Up = Triangle[0].y, Left = Triangle[0].x, Right = Triangle[0].x;
-    
-        for (int i = 0; i < 3; i++)
-        {
-            if (Triangle[i].x < Left) Left = Triangle[i].x;
-            if (Triangle[i].x > Right) Right = Triangle[i].x;
-            if (Triangle[i].y < Bottom) Bottom = Triangle[i].y;
-            if (Triangle[i].y > Up) Up = Triangle[i].y;
-        }
-
-        if (Left > 799.f)   Left   = 799.f;
-        if (Right > 799.f)  Right  = 799.f;
-        if (Up > 799.f)     Up     = 799.f;
-        if (Bottom > 799.f) Bottom = 799.f;
-
-        for (int x = Left; x <= (int)Right; x++)
-        {
-            for (int y = Bottom; y <= (int)Up; y++)
-            {
-                /// \Note: Cramer's rule to solve for barycentric coordinates,
-                ///       can also use ratio of area between three sub-triangles to solve
-                ///       to solve for u,v,w
-                Vec2<float> PA = Triangle[0] - Vec2<float>(x + .5f, y + .5f);
-
-                float u = (-1 * PA.x * E2.y + PA.y * E2.x) / Denom;
-                float v = (-1 * PA.y * E1.x + PA.x * E1.y) / Denom;
-                float w = 1 - u - v;
-
-                Vec3<float> Weights(u, v, w);
-
-                // Point p is not inside of the triangle
-                if (u < 0.f || v < 0.f || w < 0.f)
-                    continue;
-
-                // Depth test to see if current pixel is visible 
-                if (UpdateDepthBuffer(Model.VertexBuffer[IndexPtr->x], 
-                                      Model.VertexBuffer[(IndexPtr + 1)->x], 
-                                      Model.VertexBuffer[(IndexPtr + 2)->x],  
-                                      x, y, Weights))
-                {
-                    TGAColor Color = FS.SampleTexture(Model.TextureAssets[0], Weights, 
-                                     V0_UV, V1_UV, V2_UV);
-
-                    image.set(x, y, TGAColor(
-                                Color.bgra[2], 
-                                Color.bgra[1], 
-                                Color.bgra[0], 
-                                255
-                    ));
-                }
-            }
-        }
-
-        IndexPtr += 3;
-        TriangleRendered++;
+         IndexPtr += 3;    
+         TriangleRendered++;
     }
 }

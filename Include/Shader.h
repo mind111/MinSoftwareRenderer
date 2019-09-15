@@ -24,7 +24,7 @@ struct FragmentShader
     bool UpdateDepthBuffer(Vec3<float> V0, Vec3<float> V1,
                            Vec3<float> V2, int ScreenX, 
                            int ScreenY, Vec3<float> Weights);
-    void Gouraud_Shader();
+    void Gouraud_Shader(Vec2<float>* In, TGAColor Color);
     void Fragment_Shader(Vec2<float> *In, 
                          Vec2<float> V0_UV,
                          Vec2<float> V1_UV, 

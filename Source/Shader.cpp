@@ -43,28 +43,43 @@ void VertexShader::Vertex_Shader(Vec3<float> V0,
     *(Out + 2) = V2Screen;
 }
 
-void Gouraud_Shader(Vec2<float> V0, Vec2<float> V1, Vec2<float> V2, 
-                    int x, int y, TGAColor Color)
+void FragmentShader::Gouraud_Shader(Vec2<float>* In, TGAColor Color)
 {
+    Vec2<float> Vertices[3];
+    for (int i = 0; i < 3; i++) Vertices[i] = *(In + i);
+
     // Insertion sort
-    /*
     for (int i = 0; i < 3; i++)
     {
         if (i == 2) break;
-        if (Out[i].y > Out[i + 1].y)
+        if (Vertices[i].y > Vertices[i + 1].y)
         {
-            Vec2<float> PlaceHolder = Out[i + 1];
-            Out[i + 1] = Out[i];
+            Vec2<float> PlaceHolder = Vertices[i + 1];
+            Vertices[i + 1] = Vertices[i];
             int j = i - 1;
-            while(j >= 0 && Out[j].y > PlaceHolder.y) 
+
+            while (j >= 0 && Vertices[j].y > PlaceHolder.y) 
             {
-                Out[j + 1] = Out[j];
+                Vertices[j + 1] = Vertices[j];
                 j--;
             }
-            Out[j + 1] = PlaceHolder;
+
+            Vertices[j + 1] = PlaceHolder;
         }
     }
-    */
+
+    // -- Debug
+    std::cout << "Sorted vertices : "<< std::endl;
+    std::cout << "index 0: "<< Vertices[0].x 
+                            << Vertices[0].y 
+                            << std::endl;
+    std::cout << "index 1: "<< Vertices[1].x 
+                            << Vertices[1].y 
+                            << std::endl;
+    std::cout << "index 2: "<< Vertices[2].x 
+                            << Vertices[2].y 
+                            << std::endl;
+    // --
 }
 
 void FragmentShader::Fragment_Shader(Vec2<float> *In, 
@@ -228,6 +243,8 @@ void Shader::Draw(Model& Model, TGAImage& image)
                            Model.VertexBuffer[(IndexPtr + 2)->x],
                            Model.TextureAssets[0],
                            image);
+
+        FS.Gouraud_Shader(this->Triangle, TGAColor(255, 255, 255));
 
          IndexPtr += 3;    
          TriangleRendered++;

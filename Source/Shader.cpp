@@ -71,15 +71,24 @@ void FragmentShader::Gouraud_Shader(Vec2<float>* In, TGAColor Color)
     // -- Debug
     std::cout << "Sorted vertices : "<< std::endl;
     std::cout << "index 0: "<< Vertices[0].x 
+                            << " "
                             << Vertices[0].y 
                             << std::endl;
     std::cout << "index 1: "<< Vertices[1].x 
+                            << " "
                             << Vertices[1].y 
                             << std::endl;
     std::cout << "index 2: "<< Vertices[2].x 
+                            << " "
                             << Vertices[2].y 
                             << std::endl;
     // --
+    // Linear interpolate surface normal at each fragment
+    for (int y = Vertices[0].y; y < Vertices[1].y; y++)
+    {
+        TGAColor Color_Left  = ;
+        TGAColor Color_Right = ;
+    }
 }
 
 void FragmentShader::Fragment_Shader(Vec2<float> *In, 

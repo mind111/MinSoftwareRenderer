@@ -1,4 +1,6 @@
 # Ignore intermediate project files
 Debug/
 *.vcxproj*
+Graphx.sln
 output.tga
+.vs/

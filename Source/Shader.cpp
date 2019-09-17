@@ -110,30 +110,6 @@ void FragmentShader::Gouraud_Shader(Vec2<float>* In,
     // Linear interpolate surface normal at each fragment
     for (int y = Bottom; y <= Up; y++)
     {
-        float Coef_Left;
-        float Coef_Right;
-
-        if (y < Vertices[1].y)
-        {
-             Coef_Left = 
-                Diffuse_Coefs[IndexMap[0]] * (y - Vertices[0].y) / (Vertices[2].y - Vertices[0].y) + 
-                Diffuse_Coefs[IndexMap[2]] * (Vertices[2].y - y) / (Vertices[2].y - Vertices[0].y);
-
-            Coef_Right = 
-                Diffuse_Coefs[IndexMap[0]] * (y - Vertices[0].y) / (Vertices[1].y - Vertices[0].y) + 
-                Diffuse_Coefs[IndexMap[1]] * (Vertices[1].y - y) / (Vertices[1].y - Vertices[0].y);
-        }
-
-        else
-        {
-            Coef_Left  = 
-                Diffuse_Coefs[IndexMap[0]] * (y - Vertices[0].y) / (Vertices[2].y - Vertices[0].y) + 
-                Diffuse_Coefs[IndexMap[2]] * (Vertices[2].y - y) / (Vertices[2].y - Vertices[0].y);
-
-            Coef_Right = 
-                Diffuse_Coefs[IndexMap[1]] * (y - Vertices[1].y) / (Vertices[2].y - Vertices[1].y) + 
-                Diffuse_Coefs[IndexMap[2]] * (Vertices[2].y - y) / (Vertices[2].y - Vertices[1].y);
-        }
 
         for (int x = Left; x <= Right; x++)
         {
@@ -155,8 +131,10 @@ void FragmentShader::Gouraud_Shader(Vec2<float>* In,
                                   V2_World,  
                                   x, y, Weights))
             {
-               float Coef = ((x - Left) * Coef_Left + (Right - x) * Coef_Right) / (Right - Left);
-               image.set(x, y, TGAColor(229 * Coef, 200 * Coef, 232 * Coef));
+                float Diffuse_Coef = Weights.z * Diffuse_Coefs[0] + Weights.x * Diffuse_Coefs[1] + Weights.y * Diffuse_Coefs[2];
+                if (Diffuse_Coef > 1.f) Diffuse_Coef = 1.f;
+                if (Diffuse_Coef < 0.f) Diffuse_Coef = 0.f;
+                image.set(x, y, TGAColor(229 * Diffuse_Coef, 200 * Diffuse_Coef, 232 * Diffuse_Coef));
             }
         }
     }

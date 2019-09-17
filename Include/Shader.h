@@ -33,6 +33,14 @@ struct FragmentShader
                         TGAImage& image,
                         TGAColor Color);
 
+    void Toon_Shader(Vec2<float>* In,
+                     Vec3<float> V0_World,
+                     Vec3<float> V1_World,
+                     Vec3<float> V2_World,
+                     float* Diffuse_Coefs,
+                     TGAImage& image,
+                     TGAColor Color);
+
     void Fragment_Shader(Vec2<float> *In, 
                          Vec2<float> V0_UV,
                          Vec2<float> V1_UV, 

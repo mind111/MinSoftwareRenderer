@@ -65,17 +65,18 @@ void Model::Parse(char* FileName)
     /// at index 1 instead of 0, so I will fill in the buffer at index 1 and
     /// leave index 0 as empty
     this->VertexBuffer = new Vec3<float>[NumOfVertices + 1];
+    this->VertexNormalBuffer = new Vec3<float>[NumOfVertices + 1];
     this->TextureBuffer = new Vec2<float>[NumOfTextureUV + 1];
     this->Indices = new Vec3<int>[NumOfIndices];
-    Vec3<float>* VBufferPtr = VertexBuffer + 1;
-    Vec2<float>* VTBufferPtr = TextureBuffer + 1;
+    Vec3<float>* BufferPtr_Vertex = VertexBuffer + 1;
+    Vec2<float>* BufferPtr_TextureUV = TextureBuffer + 1;
+    Vec3<float>* BufferPtr_VertexNormal = VertexNormalBuffer + 1;
     Vec3<int>* IndexPtr = Indices;
 
     // Reset the file pointer
     File.clear();
     File.seekg(0);
 
-    void* BufferPtr = nullptr;
     ParseMode Mode;
 
     while (File)
@@ -112,14 +113,14 @@ void Model::Parse(char* FileName)
                     switch (NumOfComponents % 3)
                     {
                         case 0:
-                            VBufferPtr->z = Num;
+                            BufferPtr_Vertex->z = Num;
                             NextLine = true;
                             break;
                         case 1:
-                            VBufferPtr->x = Num;
+                            BufferPtr_Vertex->x = Num;
                             break;
                         case 2:
-                            VBufferPtr->y = Num;
+                            BufferPtr_Vertex->y = Num;
                             break;
                         default:
                             break;
@@ -130,7 +131,7 @@ void Model::Parse(char* FileName)
                 CharPtr++;
             }
 
-            VBufferPtr++;
+            BufferPtr_Vertex++;
         }
 
         ///\TODO: This is dumb, need to rewrite
@@ -197,11 +198,11 @@ void Model::Parse(char* FileName)
                     switch(NumOfComponents % 2)
                     {
                         case 0:
-                            VTBufferPtr->y = Num;
+                            BufferPtr_TextureUV->y = Num;
                             NextLine = true;
                             break;
                         case 1:
-                            VTBufferPtr->x = Num;
+                            BufferPtr_TextureUV->x = Num;
                             break;
                         default:
                             break;
@@ -212,7 +213,52 @@ void Model::Parse(char* FileName)
                 CharPtr++;
             }
 
-            VTBufferPtr++;
+            BufferPtr_TextureUV++;
+        }
+
+        else if (Line[0] == 'v' && Line[1] == 'n')
+        {
+
+            Mode = ParseMode::VertexNormal_Mode;
+            CharPtr += 2;
+            while (CharPtr && *CharPtr == ' ') CharPtr++;
+            while (!NextLine)
+            {
+                if (CharPtr && *CharPtr != ' ' && *CharPtr != '\0')
+                {
+                    *NumCharPtr = *CharPtr;
+                    NumCharPtr++;
+                }
+
+                else
+                {
+                    *NumCharPtr = '\0';
+
+                /// \TODO: Research about fast method of converting a string to integer and float
+                    float Num = std::stof(NumString);
+                    NumOfComponents++;
+                    switch (NumOfComponents % 3)
+                    {
+                        case 0:
+                            BufferPtr_VertexNormal->z = Num;
+                            NextLine = true;
+                            break;
+                        case 1:
+                            BufferPtr_VertexNormal->x = Num;
+                            break;
+                        case 2:
+                            BufferPtr_VertexNormal->y = Num;
+                            break;
+                        default:
+                            break;
+                    }
+                    NumCharPtr = NumString;
+                }
+
+                CharPtr++;
+            }
+
+           BufferPtr_VertexNormal++;
         }
     }
 }

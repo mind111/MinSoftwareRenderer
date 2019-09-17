@@ -43,9 +43,43 @@ void VertexShader::Vertex_Shader(Vec3<float> V0,
     *(Out + 2) = V2Screen;
 }
 
-void FragmentShader::Gouraud_Shader(Vec2<float>* In, TGAColor Color)
+void FragmentShader::Gouraud_Shader(Vec2<float>* In, 
+                                    Vec3<float> V0_World,
+                                    Vec3<float> V1_World,
+                                    Vec3<float> V2_World,
+                                    float* Diffuse_Coefs, 
+                                    TGAImage& image,
+                                    TGAColor Color)
 {
+    Vec2<float> E1 = In[1] - In[0];
+    Vec2<float> E2 = In[2] - In[0];
+
+    // Ignore triangles whose three vertices lie in the same line
+    // in screen space
+    // (V1.x - V0.x) * (V2.y - V0.y) == (V2.x - V0.x) * (V1.y - V0.y)
+    float Denom = E1.x * E2.y - E2.x * E1.y;
+    if (Denom == 0) return;
+    
+    // Calculate the bounding box for the triangle
+    int Bottom = In[0].y, Up = In[0].y, Left = In[0].x, Right = In[0].x;
+
+    for (int i = 0; i < 3; i++)
+    {
+        if (In[i].x < Left) Left = In[i].x;
+        if (In[i].x > Right) Right = In[i].x;
+        if (In[i].y < Bottom) Bottom = In[i].y;
+        if (In[i].y > Up) Up = In[i].y;
+    }
+
+    if (Left > 799.f)   Left   = 799.f;
+    if (Right > 799.f)  Right  = 799.f;
+    if (Up > 799.f)     Up     = 799.f;
+    if (Bottom > 799.f) Bottom = 799.f;
+
+    // Help identify the order of indices after sort
+    int IndexMap[3] = { 0, 1, 2 };
     Vec2<float> Vertices[3];
+
     for (int i = 0; i < 3; i++) Vertices[i] = *(In + i);
 
     // Insertion sort
@@ -55,39 +89,76 @@ void FragmentShader::Gouraud_Shader(Vec2<float>* In, TGAColor Color)
         if (Vertices[i].y > Vertices[i + 1].y)
         {
             Vec2<float> PlaceHolder = Vertices[i + 1];
+            int IndexHolder = IndexMap[i + 1];
             Vertices[i + 1] = Vertices[i];
+            IndexMap[i + 1] = IndexMap[i];
+            
             int j = i - 1;
 
             while (j >= 0 && Vertices[j].y > PlaceHolder.y) 
             {
                 Vertices[j + 1] = Vertices[j];
+                IndexMap[j + 1] = IndexMap[j];
                 j--;
             }
 
             Vertices[j + 1] = PlaceHolder;
+            IndexMap[j + 1] = IndexHolder;
         }
     }
 
-    // -- Debug
-    std::cout << "Sorted vertices : "<< std::endl;
-    std::cout << "index 0: "<< Vertices[0].x 
-                            << " "
-                            << Vertices[0].y 
-                            << std::endl;
-    std::cout << "index 1: "<< Vertices[1].x 
-                            << " "
-                            << Vertices[1].y 
-                            << std::endl;
-    std::cout << "index 2: "<< Vertices[2].x 
-                            << " "
-                            << Vertices[2].y 
-                            << std::endl;
-    // --
     // Linear interpolate surface normal at each fragment
-    for (int y = Vertices[0].y; y < Vertices[1].y; y++)
+    for (int y = Bottom; y <= Up; y++)
     {
-        TGAColor Color_Left  = ;
-        TGAColor Color_Right = ;
+        float Coef_Left;
+        float Coef_Right;
+
+        if (y < Vertices[1].y)
+        {
+             Coef_Left = 
+                Diffuse_Coefs[IndexMap[0]] * (y - Vertices[0].y) / (Vertices[2].y - Vertices[0].y) + 
+                Diffuse_Coefs[IndexMap[2]] * (Vertices[2].y - y) / (Vertices[2].y - Vertices[0].y);
+
+            Coef_Right = 
+                Diffuse_Coefs[IndexMap[0]] * (y - Vertices[0].y) / (Vertices[1].y - Vertices[0].y) + 
+                Diffuse_Coefs[IndexMap[1]] * (Vertices[1].y - y) / (Vertices[1].y - Vertices[0].y);
+        }
+
+        else
+        {
+            Coef_Left  = 
+                Diffuse_Coefs[IndexMap[0]] * (y - Vertices[0].y) / (Vertices[2].y - Vertices[0].y) + 
+                Diffuse_Coefs[IndexMap[2]] * (Vertices[2].y - y) / (Vertices[2].y - Vertices[0].y);
+
+            Coef_Right = 
+                Diffuse_Coefs[IndexMap[1]] * (y - Vertices[1].y) / (Vertices[2].y - Vertices[1].y) + 
+                Diffuse_Coefs[IndexMap[2]] * (Vertices[2].y - y) / (Vertices[2].y - Vertices[1].y);
+        }
+
+        for (int x = Left; x <= Right; x++)
+        {
+            Vec2<float> PA = In[0] - Vec2<float>(x + .5f, y + .5f);
+
+            float u = (-1 * PA.x * E2.y + PA.y * E2.x) / Denom;
+            float v = (-1 * PA.y * E1.x + PA.x * E1.y) / Denom;
+            float w = 1 - u - v;
+
+            Vec3<float> Weights(u, v, w);
+
+            // Point p is not inside of the triangle
+            if (u < 0.f || v < 0.f || w < 0.f)
+                continue;
+
+            // Depth test to see if current pixel is visible 
+            if (UpdateDepthBuffer(V0_World,
+                                  V1_World, 
+                                  V2_World,  
+                                  x, y, Weights))
+            {
+               float Coef = ((x - Left) * Coef_Left + (Right - x) * Coef_Right) / (Right - Left);
+               image.set(x, y, TGAColor(229 * Coef, 200 * Coef, 232 * Coef));
+            }
+        }
     }
 }
 
@@ -217,16 +288,31 @@ void Shader::Draw(Model& Model, TGAImage& image)
     
     Vec3<int>* IndexPtr = Model.Indices;
     int TriangleRendered = 0;
+    float Diffuse_Coefs[3];
 
-    while (TriangleRendered < 2492)
+    while (TriangleRendered < 2492) //TODO: This hard-coded value should be replaced
     {
         Vec3<float> V0V1 =  Model.VertexBuffer[(IndexPtr + 1)->x] - Model.VertexBuffer[IndexPtr->x];
         Vec3<float> V0V2 =  Model.VertexBuffer[(IndexPtr + 2)->x] - Model.VertexBuffer[IndexPtr->x];
 
-        ///Note: Counter-clockwise vertex winding order
-        Vec3<float> Normal = MathFunctionLibrary::Normalize(MathFunctionLibrary::CrossProduct(V0V1, V0V2));
+        // Calculate diffuse coef here
+        Diffuse_Coefs[0] = MathFunctionLibrary::DotProduct_Vec3(
+                            Model.VertexNormalBuffer[IndexPtr->z], Vec3<float>(0.f, 0.f, 1.f)
+                );
 
-        float ShadingCoef = MathFunctionLibrary::DotProduct_Vec3(Vec3<float>(0, 0, 3), Normal);
+        Diffuse_Coefs[1] = MathFunctionLibrary::DotProduct_Vec3(
+                            Model.VertexNormalBuffer[(IndexPtr + 1)->z], Vec3<float>(0.f, 0.f, 1.f)
+                );
+        
+        Diffuse_Coefs[2] = MathFunctionLibrary::DotProduct_Vec3(
+                            Model.VertexNormalBuffer[(IndexPtr + 2)->z], Vec3<float>(0.f, 0.f, 1.f)
+                );
+
+        // Derive surface normal, counter-clock wise winding order
+        Vec3<float> Surface_Normal = MathFunctionLibrary::Normalize(
+                MathFunctionLibrary::CrossProduct(V0V1, V0V2));
+
+        float ShadingCoef = MathFunctionLibrary::DotProduct_Vec3(Vec3<float>(0, 0, 1), Surface_Normal);
         // ShadingCoef < 0 means that the triangle is facing away from the light, simply discard
         if (ShadingCoef < 0.0f) 
         {
@@ -246,14 +332,20 @@ void Shader::Draw(Model& Model, TGAImage& image)
         Vec2<float> V1_UV = Model.TextureBuffer[(IndexPtr + 1)->y];
         Vec2<float> V2_UV = Model.TextureBuffer[(IndexPtr + 2)->y];
 
-        FS.Fragment_Shader(this->Triangle, V0_UV, V1_UV, V2_UV, 
+        /*FS.Fragment_Shader(this->Triangle, V0_UV, V1_UV, V2_UV, 
                            Model.VertexBuffer[IndexPtr->x],
                            Model.VertexBuffer[(IndexPtr + 1)->x],
                            Model.VertexBuffer[(IndexPtr + 2)->x],
                            Model.TextureAssets[0],
-                           image);
+                           image);*/
 
-        FS.Gouraud_Shader(this->Triangle, TGAColor(255, 255, 255));
+        FS.Gouraud_Shader(this->Triangle, 
+                          Model.VertexBuffer[IndexPtr->x],
+                          Model.VertexBuffer[(IndexPtr + 1)->x],
+                          Model.VertexBuffer[(IndexPtr + 2)->x],
+                          Diffuse_Coefs, 
+                          image,
+                          TGAColor(255, 255, 255));
 
          IndexPtr += 3;    
          TriangleRendered++;

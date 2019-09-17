@@ -21,6 +21,8 @@ public:
     Vec3<float>* VertexBuffer;
     // Texture Coordinate buffer
     Vec2<float>* TextureBuffer;
+    // Vertex Normal buffer
+    Vec3<float>* VertexNormalBuffer;
     // Index buffer
     Vec3<int>* Indices;
     

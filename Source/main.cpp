@@ -217,8 +217,9 @@ int main(int argc, char* argv[]) {
     Camera.Position = CameraPos;
     Camera.Translation = Vec3<float>(0.0, 0.0, 0.0);
     Mat4x4<float> View = Camera.LookAt(Vec3<float>(0.0f, 0.0f, -1.0f));
+
     // Projection
-    Mat4x4<float> Perspective = Mat4x4<float>::Perspective(-1.f, -10.f, 0.f);
+    Mat4x4<float> Perspective = Mat4x4<float>::Perspective(1.f, -1.f, -5.f, 90.f);
     
     Shader Shader;
     Shader.VS.MVP = Perspective * View * ModelToWorld;

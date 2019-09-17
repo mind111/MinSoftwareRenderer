@@ -265,7 +265,7 @@ struct Mat4x4
      */
     void Print();
     static Mat4x4<float> ViewPort(float VP_Width, float VP_Height);
-    static Mat4x4<float> Perspective(float Near, float Far, float FOV);
+    static Mat4x4<float> Perspective(float AspectRatio, float Near, float Far, float FOV);
 };
 
 class MathFunctionLibrary

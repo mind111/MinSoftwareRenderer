@@ -1,6 +1,8 @@
 #include <iostream>
 #include "../Include/Math.h"
 
+#define M_PI 3.14159265
+
 void Mat4x4<float>::SetTranslation(Vec3<float> v)
 {
     this->Mat[0][3] = v.x;
@@ -33,10 +35,18 @@ void Mat4x4<float>::Print()
     }
 }
 
-// TODO: Think of how to use FOV
-Mat4x4<float> Mat4x4<float>::Perspective(float Near, float Far, float FOV)
+// TODO: Need to handle remapping of Z from world space to [0, 1] 
+Mat4x4<float> Mat4x4<float>::Perspective(float AspectRatio, 
+                                         float Near, 
+                                         float Far, 
+                                         float FOV)
 { 
     Mat4x4<float> Res;
+    float r = std::tan((FOV / 2) * M_PI / 180.f); // Converting degrees to radians
+    float Left = Near * r * AspectRatio;
+    float Right = -Left;
+    float Bottom = Near * r;
+    float Up = -Bottom;
 
     Res.Identity();
     
@@ -47,6 +57,14 @@ Mat4x4<float> Mat4x4<float>::Perspective(float Near, float Far, float FOV)
     // [ 0, 0, -1 / Near, 1]
     // ---------------------
     Res.Mat[3][2] = -1.f / Near;
+
+    // Handle conversion from world space to NDC space
+    Res.Mat[0][0] = 2.f / (Right - Left); 
+    Res.Mat[0][2] = -(Right + Left) / (Right - Left);
+
+    // Maybe need to consider aspect-ratio here
+    Res.Mat[1][1] = 2.f / (Up - Bottom); 
+    Res.Mat[1][2] = -(Up + Bottom) / (Up - Bottom);
 
     return Res;
 }

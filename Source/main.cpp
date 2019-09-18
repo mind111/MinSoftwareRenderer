@@ -237,7 +237,7 @@ int main(int argc, char* argv[]) {
         for (int i = 0; i < ImageSize; i++) ZBuffer[i] = -100.0f;
 
         Shader.FS.ZBuffer = ZBuffer;
-        Shader.Draw(Model, image);
+        Shader.Draw(Model, image, Camera);
     }
 
     /// \TODO: Maybe instead of writing to an image,

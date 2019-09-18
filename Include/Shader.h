@@ -41,6 +41,13 @@ struct FragmentShader
                      TGAImage& image,
                      TGAColor Color);
 
+    void Phong_Shader(Vec2<int> Fragment, 
+                      Vec3<float> Normal,
+                      Vec3<float> LightDir,
+                      Vec3<float> ViewDir,
+                      TGAImage& image,
+                      TGAColor Color);
+
     void Fragment_Shader(Vec2<float> *In, 
                          Vec2<float> V0_UV,
                          Vec2<float> V1_UV, 
@@ -60,12 +67,11 @@ struct FragmentShader
 
 struct Shader
 {
-    Vec2<float> Triangle[3]; // Triangle went through vertex shader and waiting for shading
-    
     int NumOfTriangles;
-        
+    Vec2<float> Triangle[3]; // Triangle went through vertex shader and waiting for shading 
+
     VertexShader VS;
     FragmentShader FS; 
      
-    void Draw(Model& Model, TGAImage& image);
+    void Draw(Model& Model, TGAImage& image, struct Camera& Camera);
 };

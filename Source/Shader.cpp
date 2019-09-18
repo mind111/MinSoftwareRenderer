@@ -1,5 +1,9 @@
 #include "../Include/Shader.h"
 
+#define Ka 0.1f // Ambient coef
+#define Kd 0.4f // Diffuse coef
+#define Ks 0.3f // Specular coef
+
 void VertexShader::Vertex_Shader(Vec3<float> V0,
                     Vec3<float> V1,
                     Vec3<float> V2,
@@ -252,6 +256,47 @@ void FragmentShader::Toon_Shader(Vec2<float>* In,
         }
     }
 }
+
+float Toon_PostProcess(float* Toon_Value, int ValueCount, float Value)
+{
+    for (int i = 0; i < ValueCount; i++)
+    {
+        if (Value < Toon_Value[i])
+            return Toon_Value[i] - .05f;
+    }
+    return 1.f;
+}
+
+// @Param: Color defines light color for now
+void FragmentShader::Phong_Shader(Vec2<int> Fragment, 
+                                  Vec3<float> n,
+                                  Vec3<float> LightDir,
+                                  Vec3<float> ViewDir,
+                                  TGAImage& image,
+                                  TGAColor Color)
+{
+    TGAColor Material(229, 200, 232); // Temporary place holder for object's color
+
+    float Toon_Threshold[5] = {
+        0.1f,
+        0.3f,
+        0.5f,
+        0.7f,
+        0.9f
+    };
+
+    // Compute reflection light
+    Vec3<float> ReflLightDir = n * 2.f * MathFunctionLibrary::DotProduct_Vec3(n, LightDir) - LightDir;
+    float Diffuse_Coef = MathFunctionLibrary::DotProduct_Vec3(n, LightDir);
+    float Specular_Coef = MathFunctionLibrary::DotProduct_Vec3(ViewDir, ReflLightDir);
+
+    TGAColor Phong_Color;
+    for (int i = 0; i < 3; i++) 
+        Phong_Color[i] = std::min<float>(Ka * Material[i] + Color[i] * Kd * Diffuse_Coef + Color[i] * Ks * std::pow(Specular_Coef, 10), 255); 
+
+    image.set(Fragment.x, Fragment.y, Phong_Color);
+}
+
 void FragmentShader::Fragment_Shader(Vec2<float> *In, 
                                      Vec2<float> V0_UV,
                                      Vec2<float> V1_UV, 
@@ -373,7 +418,7 @@ bool FragmentShader::UpdateDepthBuffer(Vec3<float> V0,
 }
 
 
-void Shader::Draw(Model& Model, TGAImage& image)
+void Shader::Draw(Model& Model, TGAImage& image, Camera& Camera)
 {
     Vec3<float> LightDir(0.f, 0.f, 1.f);
     LightDir = MathFunctionLibrary::Normalize(LightDir);
@@ -424,6 +469,69 @@ void Shader::Draw(Model& Model, TGAImage& image)
         Vec2<float> V1_UV = Model.TextureBuffer[(IndexPtr + 1)->y];
         Vec2<float> V2_UV = Model.TextureBuffer[(IndexPtr + 2)->y];
 
+        Vec2<float> E1 = Triangle[1] - Triangle[0];
+        Vec2<float> E2 = Triangle[2] - Triangle[0];
+
+        // Ignore triangles whose three vertices lie in the same line
+        // in screen space
+        // (V1.x - V0.x) * (V2.y - V0.y) == (V2.x - V0.x) * (V1.y - V0.y)
+        float Denom = E1.x * E2.y - E2.x * E1.y;
+        if (Denom == 0) return;
+        
+        // Calculate the bounding box for the triangle
+        int Bottom = Triangle[0].y, Up = Triangle[0].y, Left = Triangle[0].x, Right = Triangle[0].x;
+
+        for (int i = 0; i < 3; i++)
+        {
+            if (Triangle[i].x < Left) Left = Triangle[i].x;
+            if (Triangle[i].x > Right) Right = Triangle[i].x;
+            if (Triangle[i].y < Bottom) Bottom = Triangle[i].y;
+            if (Triangle[i].y > Up) Up = Triangle[i].y;
+        }
+
+        if (Left > 799.f)   Left   = 799.f;
+        if (Right > 799.f)  Right  = 799.f;
+        if (Up > 799.f)     Up     = 799.f;
+        if (Bottom > 799.f) Bottom = 799.f;
+
+        for (int x = Left; x <= (int)Right; x++)
+        {
+            for (int y = Bottom; y <= (int)Up; y++)
+            {
+                /// \Note: Cramer's rule to solve for barycentric coordinates,
+                ///       can also use ratio of area between three sub-triangles to solve
+                ///       to solve for u,v,w
+                Vec2<float> PA = Triangle[0] - Vec2<float>(x + .5f, y + .5f);
+
+                float u = (-1 * PA.x * E2.y + PA.y * E2.x) / Denom;
+                float v = (-1 * PA.y * E1.x + PA.x * E1.y) / Denom;
+                float w = 1 - u - v;
+
+                Vec3<float> Weights(u, v, w);
+
+                // Point p is not inside of the triangle
+                if (u < 0.f || v < 0.f || w < 0.f)
+                    continue;
+
+                // Depth test to see if current pixel is visible 
+                if (this->FS.UpdateDepthBuffer(Model.VertexBuffer[IndexPtr->x],      
+                                      Model.VertexBuffer[(IndexPtr + 1)->x],
+                                      Model.VertexBuffer[(IndexPtr + 2)->x],
+                                      x, y, Weights))
+                {
+                    // Interpolate normal and feed to fragment shader
+                    Vec3<float> N0 = Model.VertexNormalBuffer[IndexPtr->z];
+                    Vec3<float> N1 = Model.VertexNormalBuffer[(IndexPtr + 1)->z];
+                    Vec3<float> N2 = Model.VertexNormalBuffer[(IndexPtr + 2)->z];
+
+                    Vec3<float> n = MathFunctionLibrary::Normalize(N0 * Weights.z + N1 * Weights.x + N2 * Weights.y);
+
+                    // TODO: Need to swap out the hard-coded viewing direction later
+                    FS.Phong_Shader(Vec2<int>(x, y), n, LightDir, Vec3<float>(1.f, .5f, 1.f), image, TGAColor(255, 255, 255));
+                }
+            }
+        }
+
         /*FS.Fragment_Shader(this->Triangle, V0_UV, V1_UV, V2_UV, 
                              Model.VertexBuffer[IndexPtr->x],
                              Model.VertexBuffer[(IndexPtr + 1)->x],
@@ -431,13 +539,13 @@ void Shader::Draw(Model& Model, TGAImage& image)
                              Model.TextureAssets[0],
                              image);*/
 
-        FS.Toon_Shader(this->Triangle, 
+        /*FS.Toon_Shader(this->Triangle, 
                        Model.VertexBuffer[IndexPtr->x],
                        Model.VertexBuffer[(IndexPtr + 1)->x],
                        Model.VertexBuffer[(IndexPtr + 2)->x],
                        Diffuse_Coefs, 
                        image,
-                       TGAColor(255, 255, 255));
+                       TGAColor(255, 255, 255)); */
 
         /*FS.Gouraud_Shader(this->Triangle, 
                           Model.VertexBuffer[IndexPtr->x],

@@ -33,12 +33,12 @@ struct FragmentShader
                            Vec3<float> V2, int ScreenX, 
                            int ScreenY, Vec3<float> Weights);
 
-    void Gouraud_Shader(Vec2<float> Fragment,
+    void Gouraud_Shader(Vec2<int> Fragment,
                         float Diffuse_Coef,
                         TGAImage& image,
                         TGAColor Color);
 
-    void Toon_Shader(Vec2<float> Fragment,
+    void Toon_Shader(Vec2<int> Fragment,
                      float Diffuse_Coef,
                      TGAImage& image,
                      TGAColor Color);

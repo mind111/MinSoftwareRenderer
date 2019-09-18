@@ -47,7 +47,7 @@ void VertexShader::Vertex_Shader(Vec3<float> V0,
     *(Out + 2) = V2Screen;
 }
 
-void FragmentShader::Gouraud_Shader(Vec2<float> Fragment, 
+void FragmentShader::Gouraud_Shader(Vec2<int> Fragment, 
                                     float Diffuse_Coef, 
                                     TGAImage& image,
                                     TGAColor Color)
@@ -55,7 +55,7 @@ void FragmentShader::Gouraud_Shader(Vec2<float> Fragment,
     image.set(Fragment.x, Fragment.y, TGAColor(229 * Diffuse_Coef, 200 * Diffuse_Coef, 232 * Diffuse_Coef));
 }
 
-void FragmentShader::Toon_Shader(Vec2<float> Fragment, 
+void FragmentShader::Toon_Shader(Vec2<int> Fragment, 
                                  float Diffuse_Coef, 
                                  TGAImage& image,
                                  TGAColor Color)
@@ -97,7 +97,7 @@ void FragmentShader::Phong_Shader(Vec2<int> Fragment,
                                   TGAImage& image,
                                   TGAColor Color)
 {
-    TGAColor Material(229, 200, 232); // Temporary place holder for object's color
+    TGAColor Material(229, 200, 0); // Temporary place holder for object's color
 
     float Toon_Threshold[5] = {
         0.1f,
@@ -111,6 +111,9 @@ void FragmentShader::Phong_Shader(Vec2<int> Fragment,
     Vec3<float> ReflLightDir = n * 2.f * MathFunctionLibrary::DotProduct_Vec3(n, LightDir) - LightDir;
     float Diffuse_Coef = MathFunctionLibrary::DotProduct_Vec3(n, LightDir);
     float Specular_Coef = MathFunctionLibrary::DotProduct_Vec3(ViewDir, ReflLightDir);
+
+    if (Diffuse_Coef < 0.f) Diffuse_Coef = 0.f;
+    if (Specular_Coef < 0.f) Specular_Coef = 0.f;
 
     TGAColor Phong_Color;
     for (int i = 0; i < 3; i++) 
@@ -127,8 +130,8 @@ void FragmentShader::Fragment_Shader(Vec2<int> Fragment,
                                      TGAImage* TextureAsset,
                                      TGAImage& image)
 {
-                TGAColor Color = this->SampleTexture(TextureAsset, Weights, V0_UV, V1_UV, V2_UV);
-                image.set(Fragment.x, Fragment.y, Color);
+    TGAColor Color = this->SampleTexture(TextureAsset, Weights, V0_UV, V1_UV, V2_UV);
+    image.set(Fragment.x, Fragment.y, Color);
 }
 
 TGAColor FragmentShader::SampleTexture(TGAImage* TextureImage, 
@@ -297,11 +300,11 @@ void Shader::Draw(Model& Model, TGAImage& image, Camera& Camera, Shader_Mode Sha
                         case Shader_Mode::Gouraud_Shader:
                         {
                             float Diffuse_Coef = Weights.z * Diffuse_Coefs[0] + Weights.x * Diffuse_Coefs[1] + Weights.y * Diffuse_Coefs[2];
+
                             if (Diffuse_Coef > 1.f) Diffuse_Coef = 1.f;
                             if (Diffuse_Coef < 0.f) Diffuse_Coef = 0.f;
 
-                            FS.Gouraud_Shader(Vec2<float>(x, y), Diffuse_Coef, image,
-                                    TGAColor(255, 255, 255));
+                            FS.Gouraud_Shader(Vec2<int>(x, y), Diffuse_Coef, image, TGAColor(255, 255, 255));
 
                             break;
                         }
@@ -316,7 +319,11 @@ void Shader::Draw(Model& Model, TGAImage& image, Camera& Camera, Shader_Mode Sha
                             Vec3<float> n = MathFunctionLibrary::Normalize(N0 * Weights.z + N1 * Weights.x + N2 * Weights.y);
 
                             // TODO: Need to swap out the hard-coded viewing direction later
-                            FS.Phong_Shader(Vec2<int>(x, y), n, LightDir, Vec3<float>(1.f, .5f, 1.f), image, TGAColor(255, 255, 255));
+                            FS.Phong_Shader(Vec2<int>(x, y), n, LightDir, MathFunctionLibrary::Normalize(Vec3<float>(1.f, .5f, 1.f)), image, TGAColor(0, 0, 255));
+                            // --- Debug ---
+                            //image.flip_vertically();
+                            //image.write_tga_file("output_debug.tga");
+                            // ---- Debug ---
 
                             break;
                         }

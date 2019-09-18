@@ -222,6 +222,7 @@ int main(int argc, char* argv[]) {
     Mat4x4<float> Perspective = Mat4x4<float>::Perspective(1.f, -1.f, -5.f, 90.f);
     
     Shader Shader;
+
     Shader.VS.MVP = Perspective * View * ModelToWorld;
     Shader.VS.Viewport = Mat4x4<float>::ViewPort(ImageWidth, ImageHeight);
     
@@ -237,7 +238,7 @@ int main(int argc, char* argv[]) {
         for (int i = 0; i < ImageSize; i++) ZBuffer[i] = -100.0f;
 
         Shader.FS.ZBuffer = ZBuffer;
-        Shader.Draw(Model, image, Camera);
+        Shader.Draw(Model, image, Camera, Shader_Mode::Gouraud_Shader);
     }
 
     /// \TODO: Maybe instead of writing to an image,

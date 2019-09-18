@@ -47,107 +47,16 @@ void VertexShader::Vertex_Shader(Vec3<float> V0,
     *(Out + 2) = V2Screen;
 }
 
-void FragmentShader::Gouraud_Shader(Vec2<float>* In, 
-                                    Vec3<float> V0_World,
-                                    Vec3<float> V1_World,
-                                    Vec3<float> V2_World,
-                                    float* Diffuse_Coefs, 
+void FragmentShader::Gouraud_Shader(Vec2<float> Fragment, 
+                                    float Diffuse_Coef, 
                                     TGAImage& image,
                                     TGAColor Color)
 {
-    Vec2<float> E1 = In[1] - In[0];
-    Vec2<float> E2 = In[2] - In[0];
-
-    // Ignore triangles whose three vertices lie in the same line
-    // in screen space
-    // (V1.x - V0.x) * (V2.y - V0.y) == (V2.x - V0.x) * (V1.y - V0.y)
-    float Denom = E1.x * E2.y - E2.x * E1.y;
-    if (Denom == 0) return;
-    
-    // Calculate the bounding box for the triangle
-    int Bottom = In[0].y, Up = In[0].y, Left = In[0].x, Right = In[0].x;
-
-    for (int i = 0; i < 3; i++)
-    {
-        if (In[i].x < Left) Left = In[i].x;
-        if (In[i].x > Right) Right = In[i].x;
-        if (In[i].y < Bottom) Bottom = In[i].y;
-        if (In[i].y > Up) Up = In[i].y;
-    }
-
-    if (Left > 799.f)   Left   = 799.f;
-    if (Right > 799.f)  Right  = 799.f;
-    if (Up > 799.f)     Up     = 799.f;
-    if (Bottom > 799.f) Bottom = 799.f;
-
-    // Help identify the order of indices after sort
-    int IndexMap[3] = { 0, 1, 2 };
-    Vec2<float> Vertices[3];
-
-    for (int i = 0; i < 3; i++) Vertices[i] = *(In + i);
-
-    // Insertion sort
-    for (int i = 0; i < 3; i++)
-    {
-        if (i == 2) break;
-        if (Vertices[i].y > Vertices[i + 1].y)
-        {
-            Vec2<float> PlaceHolder = Vertices[i + 1];
-            int IndexHolder = IndexMap[i + 1];
-            Vertices[i + 1] = Vertices[i];
-            IndexMap[i + 1] = IndexMap[i];
-            
-            int j = i - 1;
-
-            while (j >= 0 && Vertices[j].y > PlaceHolder.y) 
-            {
-                Vertices[j + 1] = Vertices[j];
-                IndexMap[j + 1] = IndexMap[j];
-                j--;
-            }
-
-            Vertices[j + 1] = PlaceHolder;
-            IndexMap[j + 1] = IndexHolder;
-        }
-    }
-
-    // Linear interpolate surface normal at each fragment
-    for (int y = Bottom; y <= Up; y++)
-    {
-        for (int x = Left; x <= Right; x++)
-        {
-            Vec2<float> PA = In[0] - Vec2<float>(x + .5f, y + .5f);
-
-            float u = (-1 * PA.x * E2.y + PA.y * E2.x) / Denom;
-            float v = (-1 * PA.y * E1.x + PA.x * E1.y) / Denom;
-            float w = 1 - u - v;
-
-            Vec3<float> Weights(u, v, w);
-
-            // Point p is not inside of the triangle
-            if (u < 0.f || v < 0.f || w < 0.f)
-                continue;
-
-            // Depth test to see if current pixel is visible 
-            if (UpdateDepthBuffer(V0_World,
-                                  V1_World, 
-                                  V2_World,  
-                                  x, y, Weights))
-            {
-                float Diffuse_Coef = Weights.z * Diffuse_Coefs[0] + Weights.x * Diffuse_Coefs[1] + Weights.y * Diffuse_Coefs[2];
-                if (Diffuse_Coef > 1.f) Diffuse_Coef = 1.f;
-                if (Diffuse_Coef < 0.f) Diffuse_Coef = 0.f;
-                image.set(x, y, TGAColor(229 * Diffuse_Coef, 200 * Diffuse_Coef, 232 * Diffuse_Coef));
-            }
-        }
-    }
+    image.set(Fragment.x, Fragment.y, TGAColor(229 * Diffuse_Coef, 200 * Diffuse_Coef, 232 * Diffuse_Coef));
 }
 
-void FragmentShader::Toon_Shader(Vec2<float>* In, 
-                                 Vec3<float> V0_World,
-                                 Vec3<float> V1_World,
-                                 Vec3<float> V2_World,
-                                 float* Diffuse_Coefs, 
+void FragmentShader::Toon_Shader(Vec2<float> Fragment, 
+                                 float Diffuse_Coef, 
                                  TGAImage& image,
                                  TGAColor Color)
 {
@@ -159,102 +68,15 @@ void FragmentShader::Toon_Shader(Vec2<float>* In,
         0.9f
     };
 
-    Vec2<float> E1 = In[1] - In[0];
-    Vec2<float> E2 = In[2] - In[0];
+    // Toon post-processing
+    if (Diffuse_Coef < Toon_Threshold[0]) Diffuse_Coef = 0.05f;
+    else if (Diffuse_Coef < Toon_Threshold[1]) Diffuse_Coef = 0.25f;
+    else if (Diffuse_Coef < Toon_Threshold[2]) Diffuse_Coef = 0.45f;
+    else if (Diffuse_Coef < Toon_Threshold[3]) Diffuse_Coef = 0.65f;
+    else if (Diffuse_Coef < Toon_Threshold[4]) Diffuse_Coef = 0.85f;
+    else Diffuse_Coef = 1.f;
 
-    // Ignore triangles whose three vertices lie in the same line
-    // in screen space
-    // (V1.x - V0.x) * (V2.y - V0.y) == (V2.x - V0.x) * (V1.y - V0.y)
-    float Denom = E1.x * E2.y - E2.x * E1.y;
-    if (Denom == 0) return;
-    
-    // Calculate the bounding box for the triangle
-    int Bottom = In[0].y, Up = In[0].y, Left = In[0].x, Right = In[0].x;
-
-    for (int i = 0; i < 3; i++)
-    {
-        if (In[i].x < Left) Left = In[i].x;
-        if (In[i].x > Right) Right = In[i].x;
-        if (In[i].y < Bottom) Bottom = In[i].y;
-        if (In[i].y > Up) Up = In[i].y;
-    }
-
-    if (Left > 799.f)   Left   = 799.f;
-    if (Right > 799.f)  Right  = 799.f;
-    if (Up > 799.f)     Up     = 799.f;
-    if (Bottom > 799.f) Bottom = 799.f;
-
-    // Help identify the order of indices after sort
-    int IndexMap[3] = { 0, 1, 2 };
-    Vec2<float> Vertices[3];
-
-    for (int i = 0; i < 3; i++) Vertices[i] = *(In + i);
-
-    // Insertion sort
-    for (int i = 0; i < 3; i++)
-    {
-        if (i == 2) break;
-        if (Vertices[i].y > Vertices[i + 1].y)
-        {
-            Vec2<float> PlaceHolder = Vertices[i + 1];
-            int IndexHolder = IndexMap[i + 1];
-            Vertices[i + 1] = Vertices[i];
-            IndexMap[i + 1] = IndexMap[i];
-            
-            int j = i - 1;
-
-            while (j >= 0 && Vertices[j].y > PlaceHolder.y) 
-            {
-                Vertices[j + 1] = Vertices[j];
-                IndexMap[j + 1] = IndexMap[j];
-                j--;
-            }
-
-            Vertices[j + 1] = PlaceHolder;
-            IndexMap[j + 1] = IndexHolder;
-        }
-    }
-
-    // Linear interpolate surface normal at each fragment
-    for (int y = Bottom; y <= Up; y++)
-    {
-        for (int x = Left; x <= Right; x++)
-        {
-            Vec2<float> PA = In[0] - Vec2<float>(x + .5f, y + .5f);
-
-            float u = (-1 * PA.x * E2.y + PA.y * E2.x) / Denom;
-            float v = (-1 * PA.y * E1.x + PA.x * E1.y) / Denom;
-            float w = 1 - u - v;
-
-            Vec3<float> Weights(u, v, w);
-
-            // Point p is not inside of the triangle
-            if (u < 0.f || v < 0.f || w < 0.f)
-                continue;
-
-            // Depth test to see if current pixel is visible 
-            if (UpdateDepthBuffer(V0_World,
-                                  V1_World, 
-                                  V2_World,  
-                                  x, y, Weights))
-            {
-                float Diffuse_Coef = Weights.z * Diffuse_Coefs[0] + Weights.x * Diffuse_Coefs[1] + Weights.y * Diffuse_Coefs[2];
-                if (Diffuse_Coef > 1.f) Diffuse_Coef = 1.f;
-                if (Diffuse_Coef < 0.f) Diffuse_Coef = 0.f;
-
-                // Toon post-processing
-                if (Diffuse_Coef < Toon_Threshold[0]) Diffuse_Coef = 0.05f;
-                else if (Diffuse_Coef < Toon_Threshold[1]) Diffuse_Coef = 0.25f;
-                else if (Diffuse_Coef < Toon_Threshold[2]) Diffuse_Coef = 0.45f;
-                else if (Diffuse_Coef < Toon_Threshold[3]) Diffuse_Coef = 0.65f;
-                else if (Diffuse_Coef < Toon_Threshold[4]) Diffuse_Coef = 0.85f;
-                else Diffuse_Coef = 1.f;
-
-                image.set(x, y, TGAColor(229 * Diffuse_Coef, 200 * Diffuse_Coef, 232 * Diffuse_Coef));
-
-            }
-        }
-    }
+    image.set(Fragment.x, Fragment.y, TGAColor(Color[0] * Diffuse_Coef, Color[1] * Diffuse_Coef, Color[2] * Diffuse_Coef));
 }
 
 float Toon_PostProcess(float* Toon_Value, int ValueCount, float Value)
@@ -297,76 +119,16 @@ void FragmentShader::Phong_Shader(Vec2<int> Fragment,
     image.set(Fragment.x, Fragment.y, Phong_Color);
 }
 
-void FragmentShader::Fragment_Shader(Vec2<float> *In, 
+void FragmentShader::Fragment_Shader(Vec2<int> Fragment, 
                                      Vec2<float> V0_UV,
                                      Vec2<float> V1_UV, 
                                      Vec2<float> V2_UV,
-                                     Vec3<float> V0_World,
-                                     Vec3<float> V1_World,
-                                     Vec3<float> V2_World,
+                                     Vec3<float>& Weights,
                                      TGAImage* TextureAsset,
                                      TGAImage& image)
 {
-    Vec2<float> E1 = In[1] - In[0];
-    Vec2<float> E2 = In[2] - In[0];
-
-    // Ignore triangles whose three vertices lie in the same line
-    // in screen space
-    // (V1.x - V0.x) * (V2.y - V0.y) == (V2.x - V0.x) * (V1.y - V0.y)
-    float Denom = E1.x * E2.y - E2.x * E1.y;
-    if (Denom == 0) return;
-    
-    // Calculate the bounding box for the triangle
-    int Bottom = In[0].y, Up = In[0].y, Left = In[0].x, Right = In[0].x;
-
-    for (int i = 0; i < 3; i++)
-    {
-        if (In[i].x < Left) Left = In[i].x;
-        if (In[i].x > Right) Right = In[i].x;
-        if (In[i].y < Bottom) Bottom = In[i].y;
-        if (In[i].y > Up) Up = In[i].y;
-    }
-
-    if (Left > 799.f)   Left   = 799.f;
-    if (Right > 799.f)  Right  = 799.f;
-    if (Up > 799.f)     Up     = 799.f;
-    if (Bottom > 799.f) Bottom = 799.f;
-
-    for (int x = Left; x <= (int)Right; x++)
-    {
-        for (int y = Bottom; y <= (int)Up; y++)
-        {
-            /// \Note: Cramer's rule to solve for barycentric coordinates,
-            ///       can also use ratio of area between three sub-triangles to solve
-            ///       to solve for u,v,w
-            Vec2<float> PA = In[0] - Vec2<float>(x + .5f, y + .5f);
-
-            float u = (-1 * PA.x * E2.y + PA.y * E2.x) / Denom;
-            float v = (-1 * PA.y * E1.x + PA.x * E1.y) / Denom;
-            float w = 1 - u - v;
-
-            Vec3<float> Weights(u, v, w);
-
-            // Point p is not inside of the triangle
-            if (u < 0.f || v < 0.f || w < 0.f)
-                continue;
-
-            // Depth test to see if current pixel is visible 
-            if (UpdateDepthBuffer(V0_World,
-                                  V1_World, 
-                                  V2_World,  
-                                  x, y, Weights))
-            {
                 TGAColor Color = this->SampleTexture(TextureAsset, Weights, V0_UV, V1_UV, V2_UV);
-
-                image.set(x, y, TGAColor(Color.bgra[2], 
-                                         Color.bgra[1], 
-                                         Color.bgra[0], 
-                                         255
-                                        ));
-            }
-        }
-    }
+                image.set(Fragment.x, Fragment.y, Color);
 }
 
 TGAColor FragmentShader::SampleTexture(TGAImage* TextureImage, 
@@ -418,7 +180,7 @@ bool FragmentShader::UpdateDepthBuffer(Vec3<float> V0,
 }
 
 
-void Shader::Draw(Model& Model, TGAImage& image, Camera& Camera)
+void Shader::Draw(Model& Model, TGAImage& image, Camera& Camera, Shader_Mode ShadingMode)
 {
     Vec3<float> LightDir(0.f, 0.f, 1.f);
     LightDir = MathFunctionLibrary::Normalize(LightDir);
@@ -464,10 +226,6 @@ void Shader::Draw(Model& Model, TGAImage& image, Camera& Camera)
                          Model.VertexBuffer[(IndexPtr + 1)->x],
                          Model.VertexBuffer[(IndexPtr + 2)->x],
                          this->Triangle);
-
-        Vec2<float> V0_UV = Model.TextureBuffer[IndexPtr->y];
-        Vec2<float> V1_UV = Model.TextureBuffer[(IndexPtr + 1)->y];
-        Vec2<float> V2_UV = Model.TextureBuffer[(IndexPtr + 2)->y];
 
         Vec2<float> E1 = Triangle[1] - Triangle[0];
         Vec2<float> E2 = Triangle[2] - Triangle[0];
@@ -519,43 +277,63 @@ void Shader::Draw(Model& Model, TGAImage& image, Camera& Camera)
                                       Model.VertexBuffer[(IndexPtr + 2)->x],
                                       x, y, Weights))
                 {
-                    // Interpolate normal and feed to fragment shader
-                    Vec3<float> N0 = Model.VertexNormalBuffer[IndexPtr->z];
-                    Vec3<float> N1 = Model.VertexNormalBuffer[(IndexPtr + 1)->z];
-                    Vec3<float> N2 = Model.VertexNormalBuffer[(IndexPtr + 2)->z];
+                    switch (ShadingMode)
+                    {
+                        case Shader_Mode::Flat_Shader:
+                        {
+                            Vec2<float> V0_UV = Model.TextureBuffer[IndexPtr->y];
+                            Vec2<float> V1_UV = Model.TextureBuffer[(IndexPtr + 1)->y];
+                            Vec2<float> V2_UV = Model.TextureBuffer[(IndexPtr + 2)->y];
 
-                    Vec3<float> n = MathFunctionLibrary::Normalize(N0 * Weights.z + N1 * Weights.x + N2 * Weights.y);
+                            FS.Fragment_Shader(Vec2<int>(x, y),
+                                               V0_UV, 
+                                               V1_UV,
+                                               V2_UV,
+                                               Weights,
+                                               Model.TextureAssets[0], 
+                                               image);
+                        }
 
-                    // TODO: Need to swap out the hard-coded viewing direction later
-                    FS.Phong_Shader(Vec2<int>(x, y), n, LightDir, Vec3<float>(1.f, .5f, 1.f), image, TGAColor(255, 255, 255));
+                        case Shader_Mode::Gouraud_Shader:
+                        {
+                            float Diffuse_Coef = Weights.z * Diffuse_Coefs[0] + Weights.x * Diffuse_Coefs[1] + Weights.y * Diffuse_Coefs[2];
+                            if (Diffuse_Coef > 1.f) Diffuse_Coef = 1.f;
+                            if (Diffuse_Coef < 0.f) Diffuse_Coef = 0.f;
+
+                            FS.Gouraud_Shader(Vec2<float>(x, y), Diffuse_Coef, image,
+                                    TGAColor(255, 255, 255));
+
+                            break;
+                        }
+
+                        case Shader_Mode::Phong_Shader:
+                        {
+                            // Interpolate normal and feed to fragment shader
+                            Vec3<float> N0 = Model.VertexNormalBuffer[IndexPtr->z];
+                            Vec3<float> N1 = Model.VertexNormalBuffer[(IndexPtr + 1)->z];
+                            Vec3<float> N2 = Model.VertexNormalBuffer[(IndexPtr + 2)->z];
+
+                            Vec3<float> n = MathFunctionLibrary::Normalize(N0 * Weights.z + N1 * Weights.x + N2 * Weights.y);
+
+                            // TODO: Need to swap out the hard-coded viewing direction later
+                            FS.Phong_Shader(Vec2<int>(x, y), n, LightDir, Vec3<float>(1.f, .5f, 1.f), image, TGAColor(255, 255, 255));
+
+                            break;
+                        }
+ 
+                        case Shader_Mode::Toon_Shader:
+                        {
+                            break;
+                        }
+
+                        default:
+                            break;
+                    }
                 }
             }
         }
 
-        /*FS.Fragment_Shader(this->Triangle, V0_UV, V1_UV, V2_UV, 
-                             Model.VertexBuffer[IndexPtr->x],
-                             Model.VertexBuffer[(IndexPtr + 1)->x],
-                             Model.VertexBuffer[(IndexPtr + 2)->x],
-                             Model.TextureAssets[0],
-                             image);*/
-
-        /*FS.Toon_Shader(this->Triangle, 
-                       Model.VertexBuffer[IndexPtr->x],
-                       Model.VertexBuffer[(IndexPtr + 1)->x],
-                       Model.VertexBuffer[(IndexPtr + 2)->x],
-                       Diffuse_Coefs, 
-                       image,
-                       TGAColor(255, 255, 255)); */
-
-        /*FS.Gouraud_Shader(this->Triangle, 
-                          Model.VertexBuffer[IndexPtr->x],
-                          Model.VertexBuffer[(IndexPtr + 1)->x],
-                          Model.VertexBuffer[(IndexPtr + 2)->x],
-                          Diffuse_Coefs, 
-                          image,
-                          TGAColor(255, 255, 255));*/
-
-         IndexPtr += 3;    
-         TriangleRendered++;
+        IndexPtr += 3;    
+        TriangleRendered++;
     }
 }

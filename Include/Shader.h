@@ -4,6 +4,14 @@
 #include "Math.h"
 #include "Model.h"
 
+enum class Shader_Mode : int8_t
+{
+    Flat_Shader,
+    Gouraud_Shader,
+    Phong_Shader,
+    Toon_Shader
+};
+
 struct VertexShader
 {
     Mat4x4<float> Viewport;
@@ -25,19 +33,13 @@ struct FragmentShader
                            Vec3<float> V2, int ScreenX, 
                            int ScreenY, Vec3<float> Weights);
 
-    void Gouraud_Shader(Vec2<float>* In,
-                        Vec3<float> V0_World,
-                        Vec3<float> V1_World,
-                        Vec3<float> V2_World,
-                        float* Diffuse_Coefs,
+    void Gouraud_Shader(Vec2<float> Fragment,
+                        float Diffuse_Coef,
                         TGAImage& image,
                         TGAColor Color);
 
-    void Toon_Shader(Vec2<float>* In,
-                     Vec3<float> V0_World,
-                     Vec3<float> V1_World,
-                     Vec3<float> V2_World,
-                     float* Diffuse_Coefs,
+    void Toon_Shader(Vec2<float> Fragment,
+                     float Diffuse_Coef,
                      TGAImage& image,
                      TGAColor Color);
 
@@ -48,13 +50,11 @@ struct FragmentShader
                       TGAImage& image,
                       TGAColor Color);
 
-    void Fragment_Shader(Vec2<float> *In, 
+    void Fragment_Shader(Vec2<int> Fragment, 
                          Vec2<float> V0_UV,
                          Vec2<float> V1_UV, 
                          Vec2<float> V2_UV,
-                         Vec3<float> V0_World,
-                         Vec3<float> V1_World,
-                         Vec3<float> V2_World,
+                         Vec3<float>& Weights, 
                          TGAImage* TextureAsset, 
                          TGAImage& image); 
 
@@ -73,5 +73,5 @@ struct Shader
     VertexShader VS;
     FragmentShader FS; 
      
-    void Draw(Model& Model, TGAImage& image, struct Camera& Camera);
+    void Draw(Model& Model, TGAImage& image, struct Camera& Camera, Shader_Mode ShadingMode);
 };

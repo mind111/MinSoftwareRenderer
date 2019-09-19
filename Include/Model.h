@@ -30,6 +30,7 @@ public:
 
     int NumOfLoadedTextures;
     int NumOfVertices;
+    int NumOfFaces;
     int NumOfIndices;
     int NumOfTextureUV;
     

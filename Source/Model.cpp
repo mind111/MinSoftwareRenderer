@@ -58,7 +58,10 @@ void Model::Parse(char* FileName)
         if (Line[0] == 'v' && Line[1] == 't')
             NumOfTextureUV++;
         if (Line[0] == 'f' && Line[1] == ' ')
+        {
+            NumOfFaces += 1;
             NumOfIndices += 3;
+        }
     }
 
     /// \Note: Increment 1 here because wavefront .obj file vertex starting

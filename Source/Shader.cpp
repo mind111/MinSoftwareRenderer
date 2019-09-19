@@ -4,6 +4,77 @@
 #define Kd 0.4f // Diffuse coef
 #define Ks 0.3f // Specular coef
 
+/// \TODO: Simplify logic and optimization
+void DrawLine(Vec2<int> Start, Vec2<int> End, TGAImage& image, const TGAColor& color)
+{
+    int d = 1;
+    //**** Divide by 0
+    if (Start.x == End.x)
+    {
+        if (Start.y > End.y) Start.Swap(End);
+        for (int i = Start.y; i <= End.y; i++)
+        {
+            image.set(Start.x, i, color);
+        }
+
+        return;
+    }
+    // Always start from left marching toward right
+    // Swap Start and End
+    if (Start.x > End.x) Start.Swap(End);
+    // Derive the line function
+    float Slope = (float)(Start.y - End.y) / (float)(Start.x - End.x);
+    float Intercept = (float)End.y - Slope * End.x;
+    Vec2<int> Next(Start);
+    Vec2<int> StepA(1, 0);
+    Vec2<int> StepB(1, 1);
+
+    if (Slope < 0)
+    {
+        d *= -1;
+        StepA.Swap(StepB);
+    }
+    if (Slope > 1 || Slope < -1)
+    {
+        StepA.Transpose();
+        StepB.Transpose();
+    }
+
+    StepA.y *= d;
+    StepB.y *= d;
+
+    while (Next.x < End.x || Next.y != End.y)
+    {
+        //**** Slope < 1
+        if (Slope >= -1 && Slope <= 1)
+        {
+            // Eval F(x+1,y+0.5)
+            if (Next.y + d * 0.5f - Slope * (Next.x + 1.0f) - Intercept >= 0)
+                Next += StepA;
+            else
+                Next += StepB;
+        }
+        /// \Bug: When slope is greater than 0, can invert x, y
+        else
+        {
+            // Eval F(x+0.5, y+1)
+            if (Next.y + d * 1.0f - Slope * (Next.x + .5f) - Intercept >= 0)
+                Next += StepB;
+            else
+                Next += StepA;
+        }
+        //**** Draw pixel to the buffer
+        image.set(Next.x, Next.y, color);
+    }
+}
+
+void DrawTriangle(Vec2<int> V0, Vec2<int> V1, Vec2<int> V2, TGAImage& image, const TGAColor& color)
+{
+    DrawLine(V0, V1, image, color);
+    DrawLine(V1, V2, image, color);
+    DrawLine(V2, V0, image, color);
+}
+
 void VertexShader::Vertex_Shader(Vec3<float> V0,
                     Vec3<float> V1,
                     Vec3<float> V2,
@@ -95,9 +166,12 @@ void FragmentShader::Phong_Shader(Vec2<int> Fragment,
                                   Vec3<float> LightDir,
                                   Vec3<float> ViewDir,
                                   TGAImage& image,
+                                  TGAColor MaterialColor,
                                   TGAColor Color)
 {
-    TGAColor Material(229, 200, 0); // Temporary place holder for object's color
+    // TODO: Update how material color is handled, when debugging, can set certain
+    //       color component to 0 
+    TGAColor Material(244, 222, 0); // Temporary place holder for object's color
 
     float Toon_Threshold[5] = {
         0.1f,
@@ -117,7 +191,7 @@ void FragmentShader::Phong_Shader(Vec2<int> Fragment,
 
     TGAColor Phong_Color;
     for (int i = 0; i < 3; i++) 
-        Phong_Color[i] = std::min<float>(Ka * Material[i] + Color[i] * Kd * Diffuse_Coef + Color[i] * Ks * std::pow(Specular_Coef, 10), 255); 
+        Phong_Color[i] = std::min<float>(Ka * MaterialColor[i] + Color[i] * Kd * Diffuse_Coef + Color[i] * Ks * std::pow(Specular_Coef, 10), 255); 
 
     image.set(Fragment.x, Fragment.y, Phong_Color);
 }
@@ -192,7 +266,7 @@ void Shader::Draw(Model& Model, TGAImage& image, Camera& Camera, Shader_Mode Sha
     int TriangleRendered = 0;
     float Diffuse_Coefs[3];
 
-    while (TriangleRendered < 2492) //TODO: This hard-coded value should be replaced
+    while (TriangleRendered < Model.NumOfFaces) //TODO: This hard-coded value should be replaced
     {
         Vec3<float> V0V1 =  Model.VertexBuffer[(IndexPtr + 1)->x] - Model.VertexBuffer[IndexPtr->x];
         Vec3<float> V0V2 =  Model.VertexBuffer[(IndexPtr + 2)->x] - Model.VertexBuffer[IndexPtr->x];
@@ -239,6 +313,10 @@ void Shader::Draw(Model& Model, TGAImage& image, Camera& Camera, Shader_Mode Sha
         float Denom = E1.x * E2.y - E2.x * E1.y;
         if (Denom == 0) return;
         
+        // -- Draw triangle wire frame for debugging purposes
+        //DrawTriangle(Triangle[0], Triangle[1], Triangle[2], image, TGAColor(255, 255, 255));
+        // -- Debug end --
+
         // Calculate the bounding box for the triangle
         int Bottom = Triangle[0].y, Up = Triangle[0].y, Left = Triangle[0].x, Right = Triangle[0].x;
 
@@ -280,14 +358,14 @@ void Shader::Draw(Model& Model, TGAImage& image, Camera& Camera, Shader_Mode Sha
                                       Model.VertexBuffer[(IndexPtr + 2)->x],
                                       x, y, Weights))
                 {
+                    Vec2<float> V0_UV = Model.TextureBuffer[IndexPtr->y];
+                    Vec2<float> V1_UV = Model.TextureBuffer[(IndexPtr + 1)->y];
+                    Vec2<float> V2_UV = Model.TextureBuffer[(IndexPtr + 2)->y];
+
                     switch (ShadingMode)
                     {
                         case Shader_Mode::Flat_Shader:
                         {
-                            Vec2<float> V0_UV = Model.TextureBuffer[IndexPtr->y];
-                            Vec2<float> V1_UV = Model.TextureBuffer[(IndexPtr + 1)->y];
-                            Vec2<float> V2_UV = Model.TextureBuffer[(IndexPtr + 2)->y];
-
                             FS.Fragment_Shader(Vec2<int>(x, y),
                                                V0_UV, 
                                                V1_UV,
@@ -305,7 +383,6 @@ void Shader::Draw(Model& Model, TGAImage& image, Camera& Camera, Shader_Mode Sha
                             if (Diffuse_Coef < 0.f) Diffuse_Coef = 0.f;
 
                             FS.Gouraud_Shader(Vec2<int>(x, y), Diffuse_Coef, image, TGAColor(255, 255, 255));
-
                             break;
                         }
 
@@ -318,13 +395,18 @@ void Shader::Draw(Model& Model, TGAImage& image, Camera& Camera, Shader_Mode Sha
 
                             Vec3<float> n = MathFunctionLibrary::Normalize(N0 * Weights.z + N1 * Weights.x + N2 * Weights.y);
 
+                            TGAColor Color = FS.SampleTexture(Model.TextureAssets[0],
+                                                              Weights, 
+                                                              V0_UV,
+                                                              V1_UV, 
+                                                              V2_UV);
+
                             // TODO: Need to swap out the hard-coded viewing direction later
-                            FS.Phong_Shader(Vec2<int>(x, y), n, LightDir, MathFunctionLibrary::Normalize(Vec3<float>(1.f, .5f, 1.f)), image, TGAColor(0, 0, 255));
+                            FS.Phong_Shader(Vec2<int>(x, y), n, LightDir, MathFunctionLibrary::Normalize(Vec3<float>(1.f, .5f, 1.f)), image, Color, TGAColor(255, 255, 255));
                             // --- Debug ---
                             //image.flip_vertically();
                             //image.write_tga_file("output_debug.tga");
                             // ---- Debug ---
-
                             break;
                         }
  

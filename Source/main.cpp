@@ -101,77 +101,6 @@ void Line(Vec2<int> Start, Vec2<int> End, TGAImage& image, const TGAColor& color
     }
 }
 
-/// \TODO: Simplify logic and optimization
-void DrawLine(Vec2<int> Start, Vec2<int> End, TGAImage& image, const TGAColor& color)
-{
-    int d = 1;
-    //**** Divide by 0
-    if (Start.x == End.x)
-    {
-        if (Start.y > End.y) Start.Swap(End);
-        for (int i = Start.y; i <= End.y; i++)
-        {
-            image.set(Start.x, i, color);
-        }
-
-        return;
-    }
-    // Always start from left marching toward right
-    // Swap Start and End
-    if (Start.x > End.x) Start.Swap(End);
-    // Derive the line function
-    float Slope = (float)(Start.y - End.y) / (float)(Start.x - End.x);
-    float Intercept = (float)End.y - Slope * End.x;
-    Vec2<int> Next(Start);
-    Vec2<int> StepA(1, 0);
-    Vec2<int> StepB(1, 1);
-
-    if (Slope < 0)
-    {
-        d *= -1;
-        StepA.Swap(StepB);
-    }
-    if (Slope > 1 || Slope < -1)
-    {
-        StepA.Transpose();
-        StepB.Transpose();
-    }
-
-    StepA.y *= d;
-    StepB.y *= d;
-
-    while (Next.x < End.x || Next.y != End.y)
-    {
-        //**** Slope < 1
-        if (Slope >= -1 && Slope <= 1)
-        {
-            // Eval F(x+1,y+0.5)
-            if (Next.y + d * 0.5f - Slope * (Next.x + 1.0f) - Intercept >= 0)
-                Next += StepA;
-            else
-                Next += StepB;
-        }
-        /// \Bug: When slope is greater than 0, can invert x, y
-        else
-        {
-            // Eval F(x+0.5, y+1)
-            if (Next.y + d * 1.0f - Slope * (Next.x + .5f) - Intercept >= 0)
-                Next += StepB;
-            else
-                Next += StepA;
-        }
-        //**** Draw pixel to the buffer
-        image.set(Next.x, Next.y, color);
-    }
-}
-
-void DrawTriangle(Vec2<int> V0, Vec2<int> V1, Vec2<int> V2, TGAImage& image, const TGAColor& color)
-{
-    DrawLine(V0, V1, image, color);
-    DrawLine(V1, V2, image, color);
-    DrawLine(V2, V0, image, color);
-}
-
 /// \Note: Using naive scan-line method
 void FillTriangle(Vec2<int>& V0, Vec2<int>& V1, Vec2<int>& V2, TGAImage& image, const TGAColor& color)
 {
@@ -202,11 +131,13 @@ void FillTriangle(Vec2<int>& V0, Vec2<int>& V1, Vec2<int>& V2, TGAImage& image, 
 int main(int argc, char* argv[]) {
     // Testing Matrix multiplication
     Camera Camera;
-
     int ImageSize = ImageWidth * ImageHeight;    
     // Create an image for writing pixels
     TGAImage image(ImageWidth, ImageHeight, TGAImage::RGB);
+
+    // Mesh .obj file path
     char ModelPath[64] = { "../Graphx/Assets/Model.obj" };
+    char ModelPath_Diablo[64] = { "../Graphx/Assets/diablo3_pose.obj" };
     char TexturePath[64] = { "../Graphx/Assets/Textures/african_head_diffuse.tga" };
     
     // Model

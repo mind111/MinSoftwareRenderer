@@ -48,6 +48,7 @@ struct FragmentShader
                       Vec3<float> LightDir,
                       Vec3<float> ViewDir,
                       TGAImage& image,
+                      TGAColor MaterialColor,
                       TGAColor Color);
 
     void Fragment_Shader(Vec2<int> Fragment, 

@@ -227,10 +227,19 @@ TGAColor FragmentShader::SampleTexture(TGAImage* TextureImage,
     return Color;
 }
 
-TGAColor FragmentShader::NormalMapping(Vec2<int> Fragment,
-                                       TGAImage* NormalTexture)
+Vec3<float> FragmentShader::NormalMapping(TGAImage* NormalMap,
+                                          Vec3<float> Weights,
+                                          Vec2<float> V0_UV,
+                                          Vec2<float> V1_UV,
+                                          Vec2<float> V2_UV)
 {
-    return NormalTexture->get(Fragment.x, Fragment.y);
+    TGAColor Color = this->SampleTexture(NormalMap, Weights, V0_UV, V1_UV, V2_UV); 
+    // Remap the range since rgb is from [0, 255] while normal should be [-1, 1]
+    Vec3<float> Normal;
+    Normal.x = (Color[0] - (255.f / 2.f)) / (255.f / 2.f);
+    Normal.y = (Color[1] - (255.f / 2.f)) / (255.f / 2.f);
+    Normal.z = (Color[2] - (255.f / 2.f)) / (255.f / 2.f);
+    return Normal;
 }
 
 /** 
@@ -360,9 +369,9 @@ void Shader::Draw(Model& Model, TGAImage& image, Camera& Camera, Shader_Mode Sha
 
                 // Depth test to see if current pixel is visible 
                 if (this->FS.UpdateDepthBuffer(Model.VertexBuffer[IndexPtr->x],      
-                                      Model.VertexBuffer[(IndexPtr + 1)->x],
-                                      Model.VertexBuffer[(IndexPtr + 2)->x],
-                                      x, y, Weights))
+                                               Model.VertexBuffer[(IndexPtr + 1)->x],
+                                               Model.VertexBuffer[(IndexPtr + 2)->x],
+                                               x, y, Weights))
                 {
                     Vec2<float> V0_UV = Model.TextureBuffer[IndexPtr->y];
                     Vec2<float> V1_UV = Model.TextureBuffer[(IndexPtr + 1)->y];
@@ -400,13 +409,13 @@ void Shader::Draw(Model& Model, TGAImage& image, Camera& Camera, Shader_Mode Sha
                             Vec3<float> N1 = Model.VertexNormalBuffer[(IndexPtr + 1)->z];
                             Vec3<float> N2 = Model.VertexNormalBuffer[(IndexPtr + 2)->z];
                                                      
-                            TGAColor Normal = FS.SampleTexture(Model.NormalTexture,
-                                             Weights,
-                                             V0_UV,
-                                             V1_UV, 
-                                             V2_UV);
+                            Vec3<float> Normal = FS.NormalMapping(Model.NormalTexture,
+                                                                  Weights,
+                                                                  V0_UV,
+                                                                  V1_UV, 
+                                                                  V2_UV);
 
-                            Vec3<float> n = MathFunctionLibrary::Normalize(Vec3<float>(Normal[0] / 255.f, Normal[1] / 255.f, Normal[2] / 255.f));
+                            Vec3<float> n = MathFunctionLibrary::Normalize(Normal);
 
                             TGAColor Color = FS.SampleTexture(Model.TextureAssets[0],
                                                               Weights, 

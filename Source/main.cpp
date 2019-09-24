@@ -139,6 +139,7 @@ int main(int argc, char* argv[]) {
     char ModelPath[64] = { "../Graphx/Assets/Model.obj" };
     char ModelPath_Diablo[64] = { "../Graphx/Assets/diablo3_pose.obj" };
     char TexturePath[64] = { "../Graphx/Assets/Textures/african_head_diffuse.tga" };
+    char NormalPath[64] = { "../Graphx/Assets/Textures/african_head_nm.tga" };
     
     // Model
     Mat4x4<float> ModelToWorld;
@@ -161,9 +162,12 @@ int main(int argc, char* argv[]) {
     {
         Model Model;
         Model.Parse(ModelPath);
-        TGAImage Sample;
-        Model.LoadTexture(&Sample, TexturePath);
-        Sample.flip_vertically();
+        TGAImage Texture;
+        TGAImage NormalTexture;
+        Model.LoadTexture(&Texture, TexturePath);
+        Texture.flip_vertically();
+        Model.LoadNormalMap(&NormalTexture, NormalPath);
+        NormalTexture.flip_vertically();
 
         float* ZBuffer = new float[ImageWidth * ImageHeight];
         for (int i = 0; i < ImageSize; i++) ZBuffer[i] = -100.0f;

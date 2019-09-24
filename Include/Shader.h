@@ -64,6 +64,9 @@ struct FragmentShader
                            Vec2<float> V0_UV, 
                            Vec2<float> V1_UV, 
                            Vec2<float> V2_UV);
+
+    TGAColor NormalMapping(Vec2<int> Fragment,
+                           TGAImage* NormalTexture);
 };
 
 struct Shader

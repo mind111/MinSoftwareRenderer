@@ -27,6 +27,7 @@ public:
     Vec3<int>* Indices;
     
     TGAImage** TextureAssets;
+    TGAImage* NormalTexture;
 
     int NumOfLoadedTextures;
     int NumOfVertices;
@@ -38,5 +39,6 @@ public:
     ~Model();
     void Parse(char* FileName);
     bool LoadTexture(TGAImage* TextureImage, const char* FileName);
+    bool LoadNormalMap(TGAImage* NormalMap, const char* FileName);
 };
 

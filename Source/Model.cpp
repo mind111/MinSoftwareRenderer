@@ -43,6 +43,14 @@ bool Model::LoadTexture(TGAImage* TextureImage, const char* FileName)
     return true;
 }
 
+bool Model::LoadNormalMap(TGAImage* NormalMap, const char* FileName)
+{
+    int i = 0;
+    if (!NormalMap->read_tga_file(FileName)) return false;
+    this->NormalTexture = NormalMap; 
+    return true;
+}
+
 ///\TODO: Consolidate this function, use bitmask to indicate
 //        which parsing mode e.g vertex, index, texuture we are in
 void Model::Parse(char* FileName)

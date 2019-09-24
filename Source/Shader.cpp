@@ -1,6 +1,6 @@
 #include "../Include/Shader.h"
 
-#define Ka 0.1f // Ambient coef
+#define Ka 0.5f // Ambient coef
 #define Kd 0.4f // Diffuse coef
 #define Ks 0.3f // Specular coef
 
@@ -227,6 +227,12 @@ TGAColor FragmentShader::SampleTexture(TGAImage* TextureImage,
     return Color;
 }
 
+TGAColor FragmentShader::NormalMapping(Vec2<int> Fragment,
+                                       TGAImage* NormalTexture)
+{
+    return NormalTexture->get(Fragment.x, Fragment.y);
+}
+
 /** 
  * Given a point P on triangle's projection on screen space, use barycentric
  * coordinates to derive/interpolate P's actual position in world space.
@@ -393,8 +399,14 @@ void Shader::Draw(Model& Model, TGAImage& image, Camera& Camera, Shader_Mode Sha
                             Vec3<float> N0 = Model.VertexNormalBuffer[IndexPtr->z];
                             Vec3<float> N1 = Model.VertexNormalBuffer[(IndexPtr + 1)->z];
                             Vec3<float> N2 = Model.VertexNormalBuffer[(IndexPtr + 2)->z];
+                                                     
+                            TGAColor Normal = FS.SampleTexture(Model.NormalTexture,
+                                             Weights,
+                                             V0_UV,
+                                             V1_UV, 
+                                             V2_UV);
 
-                            Vec3<float> n = MathFunctionLibrary::Normalize(N0 * Weights.z + N1 * Weights.x + N2 * Weights.y);
+                            Vec3<float> n = MathFunctionLibrary::Normalize(Vec3<float>(Normal[0] / 255.f, Normal[1] / 255.f, Normal[2] / 255.f));
 
                             TGAColor Color = FS.SampleTexture(Model.TextureAssets[0],
                                                               Weights, 
@@ -404,10 +416,12 @@ void Shader::Draw(Model& Model, TGAImage& image, Camera& Camera, Shader_Mode Sha
 
                             // TODO: Need to swap out the hard-coded viewing direction later
                             FS.Phong_Shader(Vec2<int>(x, y), n, LightDir, MathFunctionLibrary::Normalize(Vec3<float>(1.f, .5f, 1.f)), image, Color, TGAColor(255, 255, 255));
+
                             // --- Debug ---
                             //image.flip_vertically();
                             //image.write_tga_file("output_debug.tga");
                             // ---- Debug ---
+                            
                             break;
                         }
  

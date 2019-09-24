@@ -373,6 +373,7 @@ void Shader::Draw(Model& Model, TGAImage& image, Camera& Camera, Shader_Mode Sha
                                                Weights,
                                                Model.TextureAssets[0], 
                                                image);
+                            break;
                         }
 
                         case Shader_Mode::Gouraud_Shader:

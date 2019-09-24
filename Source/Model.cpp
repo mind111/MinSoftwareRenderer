@@ -12,6 +12,7 @@ Model::Model()
     this->Indices = nullptr;
     
     NumOfVertices = 0;
+    NumOfFaces = 0;
     NumOfIndices = 0;
     NumOfTextureUV = 0;
 

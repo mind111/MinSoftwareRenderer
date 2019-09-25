@@ -15,6 +15,7 @@ enum class Shader_Mode : int8_t
 struct VertexShader
 {
     Mat4x4<float> Viewport;
+    Mat4x4<float> Model;
     Mat4x4<float> MVP;    
 
     Vec3<float>* VertexBuffer;
@@ -70,6 +71,13 @@ struct FragmentShader
                               Vec2<float> V0_UV,
                               Vec2<float> V1_UV,
                               Vec2<float> V2_UV);
+
+    Vec3<float> NormalMapping_TangentSpace(TGAImage* NormalMap_TangentSpace,
+                                           Mat4x4<float> TBN,
+                                           Vec3<float> Weights,
+                                           Vec2<float> V0_UV,
+                                           Vec2<float> V1_UV,
+                                           Vec2<float> V2_UV);
 };
 
 struct Shader
@@ -80,5 +88,12 @@ struct Shader
     VertexShader VS;
     FragmentShader FS; 
      
+    Mat4x4<float> ConstructTBN(Vec3<float> V0_World, 
+                               Vec3<float> V1_World, 
+                               Vec3<float> V2_World,
+                               Vec2<float> V0_UV,
+                               Vec2<float> V1_UV,
+                               Vec2<float> V2_UV);
+
     void Draw(Model& Model, TGAImage& image, struct Camera& Camera, Shader_Mode ShadingMode);
 };

@@ -76,9 +76,9 @@ void DrawTriangle(Vec2<int> V0, Vec2<int> V1, Vec2<int> V2, TGAImage& image, con
 }
 
 void VertexShader::Vertex_Shader(Vec3<float> V0,
-                    Vec3<float> V1,
-                    Vec3<float> V2,
-                    Vec2<float>* Out)
+                                 Vec3<float> V1,
+                                 Vec3<float> V2,
+                                 Vec2<float>* Out)
 {
     Vec4<float> V0_Augmented(V0.x, V0.y, V0.z, 1.0f);
     Vec4<float> V1_Augmented(V1.x, V1.y, V1.z, 1.0f);
@@ -116,6 +116,8 @@ void VertexShader::Vertex_Shader(Vec3<float> V0,
     *(Out) = V0Screen;
     *(Out + 1) = V1Screen;
     *(Out + 2) = V2Screen;
+
+    
 }
 
 void FragmentShader::Gouraud_Shader(Vec2<int> Fragment, 
@@ -227,6 +229,7 @@ TGAColor FragmentShader::SampleTexture(TGAImage* TextureImage,
     return Color;
 }
 
+// Global frame normal mapping
 Vec3<float> FragmentShader::NormalMapping(TGAImage* NormalMap,
                                           Vec3<float> Weights,
                                           Vec2<float> V0_UV,
@@ -240,6 +243,18 @@ Vec3<float> FragmentShader::NormalMapping(TGAImage* NormalMap,
     Normal.y = (Color[1] - (255.f / 2.f)) / (255.f / 2.f);
     Normal.z = (Color[2] - (255.f / 2.f)) / (255.f / 2.f);
     return Normal;
+}
+
+// Tangent space normal mapping
+Vec3<float> FragmentShader::NormalMapping_TangentSpace(TGAImage* NormalMap_TangentSpace,
+                                                       Mat4x4<float> TBN,
+                                                       Vec3<float> Weights,
+                                                       Vec2<float> V0_UV,
+                                                       Vec2<float> V1_UV,
+                                                       Vec2<float> V2_UV)
+{
+    Vec3<float> Result;
+    return Result;
 }
 
 /** 
@@ -271,6 +286,19 @@ bool FragmentShader::UpdateDepthBuffer(Vec3<float> V0,
     return false;
 }
 
+Mat4x4<float> Shader::ConstructTBN(Vec3<float> V0_World, 
+                                   Vec3<float> V1_World, 
+                                   Vec3<float> V2_World,
+                                   Vec2<float> V0_UV,
+                                   Vec2<float> V1_UV,
+                                   Vec2<float> V2_UV)
+{
+    Mat4x4<float> Result;
+    Mat2x2<float> A;
+    Vec3<float> P0P1 = V1_World - V0_World;
+    Vec3<float> P0P2 = V2_World - V0_World;
+    return Result;
+}
 
 void Shader::Draw(Model& Model, TGAImage& image, Camera& Camera, Shader_Mode ShadingMode)
 {
@@ -376,6 +404,17 @@ void Shader::Draw(Model& Model, TGAImage& image, Camera& Camera, Shader_Mode Sha
                     Vec2<float> V0_UV = Model.TextureBuffer[IndexPtr->y];
                     Vec2<float> V1_UV = Model.TextureBuffer[(IndexPtr + 1)->y];
                     Vec2<float> V2_UV = Model.TextureBuffer[(IndexPtr + 2)->y];
+
+                    // Construct the TBN matrix for later normal mapping
+                    Vec4<float> P0_Augmented = VS.Model * Vec4<float>(Model.VertexBuffer[IndexPtr->x], 1.0f); 
+                    Vec4<float> P1_Augmented = VS.Model * Vec4<float>(Model.VertexBuffer[(IndexPtr + 1)->x], 1.f); 
+                    Vec4<float> P2_Augmented = VS.Model * Vec4<float>(Model.VertexBuffer[(IndexPtr + 2)->x], 1.f); 
+                    Vec3<float> P0(P0_Augmented.x, P0_Augmented.y, P0_Augmented.z);
+                    Vec3<float> P1(P1_Augmented.x, P1_Augmented.y, P1_Augmented.z);
+                    Vec3<float> P2(P2_Augmented.x, P2_Augmented.y, P2_Augmented.z);
+
+                    Mat4x4<float> TBN = ConstructTBN(P0, P1, P2, V0_UV, V1_UV, V2_UV);
+                    FS.NormalMapping_TangentSpace(Model.NormalTexture, TBN, Weights, V0_UV, V1_UV, V2_UV);
 
                     switch (ShadingMode)
                     {

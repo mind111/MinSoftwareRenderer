@@ -164,6 +164,7 @@ struct Vec4
 
     Vec4() {}
     Vec4(T x, T y, T z, T w): x(x), y(y), z(z), w(w) {}
+    Vec4(Vec3<T> V, T w): x(V.x), y(V.y), z(V.z), w(w) {}
 
     void operator=(const Vec4& RHS)
     {
@@ -183,6 +184,27 @@ struct Vec4
 
     void Print();
 
+};
+
+template <class T>
+struct Mat2x2
+{
+    T Mat[2][2];
+
+    Mat2x2()    
+    {
+        for (int i = 0; i < 2; i++)
+        {
+            for (int j = 0; j < 2; j++)
+                Mat[i][j] = 0;
+        }
+
+    }
+    
+    Vec4<T> operator*()
+    {
+
+    }
 };
 
 template <class T>

@@ -62,3 +62,10 @@
 * This leads to the w-component of the transformed Vec4 becomes  z / Near.z + Translation.z / Near.z + 1 -> 1 / Near.z (z + Translation.z) + 1 = z (in world space) / Near.z + 1
   * Knowing that a point in homogenous space [x, y, z, w] is equivalent to a 3D point [x/w, y/w, z/w], we can make the perspective divide happen here by dividing each component of  current transformed point (a Vec4) by its w-component (minus 1). (x / (z / Near.z)) -> x * Near.z / z)
     * **Caveat**: I'm not sure where is the best place for this "normalizing" step to happen. I ran into a mistake by including Viewport transformation matrix into the matrix transformation pipeline and lead to wrong transformation because of the entry "1 / Near.z" introduced in the projection matrix. So my approach is to do the division step here after "[Projection * View * Model ]* Vertex pos in model space" and then do the Viewport transformation instead of doing [Viewport * Projection * View * Model]
+
+###### Normal Mapping
+
+* Global frame
+  * Global frame normal mapping seems pretty intuitive, but I made a mistake when implementing it. I forgot to remap the rgb values to correct ranges when interpreting them as xyz-components of a normal vector, since rgb will always be positive value, either [0, 1] or [0, 255]. It is necessary to remap the value to [-1,1] and then do the normalization.
+* Tangent space
+* Compared to interpolating vertex normal, using a normal map provides a lot more details and realistic looking appearance

@@ -487,24 +487,28 @@ void Shader::Draw(Model& Model, TGAImage& image, Camera& Camera, Shader_Mode Sha
                             Vec3<float> V1_Normal = Model.VertexNormalBuffer[(IndexPtr + 1)->z];
                             Vec3<float> V2_Normal = Model.VertexNormalBuffer[(IndexPtr + 2)->z];
 
-                            
+                            // Interpolate normals
+                            Vec3<float> Interpolated_Normal(Weights.z * V0_Normal.x + Weights.x * V1_Normal.x + Weights.y * V2_Normal.x,
+                                                            Weights.z * V0_Normal.y + Weights.x * V1_Normal.y + Weights.y * V2_Normal.y,
+                                                            Weights.z * V0_Normal.z + Weights.x * V1_Normal.z + Weights.y * V2_Normal.z);
+
+                            Vec3<float> n = MathFunctionLibrary::Normalize(Interpolated_Normal);
+
+                            TBN.SetColumn(2, Vec4<float>(n, 0.f));
+/*
                             Vec3<float> Normal = FS.NormalMapping(Model.NormalTexture,
                                                                   Weights,
                                                                   V0_UV,
                                                                   V1_UV, 
                                                                   V2_UV);
                                                                   
-                            // Interpolate normals
-                            Vec3<float> Interpolated_Normal(Weights.z * V0_Normal.x + Weights.y * V1_Normal.x + Weights.x * V2_Normal.x,
-                                                            Weights.z * V0_Normal.y + Weights.y * V1_Normal.y + Weights.x * V2_Normal.y,
-                                                            Weights.z * V0_Normal.z + Weights.y * V1_Normal.z + Weights.x * V2_Normal.z);
+*/
+                            // TODO: Average the tangent at each vertex  
+                           
 
-                            Vec3<float> n = MathFunctionLibrary::Normalize(Interpolated_Normal);
 
-                            // TODO: I don't really understand why here need to use interpolated normal instead of 
-                            //       using constant surface normal of current triangle
-                            //TBN.SetColumn(2, Vec4<float>(n, 0.f));
-/*
+                            // -----------------------------------------
+                            
                             Vec3<float> Normal = FS.NormalMapping_TangentSpace(Model.NormalTexture, 
                                                                                TBN, 
                                                                                VS.Model, 
@@ -512,7 +516,7 @@ void Shader::Draw(Model& Model, TGAImage& image, Camera& Camera, Shader_Mode Sha
                                                                                V0_UV, 
                                                                                V1_UV, 
                                                                                V2_UV);
-*/
+
                             TGAColor Color = FS.SampleTexture(Model.TextureAssets[0],
                                                               Weights, 
                                                               V0_UV,

@@ -11,6 +11,14 @@ void Mat4x4<float>::SetRow(int RowIndex, Vec4<float> v)
     Mat[RowIndex][3] = v.w;
 }
 
+void Mat4x4<float>::SetColumn(int ColIndex, Vec4<float> v)
+{
+    Mat[0][ColIndex] = v.x;
+    Mat[1][ColIndex] = v.y;
+    Mat[2][ColIndex] = v.z;
+    Mat[3][ColIndex] = v.w;
+}
+
 void Mat4x4<float>::SetTranslation(Vec3<float> v)
 {
     this->Mat[0][3] = v.x;

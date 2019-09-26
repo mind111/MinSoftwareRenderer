@@ -281,6 +281,7 @@ struct Mat4x4
     }
 
     void SetRow(int RowIndex, Vec4<T> v);
+    void SetColumn(int ColIndex, Vec4<T> v);
     void SetTranslation(Vec3<float> v);
     void SetRotation(Vec3<float> r);
     void Inverse();

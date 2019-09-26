@@ -2,7 +2,7 @@
 
 #define Ka 0.5f // Ambient coef
 #define Kd 0.4f // Diffuse coef
-#define Ks 0.3f // Specular coef
+#define Ks 0.1f // Specular coef
 
 /// \TODO: Simplify logic and optimization
 void DrawLine(Vec2<int> Start, Vec2<int> End, TGAImage& image, const TGAColor& color)
@@ -237,11 +237,11 @@ Vec3<float> FragmentShader::NormalMapping(TGAImage* NormalMap,
     TGAColor Color = this->SampleTexture(NormalMap, Weights, V0_UV, V1_UV, V2_UV); 
     // Remap the range since rgb is from [0, 255] while normal should be [-1, 1]
     Vec3<float> Normal;
-    Normal.x = (Color[0] - (255.f / 2.f)) / (255.f / 2.f);
+    // TODO: Raw pixel layout is in bgra
+    Normal.x = (Color[2] - (255.f / 2.f)) / (255.f / 2.f);
     Normal.y = (Color[1] - (255.f / 2.f)) / (255.f / 2.f);
-    Normal.z = (Color[2] - (255.f / 2.f)) / (255.f / 2.f);
-    // TODO: Do I really need to normalize here?
-    return MathFunctionLibrary::Normalize(Normal);
+    Normal.z = (Color[0] - (255.f / 2.f)) / (255.f / 2.f);
+    return Normal;
 }
 
 // Tangent space normal mapping
@@ -299,8 +299,10 @@ Mat4x4<float> Shader::ConstructTBN(Vec3<float> V0_World,
                                    Vec3<float> Surface_Normal)
 {
     Mat4x4<float> Result;
-    Vec3<float> T;
-    Vec3<float> B;
+    Vec3<float> t;
+    Vec3<float> b;
+    Vec3<float> T; // Tangent
+    Vec3<float> B; // Bitangent
     Mat2x2<float> A;
     Vec3<float> P0P1 = V1_World - V0_World;
     Vec3<float> P0P2 = V2_World - V0_World;
@@ -315,25 +317,29 @@ Mat4x4<float> Shader::ConstructTBN(Vec3<float> V0_World,
     // Invert A 
     Mat2x2<float> A_Inverse = A.Inverse();
 
-    T.x = A_Inverse.Mat[0][0] * P0P1.x + A_Inverse.Mat[0][1] * P0P2.x;
-    T.y = A_Inverse.Mat[0][0] * P0P1.y + A_Inverse.Mat[0][1] * P0P2.y;
-    T.z = A_Inverse.Mat[0][0] * P0P1.z + A_Inverse.Mat[0][1] * P0P2.z;
+    t.x = A_Inverse.Mat[0][0] * P0P1.x + A_Inverse.Mat[0][1] * P0P2.x;
+    t.y = A_Inverse.Mat[0][0] * P0P1.y + A_Inverse.Mat[0][1] * P0P2.y;
+    t.z = A_Inverse.Mat[0][0] * P0P1.z + A_Inverse.Mat[0][1] * P0P2.z;
+    T = MathFunctionLibrary::Normalize(t);
 
-    B.x = A_Inverse.Mat[1][0] * P0P1.x + A_Inverse.Mat[1][1] * P0P2.x;
-    B.y = A_Inverse.Mat[1][0] * P0P1.y + A_Inverse.Mat[1][1] * P0P2.y;
-    B.z = A_Inverse.Mat[1][0] * P0P1.z + A_Inverse.Mat[1][1] * P0P2.z;
+    b.x = A_Inverse.Mat[1][0] * P0P1.x + A_Inverse.Mat[1][1] * P0P2.x;
+    b.y = A_Inverse.Mat[1][0] * P0P1.y + A_Inverse.Mat[1][1] * P0P2.y;
+    b.z = A_Inverse.Mat[1][0] * P0P1.z + A_Inverse.Mat[1][1] * P0P2.z;
+    B = MathFunctionLibrary::Normalize(t);
 
     Result.Identity();
-    Result.SetRow(0, Vec4<float>(T, 0.f));
-    Result.SetRow(1, Vec4<float>(B, 0.f));
-    Result.SetRow(2, Vec4<float>(Surface_Normal, 0.f));
+
+    // Set Column instead of row
+    Result.SetColumn(0, Vec4<float>(T, 0.f));
+    Result.SetColumn(1, Vec4<float>(B, 0.f));
+    Result.SetColumn(2, Vec4<float>(Surface_Normal, 0.f));
     
     return Result;
 }
 
 void Shader::Draw(Model& Model, TGAImage& image, Camera& Camera, Shader_Mode ShadingMode)
 {
-    Vec3<float> LightDir(0.f, 0.f, 1.f);
+    Vec3<float> LightDir(3.f, 0.f, 1.f);
     LightDir = MathFunctionLibrary::Normalize(LightDir);
 
     Vec3<int>* IndexPtr = Model.Indices;
@@ -405,15 +411,7 @@ void Shader::Draw(Model& Model, TGAImage& image, Camera& Camera, Shader_Mode Sha
         Vec2<float> V2_UV = Model.TextureBuffer[(IndexPtr + 2)->y];
 
         // Construct the TBN matrix for later normal mapping
-        Vec4<float> P0_Augmented = VS.Model * Vec4<float>(Model.VertexBuffer[IndexPtr->x], 1.0f); 
-        Vec4<float> P1_Augmented = VS.Model * Vec4<float>(Model.VertexBuffer[(IndexPtr + 1)->x], 1.f); 
-        Vec4<float> P2_Augmented = VS.Model * Vec4<float>(Model.VertexBuffer[(IndexPtr + 2)->x], 1.f); 
-        Vec3<float> P0(P0_Augmented.x, P0_Augmented.y, P0_Augmented.z);
-        Vec3<float> P1(P1_Augmented.x, P1_Augmented.y, P1_Augmented.z);
-        Vec3<float> P2(P2_Augmented.x, P2_Augmented.y, P2_Augmented.z);
-
-        // This is local to a triangle
-        Mat4x4<float> TBN = ConstructTBN(P0, P1, P2, V0_UV, V1_UV, V2_UV, Surface_Normal);
+        Mat4x4<float> TBN = ConstructTBN(V0_World, V1_World, V2_World, V0_UV, V1_UV, V2_UV, Surface_Normal);
 
         // Calculate the bounding box for the triangle
         int Bottom = Triangle[0].y, Up = Triangle[0].y, Left = Triangle[0].x, Right = Triangle[0].x;
@@ -485,17 +483,28 @@ void Shader::Draw(Model& Model, TGAImage& image, Camera& Camera, Shader_Mode Sha
                         case Shader_Mode::Phong_Shader:
                         {
                             // Interpolate normal and feed to fragment shader
-                            Vec3<float> N0 = Model.VertexNormalBuffer[IndexPtr->z];
-                            Vec3<float> N1 = Model.VertexNormalBuffer[(IndexPtr + 1)->z];
-                            Vec3<float> N2 = Model.VertexNormalBuffer[(IndexPtr + 2)->z];
+                            Vec3<float> V0_Normal = Model.VertexNormalBuffer[IndexPtr->z];
+                            Vec3<float> V1_Normal = Model.VertexNormalBuffer[(IndexPtr + 1)->z];
+                            Vec3<float> V2_Normal = Model.VertexNormalBuffer[(IndexPtr + 2)->z];
+
                             
-                            /*
                             Vec3<float> Normal = FS.NormalMapping(Model.NormalTexture,
                                                                   Weights,
                                                                   V0_UV,
                                                                   V1_UV, 
                                                                   V2_UV);
-                                                                  */
+                                                                  
+                            // Interpolate normals
+                            Vec3<float> Interpolated_Normal(Weights.z * V0_Normal.x + Weights.y * V1_Normal.x + Weights.x * V2_Normal.x,
+                                                            Weights.z * V0_Normal.y + Weights.y * V1_Normal.y + Weights.x * V2_Normal.y,
+                                                            Weights.z * V0_Normal.z + Weights.y * V1_Normal.z + Weights.x * V2_Normal.z);
+
+                            Vec3<float> n = MathFunctionLibrary::Normalize(Interpolated_Normal);
+
+                            // TODO: I don't really understand why here need to use interpolated normal instead of 
+                            //       using constant surface normal of current triangle
+                            //TBN.SetColumn(2, Vec4<float>(n, 0.f));
+/*
                             Vec3<float> Normal = FS.NormalMapping_TangentSpace(Model.NormalTexture, 
                                                                                TBN, 
                                                                                VS.Model, 
@@ -503,7 +512,7 @@ void Shader::Draw(Model& Model, TGAImage& image, Camera& Camera, Shader_Mode Sha
                                                                                V0_UV, 
                                                                                V1_UV, 
                                                                                V2_UV);
-
+*/
                             TGAColor Color = FS.SampleTexture(Model.TextureAssets[0],
                                                               Weights, 
                                                               V0_UV,

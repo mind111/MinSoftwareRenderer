@@ -45,7 +45,6 @@ bool Model::LoadTexture(TGAImage* TextureImage, const char* FileName)
 
 bool Model::LoadNormalMap(TGAImage* NormalMap, const char* FileName)
 {
-    int i = 0;
     if (!NormalMap->read_tga_file(FileName)) return false;
     this->NormalTexture = NormalMap; 
     return true;

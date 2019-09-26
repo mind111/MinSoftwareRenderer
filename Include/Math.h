@@ -205,6 +205,17 @@ struct Mat2x2
     {
 
     }
+
+    Mat2x2<T> Inverse()
+    {
+        Mat2x2<float> Result;
+        float Determinant = Mat[0][0] * Mat[1][1] - Mat[0][1] * Mat[1][0]; 
+        Result.Mat[0][0] =  Mat[1][1] / Determinant;
+        Result.Mat[0][1] = -Mat[0][1] / Determinant;
+        Result.Mat[1][0] = -Mat[1][0] / Determinant;
+        Result.Mat[1][1] =  Mat[0][0] / Determinant;
+        return Result;
+    }
 };
 
 template <class T>
@@ -269,6 +280,7 @@ struct Mat4x4
         }
     }
 
+    void SetRow(int RowIndex, Vec4<T> v);
     void SetTranslation(Vec3<float> v);
     void SetRotation(Vec3<float> r);
     void Inverse();
@@ -300,11 +312,11 @@ public:
     template <class T>
     inline static T DotProduct_Vec3(const Vec3<T>& V0, const Vec3<T>& V1)
     {
-            return (V0.x * V1.x + V0.y * V1.y + V0.z * V1.z);
+        return (V0.x * V1.x + V0.y * V1.y + V0.z * V1.z);
     }
     template <class T>
     inline static T DotProduct_Vec2(const Vec2<T>& V0, const Vec2<T>& V1)
     {
-            return (V0.x * V1.x + V0.y * V1.y);
+        return (V0.x * V1.x + V0.y * V1.y);
     }
 };

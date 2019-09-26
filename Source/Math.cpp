@@ -3,6 +3,14 @@
 
 #define M_PI 3.14159265
 
+void Mat4x4<float>::SetRow(int RowIndex, Vec4<float> v)
+{
+    Mat[RowIndex][0] = v.x;
+    Mat[RowIndex][1] = v.y;
+    Mat[RowIndex][2] = v.z;
+    Mat[RowIndex][3] = v.w;
+}
+
 void Mat4x4<float>::SetTranslation(Vec3<float> v)
 {
     this->Mat[0][3] = v.x;

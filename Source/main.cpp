@@ -139,7 +139,7 @@ int main(int argc, char* argv[]) {
     char ModelPath[64] = { "../Graphx/Assets/Model.obj" };
     char ModelPath_Diablo[64] = { "../Graphx/Assets/diablo3_pose.obj" };
     char TexturePath[64] = { "../Graphx/Assets/Textures/african_head_diffuse.tga" };
-    char NormalPath[64] = { "../Graphx/Assets/Textures/african_head_nm.tga" };
+    char NormalPath[64] = { "../Graphx/Assets/Textures/african_head_nm_tangent.tga" };
     
     // Model
     Mat4x4<float> ModelToWorld;
@@ -154,7 +154,7 @@ int main(int argc, char* argv[]) {
     Mat4x4<float> Perspective = Mat4x4<float>::Perspective(1.f, -1.f, -5.f, 90.f);
     
     Shader Shader;
-
+    Shader.VS.Model = ModelToWorld;
     Shader.VS.MVP = Perspective * View * ModelToWorld;
     Shader.VS.Viewport = Mat4x4<float>::ViewPort(ImageWidth, ImageHeight);
     

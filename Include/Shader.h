@@ -74,6 +74,7 @@ struct FragmentShader
 
     Vec3<float> NormalMapping_TangentSpace(TGAImage* NormalMap_TangentSpace,
                                            Mat4x4<float> TBN,
+                                           Mat4x4<float> Model,
                                            Vec3<float> Weights,
                                            Vec2<float> V0_UV,
                                            Vec2<float> V1_UV,
@@ -93,7 +94,8 @@ struct Shader
                                Vec3<float> V2_World,
                                Vec2<float> V0_UV,
                                Vec2<float> V1_UV,
-                               Vec2<float> V2_UV);
+                               Vec2<float> V2_UV,
+                               Vec3<float> Surface_Normal);
 
     void Draw(Model& Model, TGAImage& image, struct Camera& Camera, Shader_Mode ShadingMode);
 };

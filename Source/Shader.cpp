@@ -346,7 +346,7 @@ void Shader::Draw(Model& Model, TGAImage& image, Camera& Camera, Shader_Mode Sha
     int TriangleRendered = 0;
     float Diffuse_Coefs[3];
 
-    while (TriangleRendered < Model.NumOfFaces) //TODO: This hard-coded value should be replaced
+    while (TriangleRendered < Model.NumOfFaces)    
     {
         // Use vertex position in world to calculate surface normal and do backface culling
         Vec4<float> V0_World_Augmented = VS.Model * Vec4<float>(Model.VertexBuffer[IndexPtr->x], 1.f);
@@ -494,6 +494,9 @@ void Shader::Draw(Model& Model, TGAImage& image, Camera& Camera, Shader_Mode Sha
 
                             Vec3<float> n = MathFunctionLibrary::Normalize(Interpolated_Normal);
 
+                            // Use interpolated normal at each fragment instead of 
+                            // flat surface normal for smoothing out the 
+                            // edges between shaded triangles
                             TBN.SetColumn(2, Vec4<float>(n, 0.f));
 /*
                             Vec3<float> Normal = FS.NormalMapping(Model.NormalTexture,
@@ -524,7 +527,7 @@ void Shader::Draw(Model& Model, TGAImage& image, Camera& Camera, Shader_Mode Sha
                                                               V2_UV);
 
                             // TODO: Need to swap out the hard-coded viewing direction later
-                            FS.Phong_Shader(Vec2<int>(x, y), Normal, LightDir, MathFunctionLibrary::Normalize(Vec3<float>(1.f, .5f, 1.f)), image, Color, TGAColor(255, 255, 255));
+                            FS.Phong_Shader(Vec2<int>(x, y), Normal, LightDir, MathFunctionLibrary::Normalize(Vec3<float>(1.f, .5f, 1.f)), image, Color, TGAColor(200, 200, 200));
 
                             // --- Debug ---
                             //image.flip_vertically();

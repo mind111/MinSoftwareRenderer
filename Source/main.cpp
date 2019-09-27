@@ -15,8 +15,7 @@ const TGAColor red = TGAColor(255, 0, 0, 255);
 Vec3<float> LightPos(0.0f, 0.5f, 1.0f);
 Vec3<float> LightColor(0.7f, 0.7f, 0.7f);
 Vec3<float> LightDir(0, 0, 1);
-Vec3<float> CameraPos(2, 2, 8);
-
+Vec3<float> CameraPos(0, 0, 1);
 
 struct Camera
 {
@@ -136,10 +135,13 @@ int main(int argc, char* argv[]) {
     TGAImage image(ImageWidth, ImageHeight, TGAImage::RGB);
 
     // Mesh .obj file path
-    char ModelPath[64] = { "../Graphx/Assets/Model.obj" };
-    char ModelPath_Diablo[64] = { "../Graphx/Assets/diablo3_pose.obj" };
+    char ModelPath[64] = { "../Graphx/Assets/Mesh/Model.obj" };
+    char ModelPath_Diablo[64] = { "../Graphx/Assets/Mesh/diablo3_pose.obj" };
     char TexturePath[64] = { "../Graphx/Assets/Textures/african_head_diffuse.tga" };
+    char TexturePath_Diablo[64] = { "../Graphx/Assets/Textures/diablo3_pose_diffuse.tga"};
     char NormalPath[64] = { "../Graphx/Assets/Textures/african_head_nm_tangent.tga" };
+    char NormalPath_Diablo[64] = { "../Graphx/Assets/Textures/diablo3_pose_nm_tangent.tga" };
+
     
     // Model
     Mat4x4<float> ModelToWorld;
@@ -161,12 +163,12 @@ int main(int argc, char* argv[]) {
     // Add a scope here to help trigger Model's destructor
     {
         Model Model;
-        Model.Parse(ModelPath);
+        Model.Parse(ModelPath_Diablo);
         TGAImage Texture;
         TGAImage NormalTexture;
-        Model.LoadTexture(&Texture, TexturePath);
+        Model.LoadTexture(&Texture, TexturePath_Diablo);
         Texture.flip_vertically();
-        Model.LoadNormalMap(&NormalTexture, NormalPath);
+        Model.LoadNormalMap(&NormalTexture, NormalPath_Diablo);
         NormalTexture.flip_vertically();
 
         float* ZBuffer = new float[ImageWidth * ImageHeight];

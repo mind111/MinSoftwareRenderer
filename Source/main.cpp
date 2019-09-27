@@ -99,6 +99,7 @@ int main(int argc, char* argv[]) {
     
     Shader Shader;
     Shader.VS.Model = ModelToWorld;
+    Shader.VS.Projection = Perspective;
     Shader.VS.MVP = Perspective * View * ModelToWorld;
     Shader.VS.Viewport = Mat4x4<float>::ViewPort(ImageWidth, ImageHeight);
     
@@ -115,8 +116,8 @@ int main(int argc, char* argv[]) {
 
         float* ZBuffer = new float[ImageWidth * ImageHeight];
         float* ShadowBuffer = new float[ImageWidth * ImageHeight];
-        for (int i = 0; i < ImageSize; i++) ZBuffer[i] = -100.0f;
-        for (int i = 0; i < ImageSize; i++) ShadowBuffer[i] = -100.0f;
+        for (int i = 0; i < ImageSize; i++) ZBuffer[i] = 100.0f;
+        for (int i = 0; i < ImageSize; i++) ShadowBuffer[i] = 100.0f;
 
         Shader.FS.ZBuffer = ZBuffer;
         Shader.FS.ShadowBuffer = ShadowBuffer;
@@ -130,6 +131,8 @@ int main(int argc, char* argv[]) {
     // Draw the output to a file
     image.flip_vertically();
     image.write_tga_file("output.tga");
+    ShadowImage.flip_vertically();
+    ShadowImage.write_tga_file("shadow.tga");
 
     return 0;
 }   

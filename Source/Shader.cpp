@@ -79,7 +79,8 @@ void DrawTriangle(Vec2<int> V0, Vec2<int> V1, Vec2<int> V2, TGAImage& image, con
 void VertexShader::Vertex_Shader(Vec3<float> V0,
                                  Vec3<float> V1,
                                  Vec3<float> V2,
-                                 Vec2<float>* Out)
+                                 Vec2<float>* Out,
+                                 Vec3<float>* Out_Clip)
 {
     Vec4<float> V0_Augmented(V0, 1.0f);
     Vec4<float> V1_Augmented(V1, 1.0f);
@@ -109,17 +110,17 @@ void VertexShader::Vertex_Shader(Vec3<float> V0,
     Vec4<float> V1Screen_Vec4 = this->Viewport * V1Clip_Vec4;
     Vec4<float> V2Screen_Vec4 = this->Viewport * V2Clip_Vec4;
     
+    *(Out_Clip) = Vec3<float>(V0Screen_Vec4.x, V0Screen_Vec4.y, V0Screen_Vec4.z);
+    *(Out_Clip + 1) = Vec3<float>(V1Screen_Vec4.x, V1Screen_Vec4.y, V1Screen_Vec4.z);
+    *(Out_Clip + 2) = Vec3<float>(V2Screen_Vec4.x, V2Screen_Vec4.y, V2Screen_Vec4.z);
+
     Vec2<float> V0Screen(V0Screen_Vec4.x, V0Screen_Vec4.y);
     Vec2<float> V1Screen(V1Screen_Vec4.x, V1Screen_Vec4.y);
     Vec2<float> V2Screen(V2Screen_Vec4.x, V2Screen_Vec4.y);
    
-    if (Out)
-    {
-        // Arrange the vertices based on their y-coordinates
-        *(Out) = V0Screen;
-        *(Out + 1) = V1Screen;
-        *(Out + 2) = V2Screen;
-    }
+    *(Out) = V0Screen;
+    *(Out + 1) = V1Screen;
+    *(Out + 2) = V2Screen;
 }
 
 void FragmentShader::Gouraud_Shader(Vec2<int> Fragment, 
@@ -213,10 +214,10 @@ void FragmentShader::Fragment_Shader(Vec2<int> Fragment,
 }
 
 void FragmentShader::Shadow_Shader(Vec2<int> Fragment,
-                   Vec3<float>& Weights,
-                   TGAImage& image)
+                                   TGAColor& Color,
+                                   TGAImage& image)
 {
-
+    image.set(Fragment.x, Fragment.y, Color);
 }
 
 TGAColor FragmentShader::SampleTexture(TGAImage* TextureImage, 
@@ -293,7 +294,11 @@ bool FragmentShader::UpdateDepthBuffer(Vec3<float> V0,
     // TODO: Do the perspective correct interpolation here
     float z = V0.z * Weights.z + V1.z * Weights.x + V2.z * Weights.y;
 
-    if (z > ZBuffer[Index]) 
+    // Note: Another caveat here with using clip space coordinates to do 
+    //       depth test, since the z in clip space are all positive, because
+    //       camera is looking at (0, 0, -1), this explains why using less than
+    //       operator here
+    if (z < ZBuffer[Index]) 
     {
         ZBuffer[Index] = z;
         return true;
@@ -307,18 +312,22 @@ bool FragmentShader::UpdateShadowBuffer(Vec3<float> V0,
                                         Vec3<float> V2, 
                                         int ScreenX, 
                                         int ScreenY, 
-                                        Vec3<float> Weights)
+                                        Vec3<float> Weights,
+                                        float& FragmentDepth)
 {
     int Index = ScreenY * 800 + ScreenX;
     // TODO: Do the perspective correct interpolation here
-    float z = V0.z * Weights.z + V1.z * Weights.x + V2.z * Weights.y;
+    FragmentDepth = V0.z * Weights.z + V1.z * Weights.x + V2.z * Weights.y;
 
-    if (z > ShadowBuffer[Index]) 
+    // Note: Another caveat here with using clip space coordinates to do 
+    //       depth test, since the z in clip space are all positive, because
+    //       camera is looking at (0, 0, -1) this explains why using less than
+    //       operator here
+    if (FragmentDepth < ShadowBuffer[Index]) 
     {
-        ShadowBuffer[Index] = z;
+        ShadowBuffer[Index] = FragmentDepth;
         return true;
     }
-
     return false;
 }
 
@@ -377,9 +386,16 @@ void Shader::DrawShadow(Model& Model,
 {
     // Do first pass rendering to decide which part of the mesh is visible
     Camera ShadowCamera;
-
     ShadowCamera.Position = LightPos;
-    Mat4x4<float> View_Shadow = ShadowCamera.LookAt(LightDir);
+    // Need to negate the LightDir since LightDir reverted
+    Mat4x4<float> View_Shadow = ShadowCamera.LookAt(LightDir * -1.f);
+
+    // Cache the old MVP
+    Mat4x4<float> Render_MVP = VS.MVP; 
+    // same model, projection, viewport, but different view matrix
+    FS.Shadow_MVP = VS.Projection * View_Shadow * VS.Model; 
+    VS.MVP = FS.Shadow_MVP;
+
     Vec3<int>* IndexPtr = Model.Indices;
     int TriangleRendered = 0;
 
@@ -411,7 +427,8 @@ void Shader::DrawShadow(Model& Model,
         VS.Vertex_Shader(Model.VertexBuffer[IndexPtr->x],
                          Model.VertexBuffer[(IndexPtr + 1)->x],
                          Model.VertexBuffer[(IndexPtr + 2)->x], 
-                         this->Triangle);
+                         this->Triangle,
+                         this->Triangle_Clip);
 
         Vec2<float> E1 = Triangle[1] - Triangle[0];
         Vec2<float> E2 = Triangle[2] - Triangle[0];
@@ -451,14 +468,21 @@ void Shader::DrawShadow(Model& Model,
                 if (u < 0.f || v < 0.f || w < 0.f)
                     continue;
 
+                float FragmentDepth = 0;
+                
                 // Depth test to see if current pixel is visible 
-                if (this->FS.UpdateShadowBuffer(Model.VertexBuffer[IndexPtr->x],      
-                                                Model.VertexBuffer[(IndexPtr + 1)->x],
-                                                Model.VertexBuffer[(IndexPtr + 2)->x],
-                                                x, y, Weights))
+                if (this->FS.UpdateShadowBuffer(Triangle_Clip[0],      
+                                                Triangle_Clip[1],
+                                                Triangle_Clip[2],
+                                                x, y, Weights, FragmentDepth))
                 {
+                    // TODO: Using magic number 6.f here
+                    float Coef = 1.f + FragmentDepth / 6.f;
+
                     // Shade the fragment
-                    //FS.Shadow_Shader();
+                    FS.Shadow_Shader(Vec2<int>(x, y), TGAColor(255 * Coef,
+                                                               255 * Coef,
+                                                               255 * Coef), image);
                 }
             }
         }
@@ -466,6 +490,8 @@ void Shader::DrawShadow(Model& Model,
         TriangleRendered++;
         IndexPtr += 3;
     }
+
+    VS.MVP = Render_MVP;
 }
 
 void Shader::Draw(Model& Model, TGAImage& image, Camera& Camera, Shader_Mode ShadingMode)
@@ -522,7 +548,8 @@ void Shader::Draw(Model& Model, TGAImage& image, Camera& Camera, Shader_Mode Sha
         VS.Vertex_Shader(Model.VertexBuffer[IndexPtr->x],      
                          Model.VertexBuffer[(IndexPtr + 1)->x],
                          Model.VertexBuffer[(IndexPtr + 2)->x],
-                         this->Triangle);
+                         this->Triangle,
+                         this->Triangle_Clip);
 
         // Ignore triangles whose three vertices lie in the same line
         // in screen space
@@ -579,9 +606,9 @@ void Shader::Draw(Model& Model, TGAImage& image, Camera& Camera, Shader_Mode Sha
                     continue;
 
                 // Depth test to see if current pixel is visible 
-                if (this->FS.UpdateDepthBuffer(Model.VertexBuffer[IndexPtr->x],      
-                                               Model.VertexBuffer[(IndexPtr + 1)->x],
-                                               Model.VertexBuffer[(IndexPtr + 2)->x],
+                if (this->FS.UpdateDepthBuffer(Triangle_Clip[0],
+                                               Triangle_Clip[1],
+                                               Triangle_Clip[2],
                                                x, y, Weights))
                 {
 

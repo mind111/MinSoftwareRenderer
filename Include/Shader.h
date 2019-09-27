@@ -14,22 +14,25 @@ enum class Shader_Mode : int8_t
 
 struct VertexShader
 {
-    Mat4x4<float> Viewport;
     Mat4x4<float> Model;
+    Mat4x4<float> Projection;
     Mat4x4<float> MVP;    
+    Mat4x4<float> Viewport;
 
     Vec3<float>* VertexBuffer;
 
     void Vertex_Shader(Vec3<float> V0,
-                         Vec3<float> V1,
-                         Vec3<float> V2,
-                         Vec2<float>* Out);
+                       Vec3<float> V1,
+                       Vec3<float> V2,
+                       Vec2<float>* Out,
+                       Vec3<float>* Out_Clip);
 };
 
 struct FragmentShader
 {
     float* ZBuffer;
     float* ShadowBuffer;
+    Mat4x4<float> Shadow_MVP;
 
     bool UpdateDepthBuffer(Vec3<float> V0, 
                            Vec3<float> V1,
@@ -43,7 +46,8 @@ struct FragmentShader
                             Vec3<float> V2, 
                             int ScreenX, 
                             int ScreenY, 
-                            Vec3<float> Weights);
+                            Vec3<float> Weights,
+                            float& FragmentDepth);
 
     void Gouraud_Shader(Vec2<int> Fragment,
                         float Diffuse_Coef,
@@ -72,7 +76,7 @@ struct FragmentShader
                          TGAImage& image); 
 
     void Shadow_Shader(Vec2<int> Fragment,
-                       Vec3<float>& Weights,
+                       TGAColor& Color,
                        TGAImage& image);
 
     TGAColor SampleTexture(TGAImage* TextureImage, 
@@ -99,7 +103,8 @@ struct FragmentShader
 struct Shader
 {
     int NumOfTriangles;
-    Vec2<float> Triangle[3]; // Triangle went through vertex shader and waiting for shading 
+    Vec3<float> Triangle_Clip[3]; // Triangle went through vertex shader and waiting for shading 
+    Vec2<float> Triangle[3];
 
     VertexShader VS;
     FragmentShader FS; 

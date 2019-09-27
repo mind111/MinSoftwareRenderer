@@ -29,10 +29,21 @@ struct VertexShader
 struct FragmentShader
 {
     float* ZBuffer;
+    float* ShadowBuffer;
 
-    bool UpdateDepthBuffer(Vec3<float> V0, Vec3<float> V1,
-                           Vec3<float> V2, int ScreenX, 
-                           int ScreenY, Vec3<float> Weights);
+    bool UpdateDepthBuffer(Vec3<float> V0, 
+                           Vec3<float> V1,
+                           Vec3<float> V2, 
+                           int ScreenX, 
+                           int ScreenY, 
+                           Vec3<float> Weights);
+
+    bool UpdateShadowBuffer(Vec3<float> V0, 
+                            Vec3<float> V1, 
+                            Vec3<float> V2, 
+                            int ScreenX, 
+                            int ScreenY, 
+                            Vec3<float> Weights);
 
     void Gouraud_Shader(Vec2<int> Fragment,
                         float Diffuse_Coef,
@@ -59,6 +70,10 @@ struct FragmentShader
                          Vec3<float>& Weights, 
                          TGAImage* TextureAsset, 
                          TGAImage& image); 
+
+    void Shadow_Shader(Vec2<int> Fragment,
+                       Vec3<float>& Weights,
+                       TGAImage& image);
 
     TGAColor SampleTexture(TGAImage* TextureImage, 
                            Vec3<float> Weights, 
@@ -97,5 +112,6 @@ struct Shader
                                Vec2<float> V2_UV,
                                Vec3<float> Surface_Normal);
 
+    void DrawShadow(Model& Model, TGAImage& image, Vec3<float> LightPos, Vec3<float> LightDir, float* ShadowBuffer);
     void Draw(Model& Model, TGAImage& image, struct Camera& Camera, Shader_Mode ShadingMode);
 };

@@ -7,6 +7,7 @@
 #include "../Include/Globals.h"
 #include "../Include/Math.h"
 #include "../Include/Model.h"
+#include "../Include/Camera.h"
 #include "../Include/Shader.h"
 
 /// \TODO Clean up code to get rid of all the warnings
@@ -16,66 +17,6 @@ Vec3<float> LightPos(0.0f, 0.5f, 1.0f);
 Vec3<float> LightColor(0.7f, 0.7f, 0.7f);
 Vec3<float> LightDir(0, 0, 1);
 Vec3<float> CameraPos(0, 0, 1);
-
-struct Camera
-{
-    Vec3<float> Position;
-    Vec3<float> Translation;
-
-    Vec3<float> Up;
-    Vec3<float> Forward;
-    Vec3<float> Right;
-
-    Camera()
-    {
-        this->Position = Vec3<float>(0.f, 0.f, 0.f);
-        this->Translation = Vec3<float>(0.f, 0.f, 0.f);
-        this->Up = Vec3<float>(0.f, 1.f, 0.f);
-        this->Forward = Vec3<float>(0.f, 0.f, -1.f);
-        this->Right = Vec3<float>(1.f, 0.f, 0.f);
-    }
-
-    Mat4x4<float> LookAt(Vec3<float> Point)
-    {
-        Mat4x4<float> ModelView;
-
-        // Update Camera's position in world accoridng to its translation
-        this->Position += Translation;
-
-        // Assuming that world up direction is always (0, 1, 0)
-        this->Forward = MathFunctionLibrary::Normalize(Point - Position);
-        this->Right = MathFunctionLibrary::Normalize(MathFunctionLibrary::CrossProduct(
-                    this->Forward, Vec3<float>(0.f, 1.f, 0.f)));
-        this->Up = MathFunctionLibrary::Normalize(MathFunctionLibrary::CrossProduct(
-                    this->Right, this->Forward));
-
-        // Construct the matrix using these three axes as basis
-        // --- Right ---
-        // --- Up ------
-        // --- Forward -
-        ModelView.Mat[0][0] = Right.x;
-        ModelView.Mat[0][1] = Right.y;
-        ModelView.Mat[0][2] = Right.z;
-
-        ModelView.Mat[1][0] = Up.x;
-        ModelView.Mat[1][1] = Up.y;
-        ModelView.Mat[1][2] = Up.z;
-
-        ModelView.Mat[2][0] = Forward.x;
-        ModelView.Mat[2][1] = Forward.y;
-        ModelView.Mat[2][2] = Forward.z;
-
-        ModelView.Mat[3][3] = 1;
-
-        Mat4x4<float> TransMatrix;
-        TransMatrix.Identity();
-        TransMatrix.Mat[0][3] = -1 * this->Translation.x;
-        TransMatrix.Mat[1][3] = -1 * this->Translation.y;
-        TransMatrix.Mat[2][3] = -1 * this->Translation.z; 
-        
-        return ModelView * TransMatrix; 
-    }
-};
 
 /// \Note More optimized version of DrawLine, Inspired by GitHub ssloy/tinyrenderer
 void Line(Vec2<int> Start, Vec2<int> End, TGAImage& image, const TGAColor& color)
@@ -133,6 +74,7 @@ int main(int argc, char* argv[]) {
     int ImageSize = ImageWidth * ImageHeight;    
     // Create an image for writing pixels
     TGAImage image(ImageWidth, ImageHeight, TGAImage::RGB);
+    TGAImage ShadowImage(ImageWidth, ImageHeight, TGAImage::RGB);
 
     // Mesh .obj file path
     char ModelPath[64] = { "../Graphx/Assets/Mesh/Model.obj" };
@@ -172,9 +114,13 @@ int main(int argc, char* argv[]) {
         NormalTexture.flip_vertically();
 
         float* ZBuffer = new float[ImageWidth * ImageHeight];
+        float* ShadowBuffer = new float[ImageWidth * ImageHeight];
         for (int i = 0; i < ImageSize; i++) ZBuffer[i] = -100.0f;
+        for (int i = 0; i < ImageSize; i++) ShadowBuffer[i] = -100.0f;
 
         Shader.FS.ZBuffer = ZBuffer;
+        Shader.FS.ShadowBuffer = ShadowBuffer;
+        Shader.DrawShadow(Model, ShadowImage, LightPos, LightDir, ShadowBuffer);
         Shader.Draw(Model, image, Camera, Shader_Mode::Phong_Shader);
     }
 

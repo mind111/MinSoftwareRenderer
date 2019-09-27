@@ -1,4 +1,5 @@
 #include "../Include/Shader.h"
+#include "../Include/Camera.h"
 
 #define Ka 0.5f // Ambient coef
 #define Kd 0.4f // Diffuse coef
@@ -112,10 +113,13 @@ void VertexShader::Vertex_Shader(Vec3<float> V0,
     Vec2<float> V1Screen(V1Screen_Vec4.x, V1Screen_Vec4.y);
     Vec2<float> V2Screen(V2Screen_Vec4.x, V2Screen_Vec4.y);
    
-    // Arrange the vertices based on their y-coordinates
-    *(Out) = V0Screen;
-    *(Out + 1) = V1Screen;
-    *(Out + 2) = V2Screen;
+    if (Out)
+    {
+        // Arrange the vertices based on their y-coordinates
+        *(Out) = V0Screen;
+        *(Out + 1) = V1Screen;
+        *(Out + 2) = V2Screen;
+    }
 }
 
 void FragmentShader::Gouraud_Shader(Vec2<int> Fragment, 
@@ -208,6 +212,13 @@ void FragmentShader::Fragment_Shader(Vec2<int> Fragment,
     image.set(Fragment.x, Fragment.y, Color);
 }
 
+void FragmentShader::Shadow_Shader(Vec2<int> Fragment,
+                   Vec3<float>& Weights,
+                   TGAImage& image)
+{
+
+}
+
 TGAColor FragmentShader::SampleTexture(TGAImage* TextureImage, 
                                        Vec3<float> Weights, 
                                        Vec2<float> V0_UV, 
@@ -279,11 +290,32 @@ bool FragmentShader::UpdateDepthBuffer(Vec3<float> V0,
                                        Vec3<float> Weights)
 {
     int Index = ScreenY * 800 + ScreenX;
-    float z = V0.z * Weights.x + V1.z * Weights.y + V2.z * Weights.z;
+    // TODO: Do the perspective correct interpolation here
+    float z = V0.z * Weights.z + V1.z * Weights.x + V2.z * Weights.y;
 
     if (z > ZBuffer[Index]) 
     {
         ZBuffer[Index] = z;
+        return true;
+    }
+
+    return false;
+}
+
+bool FragmentShader::UpdateShadowBuffer(Vec3<float> V0, 
+                                        Vec3<float> V1, 
+                                        Vec3<float> V2, 
+                                        int ScreenX, 
+                                        int ScreenY, 
+                                        Vec3<float> Weights)
+{
+    int Index = ScreenY * 800 + ScreenX;
+    // TODO: Do the perspective correct interpolation here
+    float z = V0.z * Weights.z + V1.z * Weights.x + V2.z * Weights.y;
+
+    if (z > ShadowBuffer[Index]) 
+    {
+        ShadowBuffer[Index] = z;
         return true;
     }
 
@@ -335,6 +367,105 @@ Mat4x4<float> Shader::ConstructTBN(Vec3<float> V0_World,
     Result.SetColumn(2, Vec4<float>(Surface_Normal, 0.f));
     
     return Result;
+}
+
+void Shader::DrawShadow(Model& Model, 
+                        TGAImage& image, 
+                        Vec3<float> LightPos, 
+                        Vec3<float> LightDir, 
+                        float* ShadowBuffer)
+{
+    // Do first pass rendering to decide which part of the mesh is visible
+    Camera ShadowCamera;
+
+    ShadowCamera.Position = LightPos;
+    Mat4x4<float> View_Shadow = ShadowCamera.LookAt(LightDir);
+    Vec3<int>* IndexPtr = Model.Indices;
+    int TriangleRendered = 0;
+
+    while (TriangleRendered < Model.NumOfFaces)    
+    {
+        Vec4<float> V0_World_Augmented = VS.Model * Vec4<float>(Model.VertexBuffer[IndexPtr->x], 1.f);
+        Vec4<float> V1_World_Augmented = VS.Model * Vec4<float>(Model.VertexBuffer[(IndexPtr + 1)->x], 1.f);
+        Vec4<float> V2_World_Augmented = VS.Model * Vec4<float>(Model.VertexBuffer[(IndexPtr + 2)->x], 1.f);
+
+        Vec3<float> V0_World(V0_World_Augmented.x, V0_World_Augmented.y, V0_World_Augmented.z);
+        Vec3<float> V1_World(V1_World_Augmented.x, V1_World_Augmented.y, V1_World_Augmented.z);
+        Vec3<float> V2_World(V2_World_Augmented.x, V2_World_Augmented.y, V2_World_Augmented.z);
+
+        Vec3<float> V0V1 =  V1_World - V0_World;
+        Vec3<float> V0V2 =  V2_World - V0_World;        
+
+        Vec3<float> Surface_Normal = MathFunctionLibrary::Normalize(
+                MathFunctionLibrary::CrossProduct(V0V1, V0V2));
+
+        float ShadingCoef = MathFunctionLibrary::DotProduct_Vec3(Vec3<float>(0, 0, 1), Surface_Normal);
+        // ShadingCoef < 0 means that the triangle is facing away from the light, simply discard
+        if (ShadingCoef < 0.0f) 
+        {
+            TriangleRendered++;
+            IndexPtr += 3;
+            continue;
+        }
+
+        VS.Vertex_Shader(Model.VertexBuffer[IndexPtr->x],
+                         Model.VertexBuffer[(IndexPtr + 1)->x],
+                         Model.VertexBuffer[(IndexPtr + 2)->x], 
+                         this->Triangle);
+
+        Vec2<float> E1 = Triangle[1] - Triangle[0];
+        Vec2<float> E2 = Triangle[2] - Triangle[0];
+        float Denom = E1.x * E2.y - E2.x * E1.y;
+        if (Denom == 0) return;
+        
+        // TODO: Extract following snippet to a function float* BoundTriangle(Vec3<float>* t);
+        int Bottom = Triangle[0].y, Up = Triangle[0].y, Left = Triangle[0].x, Right = Triangle[0].x;
+
+        for (int i = 0; i < 3; i++)
+        {
+            if (Triangle[i].x < Left) Left = Triangle[i].x;
+            if (Triangle[i].x > Right) Right = Triangle[i].x;
+            if (Triangle[i].y < Bottom) Bottom = Triangle[i].y;
+            if (Triangle[i].y > Up) Up = Triangle[i].y;
+        }
+
+        if (Left > 799.f)   Left   = 799.f;
+        if (Right > 799.f)  Right  = 799.f;
+        if (Up > 799.f)     Up     = 799.f;
+        if (Bottom > 799.f) Bottom = 799.f;
+
+        for (int x = Left; x <= (int)Right; x++)
+        {
+            for (int y = Bottom; y <= (int)Up; y++)
+            {
+                Vec2<float> PA = Triangle[0] - Vec2<float>(x + .5f, y + .5f);
+
+                // TODO: Extract to a function Barycentric() 
+                float u = (-1 * PA.x * E2.y + PA.y * E2.x) / Denom;
+                float v = (-1 * PA.y * E1.x + PA.x * E1.y) / Denom;
+                float w = 1 - u - v;
+
+                Vec3<float> Weights(u, v, w);
+
+                // Point p is not inside of the triangle
+                if (u < 0.f || v < 0.f || w < 0.f)
+                    continue;
+
+                // Depth test to see if current pixel is visible 
+                if (this->FS.UpdateShadowBuffer(Model.VertexBuffer[IndexPtr->x],      
+                                                Model.VertexBuffer[(IndexPtr + 1)->x],
+                                                Model.VertexBuffer[(IndexPtr + 2)->x],
+                                                x, y, Weights))
+                {
+                    // Shade the fragment
+                    //FS.Shadow_Shader();
+                }
+            }
+        }
+
+        TriangleRendered++;
+        IndexPtr += 3;
+    }
 }
 
 void Shader::Draw(Model& Model, TGAImage& image, Camera& Camera, Shader_Mode ShadingMode)
@@ -393,12 +524,11 @@ void Shader::Draw(Model& Model, TGAImage& image, Camera& Camera, Shader_Mode Sha
                          Model.VertexBuffer[(IndexPtr + 2)->x],
                          this->Triangle);
 
-        Vec2<float> E1 = Triangle[1] - Triangle[0];
-        Vec2<float> E2 = Triangle[2] - Triangle[0];
-
         // Ignore triangles whose three vertices lie in the same line
         // in screen space
         // (V1.x - V0.x) * (V2.y - V0.y) == (V2.x - V0.x) * (V1.y - V0.y)
+        Vec2<float> E1 = Triangle[1] - Triangle[0];
+        Vec2<float> E2 = Triangle[2] - Triangle[0];
         float Denom = E1.x * E2.y - E2.x * E1.y;
         if (Denom == 0) return;
         

@@ -288,19 +288,20 @@ bool FragmentShader::UpdateDepthBuffer(Vec3<float> V0,
                                        Vec3<float> V2, 
                                        int ScreenX, 
                                        int ScreenY, 
-                                       Vec3<float> Weights)
+                                       Vec3<float> Weights,
+                                       float& FragmentDepth)
 {
     int Index = ScreenY * 800 + ScreenX;
     // TODO: Do the perspective correct interpolation here
-    float z = V0.z * Weights.z + V1.z * Weights.x + V2.z * Weights.y;
+    FragmentDepth = V0.z * Weights.z + V1.z * Weights.x + V2.z * Weights.y;
 
     // Note: Another caveat here with using clip space coordinates to do 
     //       depth test, since the z in clip space are all positive, because
     //       camera is looking at (0, 0, -1), this explains why using less than
     //       operator here
-    if (z < ZBuffer[Index]) 
+    if (FragmentDepth < ZBuffer[Index]) 
     {
-        ZBuffer[Index] = z;
+        ZBuffer[Index] = FragmentDepth;
         return true;
     }
 
@@ -552,7 +553,6 @@ void Shader::Draw(Model& Model, TGAImage& image, Camera& Camera, Shader_Mode Sha
                          this->Triangle,
                          this->Triangle_Clip);
 
-        // Ignore triangles whose three vertices lie in the same line
         // in screen space
         // (V1.x - V0.x) * (V2.y - V0.y) == (V2.x - V0.x) * (V1.y - V0.y)
         Vec2<float> E1 = Triangle[1] - Triangle[0];
@@ -606,13 +606,15 @@ void Shader::Draw(Model& Model, TGAImage& image, Camera& Camera, Shader_Mode Sha
                 if (u < 0.f || v < 0.f || w < 0.f)
                     continue;
 
+                float FragmentDepth = 0;
+
                 // Depth test to see if current pixel is visible 
                 if (this->FS.UpdateDepthBuffer(Triangle_Clip[0],
                                                Triangle_Clip[1],
                                                Triangle_Clip[2],
-                                               x, y, Weights))
+                                               x, y, Weights,
+                                               FragmentDepth))
                 {
-
                     switch (ShadingMode)
                     {
                         case Shader_Mode::Flat_Shader:
@@ -640,6 +642,28 @@ void Shader::Draw(Model& Model, TGAImage& image, Camera& Camera, Shader_Mode Sha
 
                         case Shader_Mode::Phong_Shader:
                         {
+                            Mat4x4<float> Render_MVP = VS.MVP; 
+                            VS.MVP = FS.Shadow_MVP;
+                            VS.Vertex_Shader(Model.VertexBuffer[IndexPtr->x],      
+                                             Model.VertexBuffer[(IndexPtr + 1)->x],
+                                             Model.VertexBuffer[(IndexPtr + 2)->x],
+                                             this->Triangle,
+                                             this->Triangle_Clip);
+
+                            VS.MVP = Render_MVP;
+
+                            // TODO: Hard code ImageWidth to 800 for now
+                            // Casting shadow
+                            // Have to figure out current fragment map to which fragment in the 
+                            // ShadowBuffer
+                            int ShadowBuffer_x = Weights.z * Triangle[0].x + Weights.x * Triangle[1].x + Weights.y * Triangle[2].x;
+                            int ShadowBuffer_y = Weights.z * Triangle[0].y + Weights.x * Triangle[1].y + Weights.y * Triangle[2].y;
+
+                            if (FragmentDepth > FS.ShadowBuffer[ShadowBuffer_y * 800 + ShadowBuffer_x])
+                            {
+                                image.set(x, y, TGAColor(0, 0, 0));
+                            }
+
                             // Interpolate normal and feed to fragment shader
                             Vec3<float> V0_Normal = Model.VertexNormalBuffer[IndexPtr->z];
                             Vec3<float> V1_Normal = Model.VertexNormalBuffer[(IndexPtr + 1)->z];

@@ -39,7 +39,8 @@ struct FragmentShader
                            Vec3<float> V2, 
                            int ScreenX, 
                            int ScreenY, 
-                           Vec3<float> Weights);
+                           Vec3<float> Weights,
+                           float& FragmentDepth);
 
     bool UpdateShadowBuffer(Vec3<float> V0, 
                             Vec3<float> V1, 

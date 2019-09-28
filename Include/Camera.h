@@ -20,6 +20,8 @@ struct Camera
         this->Right = Vec3<float>(1.f, 0.f, 0.f);
     }
 
+    // TODO: Set the translation to move camera in the world instead
+    //       of setting the position of camera
     Mat4x4<float> LookAt(Vec3<float> Direction)
     {
         Mat4x4<float> ModelView;
@@ -50,7 +52,7 @@ struct Camera
         ModelView.Mat[2][0] = Forward.x;
         ModelView.Mat[2][1] = Forward.y;
         ModelView.Mat[2][2] = Forward.z;
-
+        
         ModelView.Mat[3][3] = 1;
 
         Mat4x4<float> TransMatrix;
@@ -58,7 +60,7 @@ struct Camera
         TransMatrix.Mat[0][3] = -1 * this->Translation.x;
         TransMatrix.Mat[1][3] = -1 * this->Translation.y;
         TransMatrix.Mat[2][3] = -1 * this->Translation.z; 
-        
+       
         return ModelView * TransMatrix; 
     }
 };

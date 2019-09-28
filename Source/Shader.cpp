@@ -386,7 +386,8 @@ void Shader::DrawShadow(Model& Model,
 {
     // Do first pass rendering to decide which part of the mesh is visible
     Camera ShadowCamera;
-    ShadowCamera.Position = LightPos;
+    ShadowCamera.Translation = LightPos;
+
     // Need to negate the LightDir since LightDir reverted
     Mat4x4<float> View_Shadow = ShadowCamera.LookAt(LightDir * -1.f);
 
@@ -415,7 +416,7 @@ void Shader::DrawShadow(Model& Model,
         Vec3<float> Surface_Normal = MathFunctionLibrary::Normalize(
                 MathFunctionLibrary::CrossProduct(V0V1, V0V2));
 
-        float ShadingCoef = MathFunctionLibrary::DotProduct_Vec3(Vec3<float>(0, 0, 1), Surface_Normal);
+        float ShadingCoef = MathFunctionLibrary::DotProduct_Vec3(LightDir, Surface_Normal);
         // ShadingCoef < 0 means that the triangle is facing away from the light, simply discard
         if (ShadingCoef < 0.0f) 
         {
@@ -476,8 +477,8 @@ void Shader::DrawShadow(Model& Model,
                                                 Triangle_Clip[2],
                                                 x, y, Weights, FragmentDepth))
                 {
-                    // TODO: Using magic number 6.f here
-                    float Coef = 1.f + FragmentDepth / 6.f;
+                    // TODO: Using magic number 4.f here
+                    float Coef = (4.f - FragmentDepth) / 4.f;
 
                     // Shade the fragment
                     FS.Shadow_Shader(Vec2<int>(x, y), TGAColor(255 * Coef,

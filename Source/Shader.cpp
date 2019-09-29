@@ -411,8 +411,8 @@ void Shader::DrawShadow(Model& Model,
         Vec3<float> V1_World(V1_World_Augmented.x, V1_World_Augmented.y, V1_World_Augmented.z);
         Vec3<float> V2_World(V2_World_Augmented.x, V2_World_Augmented.y, V2_World_Augmented.z);
 
-        Vec3<float> V0V1 =  V1_World - V0_World;
-        Vec3<float> V0V2 =  V2_World - V0_World;        
+        Vec3<float> V0V1 = V1_World - V0_World;
+        Vec3<float> V0V2 = V2_World - V0_World;        
 
         Vec3<float> Surface_Normal = MathFunctionLibrary::Normalize(
                 MathFunctionLibrary::CrossProduct(V0V1, V0V2));
@@ -646,63 +646,6 @@ void Shader::Draw(Model& Model, TGAImage& image, Camera& Camera, Shader_Mode Sha
 
                         case Shader_Mode::Phong_Shader:
                         {
-                            // TODO: Hard code ImageWidth to 800 for now
-                            // Casting shadow
-                            // Have to figure out current fragment map to which fragment in the 
-                            // ShadowBuffer
-                            // TODO: clean this up 
-                            Vec4<float> Fragment_Clip;
-                            Vec4<float> V0_Clip = VS.MVP * Vec4<float>(V0_Model, 1.f);
-                            Vec4<float> V1_Clip = VS.MVP * Vec4<float>(V1_Model, 1.f);
-                            Vec4<float> V2_Clip = VS.MVP * Vec4<float>(V2_Model, 1.f);
-
-                            Fragment_Clip.x = Weights.z * V0_Clip.x + Weights.x * V1_Clip.x + Weights.y * V2_Clip.x;
-                            Fragment_Clip.y = Weights.z * V0_Clip.y + Weights.x * V1_Clip.y + Weights.y * V2_Clip.y;
-                            Fragment_Clip.z = Weights.z * V0_Clip.z + Weights.x * V1_Clip.z + Weights.y * V2_Clip.z;
-
-                            // TODO: this is potentially a hack, need to figure out a cleaner way to do this
-                            Fragment_Clip.w = VS.Projection.Mat[3][2] * Fragment_Clip.z + 1.f;
-                            
-                            // Matrix inverse debug
-                            Mat4x4<float> Test;
-                            Test.Mat[0][0] = 5;
-                            Test.Mat[0][1] = 6;
-                            Test.Mat[0][2] = 6;
-                            Test.Mat[0][3] = 8;
-
-                            Test.Mat[1][0] = 2;
-                            Test.Mat[1][1] = 2;
-                            Test.Mat[1][2] = 2;
-                            Test.Mat[1][3] = 8;
-
-                            Test.Mat[2][0] = 6;
-                            Test.Mat[2][1] = 6;
-                            Test.Mat[2][2] = 2;
-                            Test.Mat[2][3] = 8;
-
-                            Test.Mat[3][0] = 2;
-                            Test.Mat[3][1] = 3;
-                            Test.Mat[3][2] = 6;
-                            Test.Mat[3][3] = 7;
-                            // --------------------
-                            Vec4<float> Fragment_Model = VS.MVP.Inverse() * Fragment_Clip;
-                            Vec4<float> Fragment_Shadow = FS.Shadow_MVP * VS.MVP.Inverse() * Fragment_Clip;
-
-                            Fragment_Shadow.x = Fragment_Shadow.x / (Fragment_Shadow.w - 1.f);
-                            Fragment_Shadow.y = Fragment_Shadow.y / (Fragment_Shadow.w - 1.f);
-                            Fragment_Shadow.w = 1.f;
-                            Vec4<float> Fragment_ShadowScreen = VS.Viewport * Fragment_Shadow;
-                            
-                            if (Fragment_ShadowScreen.x > 799.f) Fragment_ShadowScreen.x = 799.f; 
-                            if (Fragment_ShadowScreen.y > 799.f) Fragment_ShadowScreen.y = 799.f; 
-
-                            int ShadowBuffer_x = Fragment_ShadowScreen.x;
-                            int ShadowBuffer_y = Fragment_ShadowScreen.y;
-                            if (FragmentDepth > FS.ShadowBuffer[ShadowBuffer_y * 800 + ShadowBuffer_x])
-                            {
-                                image.set(x, y, TGAColor(0, 0, 0));
-                            }
-
                             // Interpolate normal and feed to fragment shader
                             Vec3<float> V0_Normal = Model.VertexNormalBuffer[IndexPtr->z];
                             Vec3<float> V1_Normal = Model.VertexNormalBuffer[(IndexPtr + 1)->z];
@@ -749,6 +692,43 @@ void Shader::Draw(Model& Model, TGAImage& image, Camera& Camera, Shader_Mode Sha
 
                             // TODO: Need to swap out the hard-coded viewing direction later
                             FS.Phong_Shader(Vec2<int>(x, y), Normal, LightDir, MathFunctionLibrary::Normalize(Vec3<float>(1.f, .5f, 1.f)), image, Color, TGAColor(200, 200, 200));
+
+                            // TODO: Hard code ImageWidth to 800 for now
+                            // Casting shadow
+                            // Have to figure out current fragment map to which fragment in the 
+                            // ShadowBuffer
+                            // TODO: clean this up 
+                            Vec4<float> Fragment_Clip;
+                            Vec4<float> V0_Clip = VS.MVP * Vec4<float>(V0_Model, 1.f);
+                            Vec4<float> V1_Clip = VS.MVP * Vec4<float>(V1_Model, 1.f);
+                            Vec4<float> V2_Clip = VS.MVP * Vec4<float>(V2_Model, 1.f);
+
+                            Fragment_Clip.x = Weights.z * V0_Clip.x + Weights.x * V1_Clip.x + Weights.y * V2_Clip.x;
+                            Fragment_Clip.y = Weights.z * V0_Clip.y + Weights.x * V1_Clip.y + Weights.y * V2_Clip.y;
+                            Fragment_Clip.z = Weights.z * V0_Clip.z + Weights.x * V1_Clip.z + Weights.y * V2_Clip.z;
+
+                            // TODO: this is potentially a hack, need to figure out a cleaner way to do this
+                            Fragment_Clip.w = VS.Projection.Mat[3][2] * Fragment_Clip.z + 1.f;
+                            
+                            Vec4<float> Fragment_Model = VS.MVP.Inverse() * Fragment_Clip;
+                            Vec4<float> Fragment_Shadow = FS.Shadow_MVP * VS.MVP.Inverse() * Fragment_Clip;
+
+                            Fragment_Shadow.x = Fragment_Shadow.x / (Fragment_Shadow.w - 1.f);
+                            Fragment_Shadow.y = Fragment_Shadow.y / (Fragment_Shadow.w - 1.f);
+                            Fragment_Shadow.w = 1.f;
+                            Vec4<float> Fragment_ShadowScreen = VS.Viewport * Fragment_Shadow;
+                            
+                            if (Fragment_ShadowScreen.x > 799.f) Fragment_ShadowScreen.x = 799.f; 
+                            if (Fragment_ShadowScreen.y > 799.f) Fragment_ShadowScreen.y = 799.f; 
+
+                            int ShadowBuffer_x = Fragment_ShadowScreen.x;
+                            int ShadowBuffer_y = Fragment_ShadowScreen.y;
+
+                            image.set(ShadowBuffer_x, ShadowBuffer_y, TGAColor(100, 100, 100));
+                            if (Fragment_Shadow.z > FS.ShadowBuffer[ShadowBuffer_y * 800 + ShadowBuffer_x])
+                            {
+                                image.set(x, y, TGAColor(0, 0, 0));
+                            }
 
                             // --- Debug ---
                             //image.flip_vertically();

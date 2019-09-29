@@ -33,7 +33,6 @@ struct FragmentShader
     float* ZBuffer;
     float* ShadowBuffer;
     Mat4x4<float> Shadow_MVP;
-    Mat4x4<float> Shadow_Transform;
 
     bool UpdateDepthBuffer(Vec3<float> V0, 
                            Vec3<float> V1,
@@ -67,7 +66,8 @@ struct FragmentShader
                       Vec3<float> ViewDir,
                       TGAImage& image,
                       TGAColor MaterialColor,
-                      TGAColor Color);
+                      TGAColor Color,
+                      float ShadowCoef);
 
     void Fragment_Shader(Vec2<int> Fragment, 
                          Vec2<float> V0_UV,

@@ -174,7 +174,8 @@ void FragmentShader::Phong_Shader(Vec2<int> Fragment,
                                   Vec3<float> ViewDir,
                                   TGAImage& image,
                                   TGAColor MaterialColor,
-                                  TGAColor Color)
+                                  TGAColor Color,
+                                  float ShadowCoef)
 {
     // TODO: Update how material color is handled, when debugging, can set certain
     //       color component to 0 
@@ -198,9 +199,9 @@ void FragmentShader::Phong_Shader(Vec2<int> Fragment,
 
     TGAColor Phong_Color;
     for (int i = 0; i < 3; i++) 
-        Phong_Color[i] = std::min<float>(Ka * MaterialColor[i] + Color[i] * Kd * Diffuse_Coef + Color[i] * Ks * std::pow(Specular_Coef, 10), 255); 
+        Phong_Color[i] = std::min<float>(Ka * MaterialColor[i] + Color[i] * (Kd * Diffuse_Coef + Ks * std::pow(Specular_Coef, 10)), 255); 
 
-    image.set(Fragment.x, Fragment.y, Phong_Color);
+    image.set(Fragment.x, Fragment.y, Phong_Color * (1.f - ShadowCoef));
 }
 
 void FragmentShader::Fragment_Shader(Vec2<int> Fragment, 
@@ -448,6 +449,7 @@ void Shader::DrawShadow(Model& Model,
             if (Triangle[i].y > Up) Up = Triangle[i].y;
         }
 
+        // TODO: Clamp to (0, 799.f)
         if (Left > 799.f)   Left   = 799.f;
         if (Right > 799.f)  Right  = 799.f;
         if (Up > 799.f)     Up     = 799.f;
@@ -690,9 +692,6 @@ void Shader::Draw(Model& Model, TGAImage& image, Camera& Camera, Shader_Mode Sha
                                                               V1_UV, 
                                                               V2_UV);
 
-                            // TODO: Need to swap out the hard-coded viewing direction later
-                            FS.Phong_Shader(Vec2<int>(x, y), Normal, LightDir, MathFunctionLibrary::Normalize(Vec3<float>(1.f, .5f, 1.f)), image, Color, TGAColor(200, 200, 200));
-
                             // TODO: Hard code ImageWidth to 800 for now
                             // Casting shadow
                             // Have to figure out current fragment map to which fragment in the 
@@ -724,11 +723,12 @@ void Shader::Draw(Model& Model, TGAImage& image, Camera& Camera, Shader_Mode Sha
                             int ShadowBuffer_x = Fragment_ShadowScreen.x;
                             int ShadowBuffer_y = Fragment_ShadowScreen.y;
 
-                            image.set(ShadowBuffer_x, ShadowBuffer_y, TGAColor(100, 100, 100));
+                            float ShadowCoef = 0.1f; 
                             if (Fragment_Shadow.z > FS.ShadowBuffer[ShadowBuffer_y * 800 + ShadowBuffer_x])
-                            {
-                                image.set(x, y, TGAColor(0, 0, 0));
-                            }
+                                ShadowCoef += 0.6f;  
+
+                            // TODO: Need to swap out the hard-coded viewing direction later
+                            FS.Phong_Shader(Vec2<int>(x, y), Normal, LightDir, MathFunctionLibrary::Normalize(Vec3<float>(1.f, .5f, 1.f)), image, Color, TGAColor(200, 200, 200), ShadowCoef);
 
                             // --- Debug ---
                             //image.flip_vertically();

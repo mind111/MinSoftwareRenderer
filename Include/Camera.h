@@ -55,6 +55,7 @@ struct Camera
         
         ModelView.Mat[3][3] = 1;
 
+        // Camera always at the origin
         Mat4x4<float> TransMatrix;
         TransMatrix.Identity();
         TransMatrix.Mat[0][3] = -1 * this->Translation.x;

@@ -3,6 +3,60 @@
 
 #define M_PI 3.14159265
 
+// Using basic elementary row operations to derive inverse matrix
+Mat4x4<float> Mat4x4<float>::Inverse()
+{
+    Mat4x4<float> Res;
+    float Res_Augmented[4][8];
+
+    // Augment M with elementary matrix on the right
+    for (int i = 0; i < 4; i++)
+    {
+        for (int j = 0; j < 4; j++)
+            Res_Augmented[i][j] = this->Mat[i][j];
+
+        for (int j = 4; j < 8; j++)
+            Res_Augmented[i][j] = (float)(i == (j - 4));
+    }
+    
+    // First pass to elminate the bottom left half of the matrix to 0
+    for (int i = 0; i < 4; i++)
+    {
+        // Normalize diagnal entry on current row to 1
+        for (int j = 7; j >= 0; j--)
+           Res_Augmented[i][j] /= Res_Augmented[i][i]; 
+
+        // Use the normalized row to eliminate Res[Row][0] to 0
+        for (int Row = i + 1; Row < 4; Row++)
+        {
+            float Coef = Res_Augmented[Row][i];
+            for (int Col = 0; Col < 8; Col++)
+                Res_Augmented[Row][Col] -= Coef * Res_Augmented[i][Col];
+        }
+    }
+
+    // Second pass to elminate the Upper Right half of the matrix to 0
+    for (int i = 3; i >= 0; i--)
+    {
+        // Use the normalized row to eliminate Res[Row][0] to 0
+        for (int Row = i - 1; Row >= 0; Row--)
+        {
+            float Coef = Res_Augmented[Row][i];
+            for (int Col = Row; Col < 8; Col++)
+                Res_Augmented[Row][Col] -= Coef * Res_Augmented[i][Col];
+        }
+    }
+
+    // Get the right half of the augmented M
+    for (int i = 0; i < 4; i++)
+    {
+        for (int j = 4; j < 8; j++) 
+            Res.Mat[i][j - 4] = Res_Augmented[i][j];
+    }
+
+    return Res;
+}
+
 void Mat4x4<float>::SetRow(int RowIndex, Vec4<float> v)
 {
     Mat[RowIndex][0] = v.x;

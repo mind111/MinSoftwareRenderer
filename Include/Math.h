@@ -284,7 +284,7 @@ struct Mat4x4
     void SetColumn(int ColIndex, Vec4<T> v);
     void SetTranslation(Vec3<float> v);
     void SetRotation(Vec3<float> r);
-    void Inverse();
+    Mat4x4<float> Inverse();
     void Identity()
     {
         this->Mat[0][0] = 1;
@@ -300,6 +300,8 @@ struct Mat4x4
      */
     void Print();
     static Mat4x4<float> ViewPort(float VP_Width, float VP_Height);
+
+    // Projection matrix should operate on camera frame
     static Mat4x4<float> Perspective(float AspectRatio, float Near, float Far, float FOV);
 };
 

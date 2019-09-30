@@ -119,6 +119,7 @@ struct Shader
                                Vec2<float> V2_UV,
                                Vec3<float> Surface_Normal);
 
+    void BackfaceCulling();
     void DrawShadow(Model& Model, TGAImage& image, Vec3<float> LightPos, Vec3<float> LightDir, float* ShadowBuffer);
     void Draw(Model& Model, TGAImage& image, struct Camera& Camera, Shader_Mode ShadingMode);
 };

@@ -168,6 +168,7 @@ float Toon_PostProcess(float* Toon_Value, int ValueCount, float Value)
 }
 
 // @Param: Color defines light color for now
+// @Param: Using directional_light for now thus no need for FragmentPos in world
 void FragmentShader::Phong_Shader(Vec2<int> Fragment, 
                                   Vec3<float> n,
                                   Vec3<float> LightDir,
@@ -269,9 +270,7 @@ Vec3<float> FragmentShader::NormalMapping_TangentSpace(TGAImage* NormalMap_Tange
                                                        Vec2<float> V2_UV)
 {
     Vec3<float> Normal_TangentSpace = this->NormalMapping(NormalMap_TangentSpace, Weights, V0_UV, V1_UV, V2_UV);
-
-    // TODO: directly use Model matrix to transform the normal may alter the direction of the normal unexpectedly
-    Vec4<float> Normal_WorldSpace = TBN * Model * Vec4<float>(Normal_TangentSpace, 0.f);
+    Vec4<float> Normal_WorldSpace = TBN * Vec4<float>(Normal_TangentSpace, 0.f);
     Vec3<float> Result(Normal_WorldSpace.x, Normal_WorldSpace.y, Normal_WorldSpace.z);
     return MathFunctionLibrary::Normalize(Result);
 }
@@ -380,6 +379,11 @@ Mat4x4<float> Shader::ConstructTBN(Vec3<float> V0_World,
     Result.SetColumn(2, Vec4<float>(Surface_Normal, 0.f));
     
     return Result;
+}
+
+void Shader::BackfaceCulling()
+{
+
 }
 
 void Shader::DrawShadow(Model& Model, 
@@ -513,6 +517,8 @@ void Shader::Draw(Model& Model, TGAImage& image, Camera& Camera, Shader_Mode Sha
         Vec3<float> V1_Model = Model.VertexBuffer[(IndexPtr + 1)->x];
         Vec3<float> V2_Model = Model.VertexBuffer[(IndexPtr + 2)->x];
 
+        // TODO: Lighting related calculations are done in world space, so we need vertex information in 
+        //       world space at each frame to derive the vertex normal, but this part still need to be cleaned up
         // Use vertex position in world to calculate surface normal and do backface culling
         Vec4<float> V0_World_Augmented = VS.Model * Vec4<float>(Model.VertexBuffer[IndexPtr->x], 1.f);
         Vec4<float> V1_World_Augmented = VS.Model * Vec4<float>(Model.VertexBuffer[(IndexPtr + 1)->x], 1.f);
@@ -522,8 +528,18 @@ void Shader::Draw(Model& Model, TGAImage& image, Camera& Camera, Shader_Mode Sha
         Vec3<float> V1_World(V1_World_Augmented.x, V1_World_Augmented.y, V1_World_Augmented.z);
         Vec3<float> V2_World(V2_World_Augmented.x, V2_World_Augmented.y, V2_World_Augmented.z);
 
+        VS.Vertex_Shader(Model.VertexBuffer[IndexPtr->x],      
+                         Model.VertexBuffer[(IndexPtr + 1)->x],
+                         Model.VertexBuffer[(IndexPtr + 2)->x],
+                         this->Triangle,
+                         this->Triangle_Clip);
+
+        // TODO: Backface culling should be done view space
+        BackfaceCulling();
+
+        // TODO: backface culling should use camera space coordinates or clip space
         Vec3<float> V0V1 =  V1_World - V0_World;
-        Vec3<float> V0V2 =  V2_World - V0_World;        
+        Vec3<float> V0V2 =  V2_World - V0_World;
 
         // Calculate diffuse coef at each vertex here
         Diffuse_Coefs[0] = MathFunctionLibrary::DotProduct_Vec3(
@@ -550,14 +566,6 @@ void Shader::Draw(Model& Model, TGAImage& image, Camera& Camera, Shader_Mode Sha
             IndexPtr += 3;
             continue;
         }
-        
-        if (ShadingCoef > 1.0f) ShadingCoef = 1.0f;
-
-        VS.Vertex_Shader(Model.VertexBuffer[IndexPtr->x],      
-                         Model.VertexBuffer[(IndexPtr + 1)->x],
-                         Model.VertexBuffer[(IndexPtr + 2)->x],
-                         this->Triangle,
-                         this->Triangle_Clip);
 
         // in screen space
         // (V1.x - V0.x) * (V2.y - V0.y) == (V2.x - V0.x) * (V1.y - V0.y)
@@ -664,14 +672,7 @@ void Shader::Draw(Model& Model, TGAImage& image, Camera& Camera, Shader_Mode Sha
                             // flat surface normal for smoothing out the 
                             // edges between shaded triangles
                             TBN.SetColumn(2, Vec4<float>(n, 0.f));
-/*
-                            Vec3<float> Normal = FS.NormalMapping(Model.NormalTexture,
-                                                                  Weights,
-                                                                  V0_UV,
-                                                                  V1_UV, 
-                                                                  V2_UV);
-                                                                  
-*/
+
                             // TODO: Average the tangent at each vertex  
                            
 

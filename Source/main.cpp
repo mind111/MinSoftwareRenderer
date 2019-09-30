@@ -15,7 +15,7 @@ const TGAColor white = TGAColor(255, 255, 255, 255);
 const TGAColor red = TGAColor(255, 0, 0, 255);
 Vec3<float> LightPos(3.0f, 0.5f, -2.0f);
 Vec3<float> LightColor(0.7f, 0.7f, 0.7f);
-Vec3<float> LightDir(1.f, 0, 0.f);
+Vec3<float> LightDir(1.f, 0, 0.f); // @Simple directional_light
 Vec3<float> CameraPos(0, 0, 1);
 
 /// \Note More optimized version of DrawLine, Inspired by GitHub ssloy/tinyrenderer

@@ -692,25 +692,16 @@ void Shader::Draw(Model& Model, TGAImage& image, Camera& Camera, Shader_Mode Sha
                                                               V1_UV, 
                                                               V2_UV);
 
-                            // TODO: Hard code ImageWidth to 800 for now
                             // Casting shadow
-                            // Have to figure out current fragment map to which fragment in the 
                             // ShadowBuffer
                             // TODO: clean this up 
-                            Vec4<float> Fragment_Clip;
-                            Vec4<float> V0_Clip = VS.MVP * Vec4<float>(V0_Model, 1.f);
-                            Vec4<float> V1_Clip = VS.MVP * Vec4<float>(V1_Model, 1.f);
-                            Vec4<float> V2_Clip = VS.MVP * Vec4<float>(V2_Model, 1.f);
+                            Vec4<float> Fragment_Model;
+                            Fragment_Model.x = Weights.z * V0_Model.x + Weights.x * V1_Model.x + Weights.y * V2_Model.x;
+                            Fragment_Model.y = Weights.z * V0_Model.y + Weights.x * V1_Model.y + Weights.y * V2_Model.y;
+                            Fragment_Model.z = Weights.z * V0_Model.z + Weights.x * V1_Model.z + Weights.y * V2_Model.z;
+                            Fragment_Model.w = 1.f;
 
-                            Fragment_Clip.x = Weights.z * V0_Clip.x + Weights.x * V1_Clip.x + Weights.y * V2_Clip.x;
-                            Fragment_Clip.y = Weights.z * V0_Clip.y + Weights.x * V1_Clip.y + Weights.y * V2_Clip.y;
-                            Fragment_Clip.z = Weights.z * V0_Clip.z + Weights.x * V1_Clip.z + Weights.y * V2_Clip.z;
-
-                            // TODO: this is potentially a hack, need to figure out a cleaner way to do this
-                            Fragment_Clip.w = VS.Projection.Mat[3][2] * Fragment_Clip.z + 1.f;
-                            
-                            Vec4<float> Fragment_Model = VS.MVP.Inverse() * Fragment_Clip;
-                            Vec4<float> Fragment_Shadow = FS.Shadow_MVP * VS.MVP.Inverse() * Fragment_Clip;
+                            Vec4<float> Fragment_Shadow = FS.Shadow_MVP * Fragment_Model;
 
                             Fragment_Shadow.x = Fragment_Shadow.x / (Fragment_Shadow.w - 1.f);
                             Fragment_Shadow.y = Fragment_Shadow.y / (Fragment_Shadow.w - 1.f);
@@ -724,7 +715,9 @@ void Shader::Draw(Model& Model, TGAImage& image, Camera& Camera, Shader_Mode Sha
                             int ShadowBuffer_y = Fragment_ShadowScreen.y;
 
                             float ShadowCoef = 0.1f; 
-                            if (Fragment_Shadow.z > FS.ShadowBuffer[ShadowBuffer_y * 800 + ShadowBuffer_x])
+
+                            // TODO: Using magic number -0.13f here to work around z-fighting for now
+                            if (Fragment_Shadow.z - 0.13f > FS.ShadowBuffer[ShadowBuffer_y * 800 + ShadowBuffer_x])
                                 ShadowCoef += 0.6f;  
 
                             // TODO: Need to swap out the hard-coded viewing direction later

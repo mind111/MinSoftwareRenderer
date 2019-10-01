@@ -85,6 +85,13 @@ void Mat4x4<float>::SetRotation(Vec3<float> r)
 
 }
 
+void Vec3<float>::Print()
+{
+    std::cout << "[ " << this->x << " "
+                      << this->y << " "
+                      << this->z << " ]" << std::endl;
+}
+
 void Vec4<float>::Print()
 {
     std::cout << "[ " << this->x << " "
@@ -152,6 +159,43 @@ Mat4x4<float> Mat4x4<float>::ViewPort(float VP_Width, float VP_Height)
    Res.Mat[1][3] = .5f * VP_Height;
 
    return Res;
+}
+
+float MathFunctionLibrary::clamp_f(float x, float min, float max)
+{
+    if (x < min) return min;
+    if (x > max) return max;
+    return x;
+}
+
+void MathFunctionLibrary::bound_triangle(Vec2<float>* vertices, float* bounds)
+{
+    for (int i = 0; i < 3; i++)
+    {
+        if (vertices[i].x < bounds[0]) bounds[0] = vertices[i].x;
+        if (vertices[i].x > bounds[1]) bounds[1] = vertices[i].x;
+        if (vertices[i].y < bounds[2]) bounds[2] = vertices[i].y;
+        if (vertices[i].y > bounds[3]) bounds[3] = vertices[i].y;
+    }
+
+    for (int i = 0; i < 3; i++)
+        MathFunctionLibrary::clamp_f(bounds[i], 0.f, 799.f);
+}
+
+// TODO: Fix this so that it samples uniformly from the surface
+//       of a hemi-sphere
+Vec3<float> MathFunctionLibrary::SampleAmbientDirection()
+{
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_real_distribution<float> distribution(-1.f, 1.f);
+    float x = 1.f, y = 1.f, z = 1.f;
+
+    x = distribution(gen);
+    y = distribution(gen);
+    z = distribution(gen);
+
+    return MathFunctionLibrary::Normalize(Vec3<float>(x, y, z));
 }
 
 template <class T>

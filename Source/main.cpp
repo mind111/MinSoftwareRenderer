@@ -84,7 +84,6 @@ int main(int argc, char* argv[]) {
     char NormalPath[64] = { "../Graphx/Assets/Textures/african_head_nm_tangent.tga" };
     char NormalPath_Diablo[64] = { "../Graphx/Assets/Textures/diablo3_pose_nm_tangent.tga" };
 
-    
     // Model
     Mat4x4<float> ModelToWorld;
     ModelToWorld.Identity();
@@ -116,6 +115,7 @@ int main(int argc, char* argv[]) {
 
         float* ZBuffer = new float[ImageWidth * ImageHeight];
         float* ShadowBuffer = new float[ImageWidth * ImageHeight];
+
         for (int i = 0; i < ImageSize; i++) ZBuffer[i] = 100.0f;
         for (int i = 0; i < ImageSize; i++) ShadowBuffer[i] = 100.0f;
 

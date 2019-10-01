@@ -32,6 +32,8 @@ struct FragmentShader
 {
     float* ZBuffer;
     float* ShadowBuffer;
+    float* AmbientBuffer;
+
     Mat4x4<float> Shadow_MVP;
 
     bool UpdateDepthBuffer(Vec3<float> V0, 
@@ -49,6 +51,11 @@ struct FragmentShader
                             int ScreenY, 
                             Vec3<float> Weights,
                             float& FragmentDepth);
+
+    bool IsInShadow(Vec4<float> Fragment_Model, 
+                    Mat4x4<float>& Transform, 
+                    Mat4x4<float>& Viewport,
+                    float* DepthBuffer);
 
     void Gouraud_Shader(Vec2<int> Fragment,
                         float Diffuse_Coef,
@@ -120,6 +127,8 @@ struct Shader
                                Vec3<float> Surface_Normal);
 
     void BackfaceCulling();
+    void AmbientOcclusion(Model& Model, TGAImage& OcclusionImage, Vec3<float> AmbientLightPos, Vec3<float> AmbientLightDirection, float* AmbientDepthBuffer);
+    void DrawOcclusion(Model& Model);
     void DrawShadow(Model& Model, TGAImage& image, Vec3<float> LightPos, Vec3<float> LightDir, float* ShadowBuffer);
     void Draw(Model& Model, TGAImage& image, struct Camera& Camera, Shader_Mode ShadingMode);
 };

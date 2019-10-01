@@ -152,6 +152,8 @@ struct Vec3
         *this = Another;
         Another = Holder;
     }
+
+    void Print();
 };
 
 template <class T>
@@ -308,6 +310,9 @@ struct Mat4x4
 class MathFunctionLibrary
 {
 public:
+    static float clamp_f(float x, float min, float max);
+    static void bound_triangle(Vec2<float>* vertices, float* bounds);
+    static Vec3<float> SampleAmbientDirection();
     static Vec3<float> CrossProduct(const Vec3<float>& V0, const Vec3<float>& V1);
     static Vec3<float> Normalize(const Vec3<float>& v);
     template <class T>

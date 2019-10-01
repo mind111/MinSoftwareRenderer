@@ -1,3 +1,4 @@
+#include <random>
 #include "../Include/Shader.h"
 #include "../Include/Camera.h"
 
@@ -386,6 +387,32 @@ void Shader::BackfaceCulling()
 
 }
 
+bool FragmentShader::IsInShadow(Vec4<float> Fragment_Model, 
+                                Mat4x4<float>& Transform, 
+                                Mat4x4<float>& Viewport,
+                                float* DepthBuffer)
+{
+    Vec4<float> Fragment_Shadow = Transform * Fragment_Model;
+    Fragment_Shadow.x = Fragment_Shadow.x / (Fragment_Shadow.w - 1.f);
+    Fragment_Shadow.y = Fragment_Shadow.y / (Fragment_Shadow.w - 1.f);
+    Fragment_Shadow.w = 1.f;
+    Vec4<float> Fragment_ShadowScreen = Viewport * Fragment_Shadow;
+    
+    if (Fragment_ShadowScreen.x > 799.f) Fragment_ShadowScreen.x = 799.f; 
+    if (Fragment_ShadowScreen.y > 799.f) Fragment_ShadowScreen.y = 799.f; 
+
+    int ShadowBuffer_x = Fragment_ShadowScreen.x;
+    int ShadowBuffer_y = Fragment_ShadowScreen.y;
+
+    float ShadowCoef = 0.1f; 
+
+    // TODO: Using magic number -0.13f here to work around z-fighting for now
+    if (Fragment_Shadow.z - 0.13f > DepthBuffer[ShadowBuffer_y * 800 + ShadowBuffer_x])
+        return true;
+
+    return false;
+}
+
 void Shader::DrawShadow(Model& Model, 
                         TGAImage& image, 
                         Vec3<float> LightPos, 
@@ -442,26 +469,18 @@ void Shader::DrawShadow(Model& Model,
         float Denom = E1.x * E2.y - E2.x * E1.y;
         if (Denom == 0) return;
         
-        // TODO: Extract following snippet to a function float* BoundTriangle(Vec3<float>* t);
-        int Bottom = Triangle[0].y, Up = Triangle[0].y, Left = Triangle[0].x, Right = Triangle[0].x;
+        float bounds[4] = {
+            Triangle[0].x, // Left
+            Triangle[0].x, // Right
+            Triangle[0].y, // Bottom
+            Triangle[0].y  // Up
+        };
 
-        for (int i = 0; i < 3; i++)
+        MathFunctionLibrary::bound_triangle(Triangle, bounds);
+
+        for (int x = bounds[0]; x <= (int)bounds[1]; x++)
         {
-            if (Triangle[i].x < Left) Left = Triangle[i].x;
-            if (Triangle[i].x > Right) Right = Triangle[i].x;
-            if (Triangle[i].y < Bottom) Bottom = Triangle[i].y;
-            if (Triangle[i].y > Up) Up = Triangle[i].y;
-        }
-
-        // TODO: Clamp to (0, 799.f)
-        if (Left > 799.f)   Left   = 799.f;
-        if (Right > 799.f)  Right  = 799.f;
-        if (Up > 799.f)     Up     = 799.f;
-        if (Bottom > 799.f) Bottom = 799.f;
-
-        for (int x = Left; x <= (int)Right; x++)
-        {
-            for (int y = Bottom; y <= (int)Up; y++)
+            for (int y = bounds[2]; y <= (int)bounds[3]; y++)
             {
                 Vec2<float> PA = Triangle[0] - Vec2<float>(x + .5f, y + .5f);
 
@@ -510,6 +529,11 @@ void Shader::Draw(Model& Model, TGAImage& image, Camera& Camera, Shader_Mode Sha
     Vec3<int>* IndexPtr = Model.Indices;
     int TriangleRendered = 0;
     float Diffuse_Coefs[3];
+    int OcclusionSampled = 0;
+
+    float* AmbientDepthBuffer = new float[800 * 800];
+    for (int i = 0; i < 800 * 800; i++) AmbientDepthBuffer[i] = 100.0f;
+    TGAImage OcclusionImage(1024, 1024, TGAImage::RGB);
 
     while (TriangleRendered < Model.NumOfFaces)    
     {
@@ -585,25 +609,18 @@ void Shader::Draw(Model& Model, TGAImage& image, Camera& Camera, Shader_Mode Sha
         // Construct the TBN matrix for later normal mapping
         Mat4x4<float> TBN = ConstructTBN(V0_World, V1_World, V2_World, V0_UV, V1_UV, V2_UV, Surface_Normal);
 
-        // Calculate the bounding box for the triangle
-        int Bottom = Triangle[0].y, Up = Triangle[0].y, Left = Triangle[0].x, Right = Triangle[0].x;
+        float bounds[4] = {
+            Triangle[0].x, // Left
+            Triangle[0].x, // Right
+            Triangle[0].y, // Bottom
+            Triangle[0].y  // Up
+        };
 
-        for (int i = 0; i < 3; i++)
+        MathFunctionLibrary::bound_triangle(Triangle, bounds);
+
+        for (int x = bounds[0]; x <= (int)bounds[1]; x++)
         {
-            if (Triangle[i].x < Left) Left = Triangle[i].x;
-            if (Triangle[i].x > Right) Right = Triangle[i].x;
-            if (Triangle[i].y < Bottom) Bottom = Triangle[i].y;
-            if (Triangle[i].y > Up) Up = Triangle[i].y;
-        }
-
-        if (Left > 799.f)   Left   = 799.f;
-        if (Right > 799.f)  Right  = 799.f;
-        if (Up > 799.f)     Up     = 799.f;
-        if (Bottom > 799.f) Bottom = 799.f;
-
-        for (int x = Left; x <= (int)Right; x++)
-        {
-            for (int y = Bottom; y <= (int)Up; y++)
+            for (int y = bounds[2]; y <= (int)bounds[3]; y++)
             {
                 /// \Note: Cramer's rule to solve for barycentric coordinates,
                 ///       can also use ratio of area between three sub-triangles to solve
@@ -693,8 +710,6 @@ void Shader::Draw(Model& Model, TGAImage& image, Camera& Camera, Shader_Mode Sha
                                                               V1_UV, 
                                                               V2_UV);
 
-                            // Casting shadow
-                            // ShadowBuffer
                             // TODO: clean this up 
                             Vec4<float> Fragment_Model;
                             Fragment_Model.x = Weights.z * V0_Model.x + Weights.x * V1_Model.x + Weights.y * V2_Model.x;
@@ -702,24 +717,34 @@ void Shader::Draw(Model& Model, TGAImage& image, Camera& Camera, Shader_Mode Sha
                             Fragment_Model.z = Weights.z * V0_Model.z + Weights.x * V1_Model.z + Weights.y * V2_Model.z;
                             Fragment_Model.w = 1.f;
 
-                            Vec4<float> Fragment_Shadow = FS.Shadow_MVP * Fragment_Model;
+                            Vec4<float> Fragment_World = VS.Model * Fragment_Model;
 
-                            Fragment_Shadow.x = Fragment_Shadow.x / (Fragment_Shadow.w - 1.f);
-                            Fragment_Shadow.y = Fragment_Shadow.y / (Fragment_Shadow.w - 1.f);
-                            Fragment_Shadow.w = 1.f;
-                            Vec4<float> Fragment_ShadowScreen = VS.Viewport * Fragment_Shadow;
+                            // -- Ambient Occlusion ----
+                            {
+                                if (OcclusionSampled < 1)
+                                {
+                                    // Generating samples
+                                    // TODO: Fix the way to uniformly sample from a hemi-sphere
+                                    for (int Sample = 0; Sample < 1; Sample++)
+                                    {
+                                        // TODO: Need to figure out how to move camera back so that the object does not overlap
+                                        //       with the near image plane, using magic number 3.f for now
+                                        //       the scene overlapping with the image plane causing some fragment go out of bound in
+                                        //       screen space
+                                        Vec3<float> AmbientDirection = MathFunctionLibrary::SampleAmbientDirection();
+                                        Vec3<float> AmbientPos = AmbientDirection * 3.f + Vec3<float>(Fragment_World.x, Fragment_World.y, Fragment_World.z);
+
+                                        AmbientOcclusion(Model, OcclusionImage, AmbientPos, AmbientDirection, AmbientDepthBuffer);
+                                        // Determine if current fragment is occluded from sampled direction
+                                    }
+
+                                    OcclusionSampled++;
+                                }
+                            }
+                            // -------------------------
                             
-                            if (Fragment_ShadowScreen.x > 799.f) Fragment_ShadowScreen.x = 799.f; 
-                            if (Fragment_ShadowScreen.y > 799.f) Fragment_ShadowScreen.y = 799.f; 
-
-                            int ShadowBuffer_x = Fragment_ShadowScreen.x;
-                            int ShadowBuffer_y = Fragment_ShadowScreen.y;
-
-                            float ShadowCoef = 0.1f; 
-
-                            // TODO: Using magic number -0.13f here to work around z-fighting for now
-                            if (Fragment_Shadow.z - 0.13f > FS.ShadowBuffer[ShadowBuffer_y * 800 + ShadowBuffer_x])
-                                ShadowCoef += 0.6f;  
+                            // Shadow mapping
+                            float ShadowCoef = FS.IsInShadow(Fragment_Model, FS.Shadow_MVP, VS.Viewport, FS.ShadowBuffer) ? 0.6f : 0.f;
 
                             // TODO: Need to swap out the hard-coded viewing direction later
                             FS.Phong_Shader(Vec2<int>(x, y), Normal, LightDir, MathFunctionLibrary::Normalize(Vec3<float>(1.f, .5f, 1.f)), image, Color, TGAColor(200, 200, 200), ShadowCoef);
@@ -735,11 +760,220 @@ void Shader::Draw(Model& Model, TGAImage& image, Camera& Camera, Shader_Mode Sha
                         case Shader_Mode::Toon_Shader:
                         {
                             break;
-                        }
+                       }
 
                         default:
                             break;
                     }
+                }
+            }
+        }
+
+        IndexPtr += 3;    
+        TriangleRendered++;
+    }
+}
+
+
+bool UpdateDepthBuffer(Vec3<float> V0, 
+                       Vec3<float> V1, 
+                       Vec3<float> V2, 
+                       int ScreenX, 
+                       int ScreenY, 
+                       Vec3<float> Weights,
+                       float& FragmentDepth,
+                       float* DepthBuffer)
+{
+    int Index = ScreenY * 800 + ScreenX;
+    // TODO: Do the perspective correct interpolation here
+    FragmentDepth = V0.z * Weights.z + V1.z * Weights.x + V2.z * Weights.y;
+
+    if (FragmentDepth < DepthBuffer[Index]) 
+    {
+        DepthBuffer[Index] = FragmentDepth;
+        return true;
+    }
+
+    return false;
+}
+
+void Shader::AmbientOcclusion(Model& Model, TGAImage& OcclusionImage, Vec3<float> AmbientLightPos, Vec3<float> AmbientLightDirection, float* AmbientDepthBuffer)
+{
+    // Do first pass rendering to decide which part of the mesh is visible
+    Camera AmbientCamera;
+    AmbientCamera.Translation = AmbientLightPos;
+    // Need to negate the LightDir since LightDir reverted
+    Mat4x4<float> View_Ambient = AmbientCamera.LookAt(AmbientLightDirection * -1.f);
+    // Cache the old MVP
+    Mat4x4<float> Render_MVP = VS.MVP; 
+    // same model, projection, viewport, but different view matrix
+    VS.MVP = VS.Projection * View_Ambient * VS.Model;
+
+    Vec3<int>* IndexPtr = Model.Indices;
+    int TriangleRendered = 0;
+
+    while (TriangleRendered < Model.NumOfFaces)    
+    {
+        Vec4<float> V0_World_Augmented = VS.Model * Vec4<float>(Model.VertexBuffer[IndexPtr->x], 1.f);
+        Vec4<float> V1_World_Augmented = VS.Model * Vec4<float>(Model.VertexBuffer[(IndexPtr + 1)->x], 1.f);
+        Vec4<float> V2_World_Augmented = VS.Model * Vec4<float>(Model.VertexBuffer[(IndexPtr + 2)->x], 1.f);
+
+        Vec3<float> V0_World(V0_World_Augmented.x, V0_World_Augmented.y, V0_World_Augmented.z);
+        Vec3<float> V1_World(V1_World_Augmented.x, V1_World_Augmented.y, V1_World_Augmented.z);
+        Vec3<float> V2_World(V2_World_Augmented.x, V2_World_Augmented.y, V2_World_Augmented.z);
+
+        Vec3<float> V0V1 = V1_World - V0_World;
+        Vec3<float> V0V2 = V2_World - V0_World;        
+
+        Vec3<float> Surface_Normal = MathFunctionLibrary::Normalize(
+                MathFunctionLibrary::CrossProduct(V0V1, V0V2));
+
+        float ShadingCoef = MathFunctionLibrary::DotProduct_Vec3(AmbientLightDirection, Surface_Normal);
+        // ShadingCoef < 0 means that the triangle is facing away from the light, simply discard
+        if (ShadingCoef < 0.0f) 
+        {
+            TriangleRendered++;
+            IndexPtr += 3;
+            continue;
+        }
+
+        VS.Vertex_Shader(Model.VertexBuffer[IndexPtr->x],
+                         Model.VertexBuffer[(IndexPtr + 1)->x],
+                         Model.VertexBuffer[(IndexPtr + 2)->x], 
+                         this->Triangle,
+                         this->Triangle_Clip);
+
+        Vec2<float> E1 = Triangle[1] - Triangle[0];
+        Vec2<float> E2 = Triangle[2] - Triangle[0];
+        float Denom = E1.x * E2.y - E2.x * E1.y;
+        if (Denom == 0) return;
+        
+        float bounds[4] = {
+            Triangle[0].x, // Left
+            Triangle[0].x, // Right
+            Triangle[0].y, // Bottom
+            Triangle[0].y  // Up
+        };
+
+        MathFunctionLibrary::bound_triangle(Triangle, bounds);
+
+        for (int x = bounds[0]; x <= (int)bounds[1]; x++)
+        {
+            for (int y = bounds[2]; y <= (int)bounds[3]; y++)
+            {
+                Vec2<float> PA = Triangle[0] - Vec2<float>(x + .5f, y + .5f);
+
+                // TODO: Extract to a function Barycentric() 
+                float u = (-1 * PA.x * E2.y + PA.y * E2.x) / Denom;
+                float v = (-1 * PA.y * E1.x + PA.x * E1.y) / Denom;
+                float w = 1 - u - v;
+
+                Vec3<float> Weights(u, v, w);
+
+                // Point p is not inside of the triangle
+                if (u < 0.f || v < 0.f || w < 0.f)
+                    continue;
+
+                float FragmentDepth = 0;
+                
+                // Depth test to see if current pixel is visible 
+                if (UpdateDepthBuffer(Triangle_Clip[0],      
+                                      Triangle_Clip[1],
+                                      Triangle_Clip[2],
+                                      x, y, Weights, FragmentDepth, 
+                                      AmbientDepthBuffer))
+                {
+                    // TODO: Using magic number 4.f here
+                    float Coef = (4.f - FragmentDepth) / 4.f;
+
+                    // Shade the fragment
+                    FS.Shadow_Shader(Vec2<int>(x, y), TGAColor(255 * Coef,
+                                                               255 * Coef,
+                                                               255 * Coef), OcclusionImage);
+                }
+            }
+        }
+
+        TriangleRendered++;
+        IndexPtr += 3;
+    }
+
+    OcclusionImage.flip_vertically();
+    OcclusionImage.write_tga_file("occlusion.tga");
+    VS.MVP = Render_MVP;
+}
+
+// Generate the occlusion texture
+void Shader::DrawOcclusion(Model& Model)
+{
+    Vec3<int>* IndexPtr = Model.Indices;
+    int TriangleRendered = 0;
+    int num_of_samples = 1;
+    TGAImage occlusion_texture(1024, 1024, TGAImage::RGB);
+
+    float* AmbientDepthBuffer = new float[800 * 800];
+    for (int i = 0; i < 800 * 800; i++) AmbientDepthBuffer[i] = 100.0f;
+    TGAImage OcclusionImage(1024, 1024, TGAImage::RGB);
+
+    while (TriangleRendered < Model.NumOfFaces)    
+    {
+        VS.Vertex_Shader(Model.VertexBuffer[IndexPtr->x],      
+                         Model.VertexBuffer[(IndexPtr + 1)->x],
+                         Model.VertexBuffer[(IndexPtr + 2)->x],
+                         this->Triangle,
+                         this->Triangle_Clip);
+
+        // in screen space
+        // (V1.x - V0.x) * (V2.y - V0.y) == (V2.x - V0.x) * (V1.y - V0.y)
+        Vec2<float> E1 = Triangle[1] - Triangle[0];
+        Vec2<float> E2 = Triangle[2] - Triangle[0];
+        float Denom = E1.x * E2.y - E2.x * E1.y;
+        if (Denom == 0) return;
+        
+        float bounds[4] = {
+            Triangle[0].x, // Bottom
+            Triangle[0].x, // Top
+            Triangle[0].y, // Left
+            Triangle[0].y // Right
+        };
+
+        MathFunctionLibrary::bound_triangle(Triangle, bounds);
+
+        for (int x = bounds[0]; x <= (int)bounds[1]; x++)
+        {
+            for (int y = bounds[2]; y <= (int)bounds[3]; y++)
+            {
+                Vec2<float> PA = Triangle[0] - Vec2<float>(x + .5f, y + .5f);
+
+                float u = (-1 * PA.x * E2.y + PA.y * E2.x) / Denom;
+                float v = (-1 * PA.y * E1.x + PA.x * E1.y) / Denom;
+                float w = 1 - u - v;
+
+                Vec3<float> Weights(u, v, w);
+
+                // Point p is not inside of the triangle
+                if (u < 0.f || v < 0.f || w < 0.f)
+                    continue;
+
+                float FragmentDepth = 0;
+
+                // Depth test to see if current pixel is visible 
+                if (this->FS.UpdateDepthBuffer(Triangle_Clip[0],
+                                               Triangle_Clip[1],
+                                               Triangle_Clip[2],
+                                               x, y, Weights,
+                                               FragmentDepth))
+                {
+                    Vec2<float> uv0 = Model.TextureBuffer[IndexPtr->y];
+                    Vec2<float> uv1 = Model.TextureBuffer[(IndexPtr + 1)->y];
+                    Vec2<float> uv2 = Model.TextureBuffer[(IndexPtr + 2)->y];
+
+                    Vec2<float> uv;  
+
+                    uv.x = Weights.z * uv0.x + Weights.x * uv1.x + Weights.y * uv2.x;
+                    uv.y = Weights.z * uv0.y + Weights.x * uv1.y + Weights.y * uv2.y;
+
+                    occlusion_texture.set(uv.x, uv.y, TGAColor(255, 255, 255));
                 }
             }
         }

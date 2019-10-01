@@ -168,6 +168,18 @@ float MathFunctionLibrary::clamp_f(float x, float min, float max)
     return x;
 }
 
+Vec3<float> MathFunctionLibrary::barycentric(Vec2<float>* triangle, int x, int y, float denominator)
+{
+    Vec2<float> PA = triangle[0] - Vec2<float>(x + .5f, y + .5f);
+    Vec2<float> E1 = triangle[1] - triangle[0];
+    Vec2<float> E2 = triangle[2] - triangle[0];
+    float u = (-1 * PA.x * E2.y + PA.y * E2.x) / denominator;
+    float v = (-1 * PA.y * E1.x + PA.x * E1.y) / denominator;
+    float w = 1 - u - v;
+
+    return Vec3<float>(u, v, w);
+}
+
 void MathFunctionLibrary::bound_triangle(Vec2<float>* vertices, float* bounds)
 {
     for (int i = 0; i < 3; i++)

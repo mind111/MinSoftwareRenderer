@@ -311,6 +311,7 @@ class MathFunctionLibrary
 {
 public:
     static float clamp_f(float x, float min, float max);
+    static Vec3<float> barycentric(Vec2<float>* triangle, int x, int y, float denominator);
     static void bound_triangle(Vec2<float>* vertices, float* bounds);
     static Vec3<float> SampleAmbientDirection();
     static Vec3<float> CrossProduct(const Vec3<float>& V0, const Vec3<float>& V1);

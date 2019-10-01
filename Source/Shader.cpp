@@ -467,7 +467,8 @@ void Shader::DrawShadow(Model& Model,
         Vec2<float> E1 = Triangle[1] - Triangle[0];
         Vec2<float> E2 = Triangle[2] - Triangle[0];
         float Denom = E1.x * E2.y - E2.x * E1.y;
-        if (Denom == 0) return;
+        // TODO: Bug here, need to increment render count
+        if (Denom == 0) continue;
         
         float bounds[4] = {
             Triangle[0].x, // Left
@@ -482,17 +483,9 @@ void Shader::DrawShadow(Model& Model,
         {
             for (int y = bounds[2]; y <= (int)bounds[3]; y++)
             {
-                Vec2<float> PA = Triangle[0] - Vec2<float>(x + .5f, y + .5f);
-
-                // TODO: Extract to a function Barycentric() 
-                float u = (-1 * PA.x * E2.y + PA.y * E2.x) / Denom;
-                float v = (-1 * PA.y * E1.x + PA.x * E1.y) / Denom;
-                float w = 1 - u - v;
-
-                Vec3<float> Weights(u, v, w);
-
+                Vec3<float> Weights = MathFunctionLibrary::barycentric(Triangle, x, y, Denom);
                 // Point p is not inside of the triangle
-                if (u < 0.f || v < 0.f || w < 0.f)
+                if (Weights.x < 0.f || Weights.y < 0.f || Weights.z < 0.f)
                     continue;
 
                 float FragmentDepth = 0;
@@ -622,19 +615,9 @@ void Shader::Draw(Model& Model, TGAImage& image, Camera& Camera, Shader_Mode Sha
         {
             for (int y = bounds[2]; y <= (int)bounds[3]; y++)
             {
-                /// \Note: Cramer's rule to solve for barycentric coordinates,
-                ///       can also use ratio of area between three sub-triangles to solve
-                ///       to solve for u,v,w
-                Vec2<float> PA = Triangle[0] - Vec2<float>(x + .5f, y + .5f);
-
-                float u = (-1 * PA.x * E2.y + PA.y * E2.x) / Denom;
-                float v = (-1 * PA.y * E1.x + PA.x * E1.y) / Denom;
-                float w = 1 - u - v;
-
-                Vec3<float> Weights(u, v, w);
-
+                Vec3<float> Weights = MathFunctionLibrary::barycentric(Triangle, x, y, Denom);
                 // Point p is not inside of the triangle
-                if (u < 0.f || v < 0.f || w < 0.f)
+                if (Weights.x < 0.f || Weights.y < 0.f || Weights.z < 0.f)
                     continue;
 
                 float FragmentDepth = 0;
@@ -748,11 +731,6 @@ void Shader::Draw(Model& Model, TGAImage& image, Camera& Camera, Shader_Mode Sha
 
                             // TODO: Need to swap out the hard-coded viewing direction later
                             FS.Phong_Shader(Vec2<int>(x, y), Normal, LightDir, MathFunctionLibrary::Normalize(Vec3<float>(1.f, .5f, 1.f)), image, Color, TGAColor(200, 200, 200), ShadowCoef);
-
-                            // --- Debug ---
-                            //image.flip_vertically();
-                            //image.write_tga_file("output_debug.tga");
-                            // ---- Debug ---
                             
                             break;
                         }
@@ -861,17 +839,9 @@ void Shader::AmbientOcclusion(Model& Model, TGAImage& OcclusionImage, Vec3<float
         {
             for (int y = bounds[2]; y <= (int)bounds[3]; y++)
             {
-                Vec2<float> PA = Triangle[0] - Vec2<float>(x + .5f, y + .5f);
-
-                // TODO: Extract to a function Barycentric() 
-                float u = (-1 * PA.x * E2.y + PA.y * E2.x) / Denom;
-                float v = (-1 * PA.y * E1.x + PA.x * E1.y) / Denom;
-                float w = 1 - u - v;
-
-                Vec3<float> Weights(u, v, w);
-
+                Vec3<float> Weights = MathFunctionLibrary::barycentric(Triangle, x, y, Denom);
                 // Point p is not inside of the triangle
-                if (u < 0.f || v < 0.f || w < 0.f)
+                if (Weights.x < 0.f || Weights.y < 0.f || Weights.z < 0.f)
                     continue;
 
                 float FragmentDepth = 0;
@@ -943,16 +913,9 @@ void Shader::DrawOcclusion(Model& Model)
         {
             for (int y = bounds[2]; y <= (int)bounds[3]; y++)
             {
-                Vec2<float> PA = Triangle[0] - Vec2<float>(x + .5f, y + .5f);
-
-                float u = (-1 * PA.x * E2.y + PA.y * E2.x) / Denom;
-                float v = (-1 * PA.y * E1.x + PA.x * E1.y) / Denom;
-                float w = 1 - u - v;
-
-                Vec3<float> Weights(u, v, w);
-
+                Vec3<float> Weights = MathFunctionLibrary::barycentric(Triangle, x, y, Denom);
                 // Point p is not inside of the triangle
-                if (u < 0.f || v < 0.f || w < 0.f)
+                if (Weights.x < 0.f || Weights.y < 0.f || Weights.z < 0.f)
                     continue;
 
                 float FragmentDepth = 0;

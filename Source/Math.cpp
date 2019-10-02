@@ -139,6 +139,8 @@ Mat4x4<float> Mat4x4<float>::Perspective(float AspectRatio,
     // Handle conversion from world space to NDC space
     Res.Mat[0][0] = 2.f / (Right - Left); 
     Res.Mat[0][2] = -(Right + Left) / (Right - Left);
+    Res.Mat[2][2] = -1.f / (Far - Near);
+    Res.Mat[2][3] = -Near / (Far - Near);
 
     // Maybe need to consider aspect-ratio here
     Res.Mat[1][1] = 2.f / (Up - Bottom); 

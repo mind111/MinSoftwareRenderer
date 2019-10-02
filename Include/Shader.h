@@ -127,8 +127,7 @@ struct Shader
                                Vec3<float> Surface_Normal);
 
     void BackfaceCulling();
-    void AmbientOcclusion(Model& Model, TGAImage& OcclusionImage, Vec3<float> AmbientLightPos, Vec3<float> AmbientLightDirection, float* AmbientDepthBuffer);
-    void DrawOcclusion(Model& Model);
+    void DrawOcclusion(Model& Model, TGAImage& occlusion_texture, float* occlustion_depth_buffer);
     void DrawShadow(Model& Model, TGAImage& image, Vec3<float> LightPos, Vec3<float> LightDir, float* ShadowBuffer);
     void Draw(Model& Model, TGAImage& image, struct Camera& Camera, Shader_Mode ShadingMode);
 };

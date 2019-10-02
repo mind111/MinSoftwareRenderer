@@ -126,12 +126,13 @@ Mat4x4<float> Mat4x4<float>::Perspective(float AspectRatio,
     float Up = -Bottom;
 
     Res.Identity();
+    Res.Mat[3][3] = 0.f;
     
     // ---------------------
     // [ 1, 0, 0,         0]
     // [ 0, 1, 0,         0]
     // [ 0, 0, 1,         0]
-    // [ 0, 0, -1 / Near, 1]
+    // [ 0, 0, -1 / Near, 0]
     // ---------------------
     Res.Mat[3][2] = -1.f / Near;
 

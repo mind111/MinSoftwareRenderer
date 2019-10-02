@@ -92,13 +92,13 @@ void VertexShader::Vertex_Shader(Vec3<float> V0,
     Vec4<float> V1Clip_Vec4 = MVP * V1_Augmented;
     Vec4<float> V2Clip_Vec4 = MVP * V2_Augmented;
     
-    // Need to divde (w-component - 1) of transformed points
-    V0Clip_Vec4.x = V0Clip_Vec4.x / (V0Clip_Vec4.w - 1);
-    V0Clip_Vec4.y = V0Clip_Vec4.y / (V0Clip_Vec4.w - 1);
-    V1Clip_Vec4.x = V1Clip_Vec4.x / (V1Clip_Vec4.w - 1);
-    V1Clip_Vec4.y = V1Clip_Vec4.y / (V1Clip_Vec4.w - 1);
-    V2Clip_Vec4.x = V2Clip_Vec4.x / (V2Clip_Vec4.w - 1);
-    V2Clip_Vec4.y = V2Clip_Vec4.y / (V2Clip_Vec4.w - 1);
+    // Need to divde w-component of transformed points
+    V0Clip_Vec4.x = V0Clip_Vec4.x / V0Clip_Vec4.w;
+    V0Clip_Vec4.y = V0Clip_Vec4.y / V0Clip_Vec4.w;
+    V1Clip_Vec4.x = V1Clip_Vec4.x / V1Clip_Vec4.w;
+    V1Clip_Vec4.y = V1Clip_Vec4.y / V1Clip_Vec4.w;
+    V2Clip_Vec4.x = V2Clip_Vec4.x / V2Clip_Vec4.w;
+    V2Clip_Vec4.y = V2Clip_Vec4.y / V2Clip_Vec4.w;
     
     // Resetting the w back to 1 or else would mess up the computation
     // for Viewport transformation
@@ -393,8 +393,8 @@ bool FragmentShader::IsInShadow(Vec4<float> Fragment_Model,
                                 float* DepthBuffer)
 {
     Vec4<float> Fragment_Shadow = Transform * Fragment_Model;
-    Fragment_Shadow.x = Fragment_Shadow.x / (Fragment_Shadow.w - 1.f);
-    Fragment_Shadow.y = Fragment_Shadow.y / (Fragment_Shadow.w - 1.f);
+    Fragment_Shadow.x = Fragment_Shadow.x / Fragment_Shadow.w;
+    Fragment_Shadow.y = Fragment_Shadow.y / Fragment_Shadow.w;
     Fragment_Shadow.w = 1.f;
     Vec4<float> Fragment_ShadowScreen = Viewport * Fragment_Shadow;
     
@@ -752,7 +752,6 @@ void Shader::Draw(Model& Model, TGAImage& image, Camera& Camera, Shader_Mode Sha
     }
 }
 
-
 bool UpdateDepthBuffer(Vec3<float> V0, 
                        Vec3<float> V1, 
                        Vec3<float> V2, 
@@ -904,7 +903,7 @@ void Shader::DrawOcclusion(Model& Model)
             Triangle[0].x, // Bottom
             Triangle[0].x, // Top
             Triangle[0].y, // Left
-            Triangle[0].y // Right
+            Triangle[0].y  // Right
         };
 
         MathFunctionLibrary::bound_triangle(Triangle, bounds);

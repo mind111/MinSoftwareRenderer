@@ -183,6 +183,7 @@ Vec3<float> MathFunctionLibrary::barycentric(Vec2<float>* triangle, int x, int y
     return Vec3<float>(u, v, w);
 }
 
+// TODO: Bug here
 void MathFunctionLibrary::bound_triangle(Vec2<float>* vertices, float* bounds)
 {
     for (int i = 0; i < 3; i++)
@@ -203,14 +204,18 @@ Vec3<float> MathFunctionLibrary::SampleAmbientDirection()
 {
     std::random_device rd;
     std::mt19937 gen(rd());
-    std::uniform_real_distribution<float> distribution(-1.f, 1.f);
-    float x = 1.f, y = 1.f, z = 1.f;
+    std::uniform_real_distribution<float> distribution(0.f, .5f);
 
-    x = distribution(gen);
-    y = distribution(gen);
-    z = distribution(gen);
+    float u = distribution(gen);
+    float v = distribution(gen);
+    float theta = 2.f * M_PI * u;
+    float phi = std::acos(2.f * v - 1.f);
 
-    return MathFunctionLibrary::Normalize(Vec3<float>(x, y, z));
+    float x = std::cos(theta) * std::sin(phi);
+    float y = std::abs(std::sin(theta) * std::sin(phi));
+    float z = std::cos(theta);
+
+    return Vec3<float>(x, y, z);
 }
 
 template <class T>

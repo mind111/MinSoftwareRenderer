@@ -67,12 +67,12 @@ void FillTriangle(Vec2<int>& V0, Vec2<int>& V1, Vec2<int>& V2, TGAImage& image, 
 
 int main(int argc, char* argv[]) {
     Camera camera;
-    int ImageSize = ImageWidth * ImageHeight;    
-    int number_of_ab_samples = 100;
+    int image_size = ImageWidth * ImageHeight;    
+    int number_of_ab_samples = 1;
     // Create an image for writing pixels
     TGAImage occlusion_texture(1024, 1024, TGAImage::RGB);
     TGAImage image(ImageWidth, ImageHeight, TGAImage::RGB);
-    TGAImage ShadowImage(ImageWidth, ImageHeight, TGAImage::RGB);
+    TGAImage shadow_image(ImageWidth, ImageHeight, TGAImage::RGB);
 
     // Mesh .obj file path
     char ModelPath[64] = { "../Graphx/Assets/Mesh/Model.obj" };
@@ -110,14 +110,14 @@ int main(int argc, char* argv[]) {
         Texture.flip_vertically();
         Model.LoadNormalMap(&NormalTexture, NormalPath_Diablo);
         NormalTexture.flip_vertically();
-        TGAImage* occlusion_samples = new TGAImage[100];
+        TGAImage* occlusion_samples = new TGAImage[1];
         for (int i = 0; i < number_of_ab_samples; i++)
             occlusion_samples[i] = TGAImage(1024, 1024, TGAImage::RGB);
         float* occlusion_depth_buffer =  new float[ImageWidth * ImageHeight];
         float* ZBuffer = new float[ImageWidth * ImageHeight];
         float* ShadowBuffer = new float[ImageWidth * ImageHeight];
-        for (int i = 0; i < ImageSize; i++) ZBuffer[i] = 100.0f;
-        for (int i = 0; i < ImageSize; i++) ShadowBuffer[i] = 100.0f;
+        for (int i = 0; i < image_size; i++) ZBuffer[i] = 100.0f;
+        for (int i = 0; i < image_size; i++) ShadowBuffer[i] = 100.0f;
         shader.FS.ZBuffer = ZBuffer;
         shader.FS.ShadowBuffer = ShadowBuffer;
 
@@ -130,7 +130,7 @@ int main(int argc, char* argv[]) {
         for (int i = 0; i < number_of_ab_samples; i++) 
         {
             // Flush the buffer
-            for (int i = 0; i < ImageSize; i++) occlusion_depth_buffer[i] = 100.0f;
+            for (int i = 0; i < image_size; i++) occlusion_depth_buffer[i] = 100.0f;
             // Random generate a ambient light direction
             Vec3<float> ab_light_direction = MathFunctionLibrary::SampleAmbientDirection();
 
@@ -157,7 +157,6 @@ int main(int argc, char* argv[]) {
                 avg_color.x /= number_of_ab_samples;
                 avg_color.y /= number_of_ab_samples;
                 avg_color.z /= number_of_ab_samples;
-
                 occlusion_texture.set(x, y, TGAColor(avg_color.x, avg_color.y, avg_color.z));
             }
         }
@@ -167,7 +166,7 @@ int main(int argc, char* argv[]) {
 
         Model.LoadTexture(&Texture, "occlusion_texture.tga");
         Texture.flip_vertically();
-        //Shader.DrawShadow(Model, ShadowImage, LightPos, LightDir, ShadowBuffer);
+        //Shader.DrawShadow(Model, shadow_image, LightPos, LightDir, ShadowBuffer);
         shader.Draw(Model, image, camera, Shader_Mode::Phong_Shader);
     }
 
@@ -177,8 +176,8 @@ int main(int argc, char* argv[]) {
     // Draw the output to a file
     image.flip_vertically();
     image.write_tga_file("output.tga");
-    ShadowImage.flip_vertically();
-    ShadowImage.write_tga_file("shadow.tga");
+    shadow_image.flip_vertically();
+    shadow_image.write_tga_file("shadow.tga");
 
     return 0;
 }   

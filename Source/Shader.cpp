@@ -91,13 +91,15 @@ void VertexShader::Vertex_Shader(Vec3<float> V0,
     Vec4<float> V1Clip_Vec4 = MVP * V1_Augmented;
     Vec4<float> V2Clip_Vec4 = MVP * V2_Augmented;
     
-    // Need to divde w-component of transformed points
     V0Clip_Vec4.x = V0Clip_Vec4.x / V0Clip_Vec4.w;
     V0Clip_Vec4.y = V0Clip_Vec4.y / V0Clip_Vec4.w;
+    V0Clip_Vec4.z = V0Clip_Vec4.z / V0Clip_Vec4.w;
     V1Clip_Vec4.x = V1Clip_Vec4.x / V1Clip_Vec4.w;
     V1Clip_Vec4.y = V1Clip_Vec4.y / V1Clip_Vec4.w;
+    V1Clip_Vec4.z = V1Clip_Vec4.z / V1Clip_Vec4.w;
     V2Clip_Vec4.x = V2Clip_Vec4.x / V2Clip_Vec4.w;
     V2Clip_Vec4.y = V2Clip_Vec4.y / V2Clip_Vec4.w;
+    V2Clip_Vec4.z = V2Clip_Vec4.z / V2Clip_Vec4.w;
     
     // Resetting the w back to 1 or else would mess up the computation
     // for Viewport transformation
@@ -199,7 +201,7 @@ void FragmentShader::Phong_Shader(Vec2<int> Fragment,
         Phong_Color[i] = std::min<float>(Ka * MaterialColor[i] + Color[i] * (Kd * Diffuse_Coef + Ks * std::pow(Specular_Coef, 10)), 255); 
 
     image.set(Fragment.x, Fragment.y, Phong_Color * (1.f - ShadowCoef));
-    image.set(Fragment.x, Fragment.y, MaterialColor);
+//    image.set(Fragment.x, Fragment.y, MaterialColor);
 }
 
 void FragmentShader::Fragment_Shader(Vec2<int> Fragment, 
@@ -291,8 +293,13 @@ bool FragmentShader::UpdateDepthBuffer(Vec3<float> V0,
                                        float& FragmentDepth)
 {
     int Index = ScreenY * 800 + ScreenX;
-    // TODO: Do the perspective correct interpolation here
-    FragmentDepth = V0.z * Weights.z + V1.z * Weights.x + V2.z * Weights.y;
+
+    /* Do the perspective correct interpolation here
+        FragmentDepth = Weights.z / V0.z + Weights.x / V1.z + Weights.y / V2.z;
+        FragmentDepth = 1.f / FragmentDepth;
+    */
+    // This may be faster to compute compare to the procedure above, need testing
+    FragmentDepth = (V0.z * V1.z * V2.z) / (Weights.z * V1.z * V2.z + Weights.x * V0.z * V2.z + Weights.y * V0.z * V1.z);
 
     if (FragmentDepth < ZBuffer[Index]) 
     {

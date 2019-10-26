@@ -65,12 +65,69 @@ void FillTriangle(Vec2<int>& V0, Vec2<int>& V1, Vec2<int>& V2, TGAImage& image, 
     }
 }
 
+// @ Leave this out for now
+void generate_occlusion_texture(Model& Model, Shader& shader) {
+        int number_of_ab_samples = 1;
+        int image_size = ImageWidth * ImageHeight;    
+        TGAImage occlusion_texture(1024, 1024, TGAImage::RGB);
+        Camera occlusion_camera;
+        Shader occlusion_shader;
+        occlusion_shader.VS.Model = shader.VS.Model;
+        occlusion_shader.VS.Projection = shader.VS.Projection;
+        occlusion_shader.VS.Viewport = shader.VS.Viewport;
+        TGAImage* occlusion_samples = new TGAImage[1];
+        for (int i = 0; i < number_of_ab_samples; i++)
+            occlusion_samples[i] = TGAImage(1024, 1024, TGAImage::RGB);
+        float* occlusion_depth_buffer =  new float[ImageWidth * ImageHeight];
+
+        for (int i = 0; i < number_of_ab_samples; i++) 
+        {
+            // Flush the buffer
+            for (int i = 0; i < image_size; i++) occlusion_depth_buffer[i] = 100.0f;
+            // Random generate a ambient light direction
+            Vec3<float> ab_light_direction = MathFunctionLibrary::SampleAmbientDirection();
+
+            // Vec3<float>(0.f, 0.f, -2.f) here refers to the center of the model
+            occlusion_camera.Translation = Vec3<float>(0.f, 0.f, -2.f) + ab_light_direction * 2.f;
+            Mat4x4<float> occlusion_view = occlusion_camera.LookAt(ab_light_direction);
+            occlusion_shader.VS.MVP = occlusion_shader.VS.Projection * occlusion_view * occlusion_shader.VS.Model;
+            occlusion_shader.DrawOcclusion(Model, occlusion_samples[i], occlusion_depth_buffer);
+        }
+
+        for (int x = 0; x < 1024; x++)
+        {
+            for (int y = 0; y < 1024; y++)
+            {
+                Vec3<float> avg_color(0.f, 0.f, 0.f);
+
+                for (int i = 0; i < number_of_ab_samples; i++) 
+                {
+                    TGAColor sample_color = occlusion_samples[i].get(x, y);
+                    avg_color.x += sample_color[2]; // R
+                    avg_color.y += sample_color[1]; // G
+                    avg_color.z += sample_color[0]; // B
+                }
+
+                avg_color.x /= number_of_ab_samples;
+                avg_color.y /= number_of_ab_samples;
+                avg_color.z /= number_of_ab_samples;
+                occlusion_texture.set(x, y, TGAColor(avg_color.x, avg_color.y, avg_color.z));
+            }
+        }
+
+        occlusion_texture.flip_vertically();
+        occlusion_texture.write_tga_file("occlusion_texture.tga");
+}
+
+// TODO: @ Change to another .obj model
+// TODO: @ Skybox
+// TODO: @ SSAO
+// TODO: @ become real time, requires multi-threading & SIMD
+// TODO: @ For some reasons, normal mapping is not working, DEBUG!!
 int main(int argc, char* argv[]) {
     Camera camera;
     int image_size = ImageWidth * ImageHeight;    
-    int number_of_ab_samples = 1;
     // Create an image for writing pixels
-    TGAImage occlusion_texture(1024, 1024, TGAImage::RGB);
     TGAImage image(ImageWidth, ImageHeight, TGAImage::RGB);
     TGAImage shadow_image(ImageWidth, ImageHeight, TGAImage::RGB);
 
@@ -110,10 +167,6 @@ int main(int argc, char* argv[]) {
         Texture.flip_vertically();
         Model.LoadNormalMap(&NormalTexture, NormalPath_Diablo);
         NormalTexture.flip_vertically();
-        TGAImage* occlusion_samples = new TGAImage[1];
-        for (int i = 0; i < number_of_ab_samples; i++)
-            occlusion_samples[i] = TGAImage(1024, 1024, TGAImage::RGB);
-        float* occlusion_depth_buffer =  new float[ImageWidth * ImageHeight];
         float* ZBuffer = new float[ImageWidth * ImageHeight];
         float* ShadowBuffer = new float[ImageWidth * ImageHeight];
         for (int i = 0; i < image_size; i++) ZBuffer[i] = 100.0f;
@@ -121,52 +174,7 @@ int main(int argc, char* argv[]) {
         shader.FS.ZBuffer = ZBuffer;
         shader.FS.ShadowBuffer = ShadowBuffer;
 
-        Camera occlusion_camera;
-        Shader occlusion_shader;
-        occlusion_shader.VS.Model = shader.VS.Model;
-        occlusion_shader.VS.Projection = shader.VS.Projection;
-        occlusion_shader.VS.Viewport = shader.VS.Viewport;
-
-        for (int i = 0; i < number_of_ab_samples; i++) 
-        {
-            // Flush the buffer
-            for (int i = 0; i < image_size; i++) occlusion_depth_buffer[i] = 100.0f;
-            // Random generate a ambient light direction
-            Vec3<float> ab_light_direction = MathFunctionLibrary::SampleAmbientDirection();
-
-            occlusion_camera.Translation = Vec3<float>(0.f, 0.f, -2.f) + ab_light_direction * 2.f;
-            Mat4x4<float> occlusion_view = occlusion_camera.LookAt(ab_light_direction);
-            occlusion_shader.VS.MVP = occlusion_shader.VS.Projection * occlusion_view * occlusion_shader.VS.Model;
-            occlusion_shader.DrawOcclusion(Model, occlusion_samples[i], occlusion_depth_buffer);
-        }
-
-        for (int x = 0; x < 1024; x++)
-        {
-            for (int y = 0; y < 1024; y++)
-            {
-                Vec3<float> avg_color(0.f, 0.f, 0.f);
-
-                for (int i = 0; i < number_of_ab_samples; i++) 
-                {
-                    TGAColor sample_color = occlusion_samples[i].get(x, y);
-                    avg_color.x += sample_color[2]; // R
-                    avg_color.y += sample_color[1]; // G
-                    avg_color.z += sample_color[0]; // B
-                }
-
-                avg_color.x /= number_of_ab_samples;
-                avg_color.y /= number_of_ab_samples;
-                avg_color.z /= number_of_ab_samples;
-                occlusion_texture.set(x, y, TGAColor(avg_color.x, avg_color.y, avg_color.z));
-            }
-        }
-
-        occlusion_texture.flip_vertically();
-        occlusion_texture.write_tga_file("occlusion_texture.tga");
-
-        Model.LoadTexture(&Texture, "occlusion_texture.tga");
-        Texture.flip_vertically();
-        //Shader.DrawShadow(Model, shadow_image, LightPos, LightDir, ShadowBuffer);
+//        shader.DrawShadow(Model, shadow_image, LightPos, LightDir, ShadowBuffer);
         shader.Draw(Model, image, camera, Shader_Mode::Phong_Shader);
     }
 

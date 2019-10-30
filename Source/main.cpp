@@ -1,6 +1,7 @@
 #include <iostream>
 #include <string>
 #include <cmath>
+#include <vector>
 #include "../Include/tgaimage.h"
 #include "../Include/Globals.h"
 #include "../Include/Model.h"
@@ -132,12 +133,66 @@ int main(int argc, char* argv[]) {
     TGAImage shadow_image(ImageWidth, ImageHeight, TGAImage::RGB);
 
     // Mesh .obj file path
-    char ModelPath[64] = { "../Graphx/Assets/Mesh/Model.obj" };
-    char ModelPath_Diablo[64] = { "../Graphx/Assets/Mesh/diablo3_pose.obj" };
-    char TexturePath[64] = { "../Graphx/Assets/Textures/african_head_diffuse.tga" };
-    char TexturePath_Diablo[64] = { "../Graphx/Assets/Textures/diablo3_pose_diffuse.tga"};
-    char NormalPath[64] = { "../Graphx/Assets/Textures/african_head_nm_tangent.tga" };
-    char NormalPath_Diablo[64] = { "../Graphx/Assets/Textures/diablo3_pose_nm_tangent.tga" };
+    char ModelPath[64] = { "Assets/Mesh/Model.obj" };
+    char ModelPath_Diablo[64] = { "Assets/Mesh/diablo3_pose.obj" };
+    char TexturePath[64] = { "Assets/Textures/african_head_diffuse.tga" };
+    char TexturePath_Diablo[64] = { "Assets/Textures/diablo3_pose_diffuse.tga"};
+    char NormalPath[64] = { "Assets/Textures/african_head_nm_tangent.tga" };
+    char NormalPath_Diablo[64] = { "Assets/Textures/diablo3_pose_nm_tangent.tga" };
+
+    // Skybox related stuff
+    const char* cubamap_texture_paths[6] = {
+        "assets/textures/ice/icyhell_rt.tga",
+        "assets/textures/ice/icyhell_lf.tga",
+        "assets/textures/ice/icyhell_up.tga",
+        "assets/textures/ice/icyhell_dn.tga",
+        "assets/textures/ice/icyhell_bk.tga",
+        "assets/textures/ice/icyhell_ft.tga"
+    };
+
+    float cubemap_vertices[108] = {
+        -1.0f,  1.0f, -1.0f,
+        -1.0f, -1.0f, -1.0f,
+        1.0f, -1.0f, -1.0f,
+        1.0f, -1.0f, -1.0f,
+        1.0f,  1.0f, -1.0f,
+        -1.0f,  1.0f, -1.0f,
+
+        -1.0f, -1.0f,  1.0f,
+        -1.0f, -1.0f, -1.0f,
+        -1.0f,  1.0f, -1.0f,
+        -1.0f,  1.0f, -1.0f,
+        -1.0f,  1.0f,  1.0f,
+        -1.0f, -1.0f,  1.0f,
+
+        1.0f, -1.0f, -1.0f,
+        1.0f, -1.0f,  1.0f,
+        1.0f,  1.0f,  1.0f,
+        1.0f,  1.0f,  1.0f,
+        1.0f,  1.0f, -1.0f,
+        1.0f, -1.0f, -1.0f,
+
+        -1.0f, -1.0f,  1.0f,
+        -1.0f,  1.0f,  1.0f,
+        1.0f,  1.0f,  1.0f,
+        1.0f,  1.0f,  1.0f,
+        1.0f, -1.0f,  1.0f,
+        -1.0f, -1.0f,  1.0f,
+
+        -1.0f,  1.0f, -1.0f,
+        1.0f,  1.0f, -1.0f,
+        1.0f,  1.0f,  1.0f,
+        1.0f,  1.0f,  1.0f,
+        -1.0f,  1.0f,  1.0f,
+        -1.0f,  1.0f, -1.0f,
+
+        -1.0f, -1.0f, -1.0f,
+        -1.0f, -1.0f,  1.0f,
+        1.0f, -1.0f, -1.0f,
+        1.0f, -1.0f, -1.0f,
+        -1.0f, -1.0f,  1.0f,
+        1.0f, -1.0f,  1.0f
+    }; 
 
     // Model
     Mat4x4<float> ModelToWorld;
@@ -176,6 +231,20 @@ int main(int argc, char* argv[]) {
 
 //        shader.DrawShadow(Model, shadow_image, LightPos, LightDir, ShadowBuffer);
         shader.Draw(Model, image, camera, Shader_Mode::Phong_Shader);
+    }
+
+    // New meshes
+    Mesh teapot_mesh;
+    teapot_mesh.load_obj("../Graphx/Assets/Mesh/utah_teapot.obj");
+    shader.draw_mesh(teapot_mesh);
+
+    // diablo mesh
+    Mesh diablo_mesh;
+    diablo_mesh.load_obj("Assets/Mesh/diablo3_pose.obj");
+
+    // Skybox
+    {
+        Cubemap skybox;
     }
 
     /// \TODO: Maybe instead of writing to an image,

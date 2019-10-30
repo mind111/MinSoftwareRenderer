@@ -521,11 +521,6 @@ void Shader::Draw(Model& Model, TGAImage& image, Camera& Camera, Shader_Mode Sha
     Vec3<int>* IndexPtr = Model.Indices;
     int TriangleRendered = 0;
     float Diffuse_Coefs[3];
-    int OcclusionSampled = 0;
-
-    float* AmbientDepthBuffer = new float[800 * 800];
-    for (int i = 0; i < 800 * 800; i++) AmbientDepthBuffer[i] = 100.0f;
-    TGAImage OcclusionImage(1024, 1024, TGAImage::RGB);
 
     while (TriangleRendered < Model.NumOfFaces)    
     {
@@ -590,10 +585,6 @@ void Shader::Draw(Model& Model, TGAImage& image, Camera& Camera, Shader_Mode Sha
         float Denom = E1.x * E2.y - E2.x * E1.y;
         if (Denom == 0) return;
         
-        // -- Draw triangle wire frame for debugging purposes
-        //DrawTriangle(Triangle[0], Triangle[1], Triangle[2], image, TGAColor(255, 255, 255));
-        // -- Debug end --
-
         Vec2<float> V0_UV = Model.TextureBuffer[IndexPtr->y];
         Vec2<float> V1_UV = Model.TextureBuffer[(IndexPtr + 1)->y];
         Vec2<float> V2_UV = Model.TextureBuffer[(IndexPtr + 2)->y];
@@ -727,6 +718,10 @@ void Shader::Draw(Model& Model, TGAImage& image, Camera& Camera, Shader_Mode Sha
     }
 }
 
+void Shader::draw_cubemap(Cubemap& cubemap, TGAImage& image, struct Camera& camera) {
+
+}
+
 bool UpdateDepthBuffer(Vec3<float> V0, 
                        Vec3<float> V1, 
                        Vec3<float> V2, 
@@ -811,4 +806,25 @@ void Shader::DrawOcclusion(Model& Model, TGAImage& occlusion_texture, float* occ
         IndexPtr += 3;    
         TriangleRendered++;
     }
+}
+
+void Shader::draw_mesh(Mesh& mesh) {
+    //-- Fetching vertex ---
+    for (int face = 0; face < mesh.num_faces; face++) {
+        Vec3<float> v0(mesh.vertex_buffer[face * 3], 
+                       mesh.vertex_buffer[face * 3 + 1], 
+                       mesh.vertex_buffer[face * 3 + 2]);
+
+        Vec3<float> v1(mesh.vertex_buffer[face * 3], 
+                       mesh.vertex_buffer[face * 3 + 1], 
+                       mesh.vertex_buffer[face * 3 + 2]);
+
+        Vec3<float> v2(mesh.vertex_buffer[face * 3], 
+                       mesh.vertex_buffer[face * 3 + 1], 
+                       mesh.vertex_buffer[face * 3 + 2]);
+        
+        Vec3<float> vertex_out[3];
+//        VS.Vertex_Shader(v0, v1, v2, vertex_out);
+    }
+    //----------------------
 }

@@ -12,6 +12,17 @@ enum class Shader_Mode : int8_t
     Toon_Shader
 };
 
+class Shader_Base {
+    virtual void vertex_shader() {};
+    virtual void fragment_shader() {};  
+};
+
+class Phong_Shader : public Shader_Base {
+    void vertex_shader() override;
+    void fragment_shader() override;
+};
+
+
 struct VertexShader
 {
     Mat4x4<float> Model;
@@ -129,5 +140,7 @@ struct Shader
     void BackfaceCulling();
     void DrawOcclusion(Model& Model, TGAImage& occlusion_texture, float* occlustion_depth_buffer);
     void DrawShadow(Model& Model, TGAImage& image, Vec3<float> LightPos, Vec3<float> LightDir, float* ShadowBuffer);
+    void draw_cubemap(Cubemap& cubemap, TGAImage& image, struct Camera& camera);
+    void draw_mesh(Mesh& mesh);
     void Draw(Model& Model, TGAImage& image, struct Camera& Camera, Shader_Mode ShadingMode);
 };

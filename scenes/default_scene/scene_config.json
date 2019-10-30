@@ -1,0 +1,43 @@
+{
+    "cameras": [
+        {
+            "name": "main_camera",
+            "position": "0.f, 0.f, 0.f",
+            "target": "0.f, 0.f, -1.f",
+            "world_up": "0.f, 1.f, 0.f",
+            "FOV": 90.0,
+            "z_near": 0.1,
+            "z_far": 100.0
+        }
+    ],
+
+    "lights": [
+        {
+            "name": "directional_light",
+            "direction": ""
+        }
+
+    ],
+
+    "mesh_info_list": [
+        {
+            "name": "diablo3_pose",
+            "path": "Assets/Mesh/diablo3_pose.obj"
+        },
+
+        {
+            "name": "utah_teapot",
+            "path": "Assets/Mesh/utah_teapot.obj"
+        }
+    ],
+
+    "texture_info_list": [
+
+    ],
+
+    "instance_list": [
+        {
+            
+        }
+    ]
+}

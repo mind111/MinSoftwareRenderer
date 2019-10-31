@@ -1,5 +1,5 @@
-#include "../Include/Shader.h"
-#include "../Include/Camera.h"
+#include "../include/Shader.h"
+#include "../include/scene.h"
 
 #define Ka 0.5f // Ambient coef
 #define Kd 0.4f // Diffuse coef
@@ -418,11 +418,12 @@ void Shader::DrawShadow(Model& Model,
                         Vec3<float> LightDir, 
                         float* ShadowBuffer)
 {
+    // TODO: The refactor of Camera class may cause some bugs here
     // Do first pass rendering to decide which part of the mesh is visible
     Camera ShadowCamera;
-    ShadowCamera.Translation = LightPos;
+    ShadowCamera.position = LightPos;
     // Need to negate the LightDir since LightDir reverted
-    Mat4x4<float> View_Shadow = ShadowCamera.LookAt(LightDir * -1.f);
+    Mat4x4<float> View_Shadow = scene_manager.get_camera_view(ShadowCamera);
     // Cache the old MVP
     Mat4x4<float> Render_MVP = VS.MVP; 
     // same model, projection, viewport, but different view matrix
@@ -744,6 +745,8 @@ bool UpdateDepthBuffer(Vec3<float> V0,
     return false;
 }
 
+
+// TODO: change the internal representation of u,v,w so that u is for v0, v is for v1, and w is for v2
 // Generate the occlusion texture
 void Shader::DrawOcclusion(Model& Model, TGAImage& occlusion_texture, float* occlusion_depth_buffer)
 {
@@ -806,25 +809,4 @@ void Shader::DrawOcclusion(Model& Model, TGAImage& occlusion_texture, float* occ
         IndexPtr += 3;    
         TriangleRendered++;
     }
-}
-
-void Shader::draw_mesh(Mesh& mesh) {
-    //-- Fetching vertex ---
-    for (int face = 0; face < mesh.num_faces; face++) {
-        Vec3<float> v0(mesh.vertex_buffer[face * 3], 
-                       mesh.vertex_buffer[face * 3 + 1], 
-                       mesh.vertex_buffer[face * 3 + 2]);
-
-        Vec3<float> v1(mesh.vertex_buffer[face * 3], 
-                       mesh.vertex_buffer[face * 3 + 1], 
-                       mesh.vertex_buffer[face * 3 + 2]);
-
-        Vec3<float> v2(mesh.vertex_buffer[face * 3], 
-                       mesh.vertex_buffer[face * 3 + 1], 
-                       mesh.vertex_buffer[face * 3 + 2]);
-        
-        Vec3<float> vertex_out[3];
-//        VS.Vertex_Shader(v0, v1, v2, vertex_out);
-    }
-    //----------------------
 }

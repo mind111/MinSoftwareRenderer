@@ -141,6 +141,5 @@ struct Shader
     void DrawOcclusion(Model& Model, TGAImage& occlusion_texture, float* occlustion_depth_buffer);
     void DrawShadow(Model& Model, TGAImage& image, Vec3<float> LightPos, Vec3<float> LightDir, float* ShadowBuffer);
     void draw_cubemap(Cubemap& cubemap, TGAImage& image, struct Camera& camera);
-    void draw_mesh(Mesh& mesh);
     void Draw(Model& Model, TGAImage& image, struct Camera& Camera, Shader_Mode ShadingMode);
 };

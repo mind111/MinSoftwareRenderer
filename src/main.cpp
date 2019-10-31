@@ -2,11 +2,11 @@
 #include <string>
 #include <cmath>
 #include <vector>
-#include "../Include/tgaimage.h"
-#include "../Include/Globals.h"
-#include "../Include/Model.h"
-#include "../Include/Camera.h"
-#include "../Include/Shader.h"
+#include "../include/tgaimage.h"
+#include "../include/Globals.h"
+#include "../include/Model.h"
+#include "../include/scene.h"
+#include "../include/Shader.h"
 
 /// \TODO Clean up code to get rid of all the warnings
 const TGAColor white = TGAColor(255, 255, 255, 255);
@@ -89,9 +89,9 @@ void generate_occlusion_texture(Model& Model, Shader& shader) {
             Vec3<float> ab_light_direction = MathFunctionLibrary::SampleAmbientDirection();
 
             // Vec3<float>(0.f, 0.f, -2.f) here refers to the center of the model
-            occlusion_camera.Translation = Vec3<float>(0.f, 0.f, -2.f) + ab_light_direction * 2.f;
-            Mat4x4<float> occlusion_view = occlusion_camera.LookAt(ab_light_direction);
-            occlusion_shader.VS.MVP = occlusion_shader.VS.Projection * occlusion_view * occlusion_shader.VS.Model;
+        //    occlusion_camera.Translation = Vec3<float>(0.f, 0.f, -2.f) + ab_light_direction * 2.f;
+         //   Mat4x4<float> occlusion_view = occlusion_camera.LookAt(ab_light_direction);
+          //  occlusion_shader.VS.MVP = occlusion_shader.VS.Projection * occlusion_view * occlusion_shader.VS.Model;
             occlusion_shader.DrawOcclusion(Model, occlusion_samples[i], occlusion_depth_buffer);
         }
 
@@ -126,7 +126,11 @@ void generate_occlusion_texture(Model& Model, Shader& shader) {
 // TODO: @ become real time, requires multi-threading & SIMD
 // TODO: @ For some reasons, normal mapping is not working, DEBUG!!
 int main(int argc, char* argv[]) {
-    Camera camera;
+    Scene scene;
+    scene.main_camera.position = Vec3<float>(0.f, 0.f, 0.f);
+    scene.main_camera.target = Vec3<float>(0.f, 0.f, -1.f);
+    scene.main_camera.world_up = Vec3<float>(0.f, 1.f, 0.f);
+
     int image_size = ImageWidth * ImageHeight;    
     // Create an image for writing pixels
     TGAImage image(ImageWidth, ImageHeight, TGAImage::RGB);
@@ -198,10 +202,9 @@ int main(int argc, char* argv[]) {
     Mat4x4<float> ModelToWorld;
     ModelToWorld.Identity();
     ModelToWorld.SetTranslation(Vec3<float>(0.f, 0.f, -2.f));
+
     // View
-    camera.Position = CameraPos;
-    camera.Translation = Vec3<float>(0.0, 0.0, 0.0);
-    Mat4x4<float> View = camera.LookAt(Vec3<float>(0.0f, 0.0f, -1.0f));
+    Mat4x4<float> View = scene_manager.get_camera_view(scene.main_camera);
 
     // Projection
     Mat4x4<float> Perspective = Mat4x4<float>::Perspective(1.f, -1.f, -5.f, 90.f);
@@ -230,13 +233,12 @@ int main(int argc, char* argv[]) {
         shader.FS.ShadowBuffer = ShadowBuffer;
 
 //        shader.DrawShadow(Model, shadow_image, LightPos, LightDir, ShadowBuffer);
-        shader.Draw(Model, image, camera, Shader_Mode::Phong_Shader);
+        shader.Draw(Model, image, scene.main_camera, Shader_Mode::Phong_Shader);
     }
 
     // New meshes
     Mesh teapot_mesh;
     teapot_mesh.load_obj("../Graphx/Assets/Mesh/utah_teapot.obj");
-    shader.draw_mesh(teapot_mesh);
 
     // diablo mesh
     Mesh diablo_mesh;

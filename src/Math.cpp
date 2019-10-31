@@ -1,5 +1,5 @@
 #include <iostream>
-#include "../Include/Math.h"
+#include "../include/Math.h"
 
 #define M_PI 3.14159265
 

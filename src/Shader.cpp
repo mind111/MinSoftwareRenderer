@@ -189,9 +189,9 @@ void FragmentShader::Phong_Shader(Vec2<int> Fragment,
     };
 
     // Compute reflection light
-    Vec3<float> ReflLightDir = n * 2.f * MathFunctionLibrary::DotProduct_Vec3(n, LightDir) - LightDir;
-    float Diffuse_Coef = MathFunctionLibrary::DotProduct_Vec3(n, LightDir);
-    float Specular_Coef = MathFunctionLibrary::DotProduct_Vec3(ViewDir, ReflLightDir);
+    Vec3<float> ReflLightDir = n * 2.f * Math::DotProduct_Vec3(n, LightDir) - LightDir;
+    float Diffuse_Coef = Math::DotProduct_Vec3(n, LightDir);
+    float Specular_Coef = Math::DotProduct_Vec3(ViewDir, ReflLightDir);
 
     if (Diffuse_Coef < 0.f) Diffuse_Coef = 0.f;
     if (Specular_Coef < 0.f) Specular_Coef = 0.f;
@@ -271,7 +271,7 @@ Vec3<float> FragmentShader::NormalMapping_TangentSpace(TGAImage* NormalMap_Tange
     Vec3<float> Normal_TangentSpace = this->NormalMapping(NormalMap_TangentSpace, Weights, V0_UV, V1_UV, V2_UV);
     Vec4<float> Normal_WorldSpace = TBN * Vec4<float>(Normal_TangentSpace, 0.f);
     Vec3<float> Result(Normal_WorldSpace.x, Normal_WorldSpace.y, Normal_WorldSpace.z);
-    return MathFunctionLibrary::Normalize(Result);
+    return Math::Normalize(Result);
 }
 
 /** 
@@ -364,12 +364,12 @@ Mat4x4<float> Shader::ConstructTBN(Vec3<float> V0_World,
     t.x = A_Inverse.Mat[0][0] * P0P1.x + A_Inverse.Mat[0][1] * P0P2.x;
     t.y = A_Inverse.Mat[0][0] * P0P1.y + A_Inverse.Mat[0][1] * P0P2.y;
     t.z = A_Inverse.Mat[0][0] * P0P1.z + A_Inverse.Mat[0][1] * P0P2.z;
-    T = MathFunctionLibrary::Normalize(t);
+    T = Math::Normalize(t);
 
     b.x = A_Inverse.Mat[1][0] * P0P1.x + A_Inverse.Mat[1][1] * P0P2.x;
     b.y = A_Inverse.Mat[1][0] * P0P1.y + A_Inverse.Mat[1][1] * P0P2.y;
     b.z = A_Inverse.Mat[1][0] * P0P1.z + A_Inverse.Mat[1][1] * P0P2.z;
-    B = MathFunctionLibrary::Normalize(t);
+    B = Math::Normalize(t);
 
     Result.Identity();
 
@@ -446,10 +446,10 @@ void Shader::DrawShadow(Model& Model,
         Vec3<float> V0V1 = V1_World - V0_World;
         Vec3<float> V0V2 = V2_World - V0_World;        
 
-        Vec3<float> Surface_Normal = MathFunctionLibrary::Normalize(
-                MathFunctionLibrary::CrossProduct(V0V1, V0V2));
+        Vec3<float> Surface_Normal = Math::Normalize(
+                Math::CrossProduct(V0V1, V0V2));
 
-        float ShadingCoef = MathFunctionLibrary::DotProduct_Vec3(LightDir, Surface_Normal);
+        float ShadingCoef = Math::DotProduct_Vec3(LightDir, Surface_Normal);
         // ShadingCoef < 0 means that the triangle is facing away from the light, simply discard
         if (ShadingCoef < 0.0f) 
         {
@@ -477,13 +477,13 @@ void Shader::DrawShadow(Model& Model,
             Triangle[0].y  // Up
         };
 
-        MathFunctionLibrary::bound_triangle(Triangle, bounds);
+        Math::bound_triangle(Triangle, bounds);
 
         for (int x = bounds[0]; x <= (int)bounds[1]; x++)
         {
             for (int y = bounds[2]; y <= (int)bounds[3]; y++)
             {
-                Vec3<float> Weights = MathFunctionLibrary::barycentric(Triangle, x, y, Denom);
+                Vec3<float> Weights = Math::barycentric(Triangle, x, y, Denom);
                 // Point p is not inside of the triangle
                 if (Weights.x < 0.f || Weights.y < 0.f || Weights.z < 0.f)
                     continue;
@@ -517,7 +517,7 @@ void Shader::DrawShadow(Model& Model,
 void Shader::Draw(Model& Model, TGAImage& image, Camera& Camera, Shader_Mode ShadingMode)
 {
     Vec3<float> LightDir(3.f, 0.f, 1.f);
-    LightDir = MathFunctionLibrary::Normalize(LightDir);
+    LightDir = Math::Normalize(LightDir);
 
     Vec3<int>* IndexPtr = Model.Indices;
     int TriangleRendered = 0;
@@ -554,30 +554,21 @@ void Shader::Draw(Model& Model, TGAImage& image, Camera& Camera, Shader_Mode Sha
         Vec3<float> V0V2 =  V2_World - V0_World;
 
         // Calculate diffuse coef at each vertex here
-        Diffuse_Coefs[0] = MathFunctionLibrary::DotProduct_Vec3(
+        Diffuse_Coefs[0] = Math::DotProduct_Vec3(
                             Model.VertexNormalBuffer[IndexPtr->z], LightDir 
                 );
 
-        Diffuse_Coefs[1] = MathFunctionLibrary::DotProduct_Vec3(
+        Diffuse_Coefs[1] = Math::DotProduct_Vec3(
                             Model.VertexNormalBuffer[(IndexPtr + 1)->z], LightDir
                 );
         
-        Diffuse_Coefs[2] = MathFunctionLibrary::DotProduct_Vec3(
+        Diffuse_Coefs[2] = Math::DotProduct_Vec3(
                             Model.VertexNormalBuffer[(IndexPtr + 2)->z], LightDir 
                 );
 
         // Derive surface normal, counter-clock wise winding order
-        Vec3<float> Surface_Normal = MathFunctionLibrary::Normalize(
-                MathFunctionLibrary::CrossProduct(V0V1, V0V2));
-
-        float ShadingCoef = MathFunctionLibrary::DotProduct_Vec3(Vec3<float>(0, 0, 1), Surface_Normal);
-        // ShadingCoef < 0 means that the triangle is facing away from the light, simply discard
-        if (ShadingCoef < 0.0f) 
-        {
-            TriangleRendered++;
-            IndexPtr += 3;
-            continue;
-        }
+        Vec3<float> Surface_Normal = Math::Normalize(
+                Math::CrossProduct(V0V1, V0V2));
 
         // in screen space
         // (V1.x - V0.x) * (V2.y - V0.y) == (V2.x - V0.x) * (V1.y - V0.y)
@@ -600,13 +591,13 @@ void Shader::Draw(Model& Model, TGAImage& image, Camera& Camera, Shader_Mode Sha
             Triangle[0].y  // Up
         };
 
-        MathFunctionLibrary::bound_triangle(Triangle, bounds);
+        Math::bound_triangle(Triangle, bounds);
 
         for (int x = bounds[0]; x <= (int)bounds[1]; x++)
         {
             for (int y = bounds[2]; y <= (int)bounds[3]; y++)
             {
-                Vec3<float> Weights = MathFunctionLibrary::barycentric(Triangle, x, y, Denom);
+                Vec3<float> Weights = Math::barycentric(Triangle, x, y, Denom);
                 // Point p is not inside of the triangle
                 if (Weights.x < 0.f || Weights.y < 0.f || Weights.z < 0.f)
                     continue;
@@ -657,7 +648,7 @@ void Shader::Draw(Model& Model, TGAImage& image, Camera& Camera, Shader_Mode Sha
                                                             Weights.z * V0_Normal.y + Weights.x * V1_Normal.y + Weights.y * V2_Normal.y,
                                                             Weights.z * V0_Normal.z + Weights.x * V1_Normal.z + Weights.y * V2_Normal.z);
 
-                            Vec3<float> n = MathFunctionLibrary::Normalize(Interpolated_Normal);
+                            Vec3<float> n = Math::Normalize(Interpolated_Normal);
 
                             // Use interpolated normal at each fragment instead of 
                             // flat surface normal for smoothing out the 
@@ -697,7 +688,7 @@ void Shader::Draw(Model& Model, TGAImage& image, Camera& Camera, Shader_Mode Sha
                             float ShadowCoef = FS.IsInShadow(Fragment_Model, FS.Shadow_MVP, VS.Viewport, FS.ShadowBuffer) ? 0.6f : 0.f;
 
                             // TODO: Need to swap out the hard-coded viewing direction later
-                            FS.Phong_Shader(Vec2<int>(x, y), Normal, LightDir, MathFunctionLibrary::Normalize(Vec3<float>(1.f, .5f, 1.f)), image, Color, TGAColor(200, 200, 200), ShadowCoef);
+                            FS.Phong_Shader(Vec2<int>(x, y), Normal, LightDir, Math::Normalize(Vec3<float>(1.f, .5f, 1.f)), image, Color, TGAColor(200, 200, 200), ShadowCoef);
                             
                             break;
                         }
@@ -775,13 +766,13 @@ void Shader::DrawOcclusion(Model& Model, TGAImage& occlusion_texture, float* occ
             Triangle[0].y  // Right
         };
 
-        MathFunctionLibrary::bound_triangle(Triangle, bounds);
+        Math::bound_triangle(Triangle, bounds);
 
         for (int x = bounds[0]; x <= (int)bounds[1]; x++)
         {
             for (int y = bounds[2]; y <= (int)bounds[3]; y++)
             {
-                Vec3<float> Weights = MathFunctionLibrary::barycentric(Triangle, x, y, Denom);
+                Vec3<float> Weights = Math::barycentric(Triangle, x, y, Denom);
                 if (Weights.x < 0.f || Weights.y < 0.f || Weights.z < 0.f) continue;
                 float fragment_depth = 0;
                 // Depth test to see if current pixel is visible 
@@ -809,4 +800,24 @@ void Shader::DrawOcclusion(Model& Model, TGAImage& occlusion_texture, float* occ
         IndexPtr += 3;    
         TriangleRendered++;
     }
+}
+
+void Shader_Base::set_model_matrix(Mat4x4<float>& _model) {
+    model = _model;
+}
+
+void Shader_Base::set_view_matrix(Mat4x4<float>& _view) {
+    view = _view;
+}
+
+void Shader_Base::set_projection_matrix(Mat4x4<float>& _projection) {
+    projection = _projection;
+}
+
+Vec4<float> Phong_Shader::vertex_shader(Vec3<float>& v) {
+    return model * view * projection * Vec4<float>(v, 1.f);    
+}
+
+void Phong_Shader::fragment_shader() {
+    
 }

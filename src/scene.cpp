@@ -5,9 +5,9 @@ Scene_Manager scene_manager;
 Mat4x4<float> Scene_Manager::get_camera_view(Camera& camera) {
     Mat4x4<float> model_view;
 
-    Vec3<float> forward = MathFunctionLibrary::Normalize(camera.target - camera.position);
-    Vec3<float> right = MathFunctionLibrary::CrossProduct(forward, camera.world_up);   
-    Vec3<float> up = MathFunctionLibrary::CrossProduct(right, forward);
+    Vec3<float> forward = Math::Normalize(camera.target - camera.position);
+    Vec3<float> right = Math::CrossProduct(forward, camera.world_up);   
+    Vec3<float> up = Math::CrossProduct(right, forward);
 
     // --- Right ---
     // --- Up ------

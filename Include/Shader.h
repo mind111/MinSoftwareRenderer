@@ -1,5 +1,6 @@
 #pragma once
 
+#include <map>
 #include "tgaimage.h"
 #include "Math.h"
 #include "Model.h"
@@ -13,12 +14,23 @@ enum class Shader_Mode : int8_t
 };
 
 class Shader_Base {
-    virtual void vertex_shader() {};
+public:
+    Mat4x4<float> model;
+    Mat4x4<float> view;
+    Mat4x4<float> projection;
+    
+    void set_model_matrix(Mat4x4<float>& model);
+    void set_view_matrix(Mat4x4<float>& view);
+    void set_projection_matrix(Mat4x4<float>& projection);
+
+    virtual Vec4<float> vertex_shader(Vec3<float>& v) {};
+    void triangle_assmebly(); // should really be part of renderer
     virtual void fragment_shader() {};  
 };
 
 class Phong_Shader : public Shader_Base {
-    void vertex_shader() override;
+public:
+    Vec4<float> vertex_shader(Vec3<float>& v) override;
     void fragment_shader() override;
 };
 

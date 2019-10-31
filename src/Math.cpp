@@ -164,14 +164,14 @@ Mat4x4<float> Mat4x4<float>::ViewPort(float VP_Width, float VP_Height)
    return Res;
 }
 
-float MathFunctionLibrary::clamp_f(float x, float min, float max)
+float Math::clamp_f(float x, float min, float max)
 {
     if (x < min) return min;
     if (x > max) return max;
     return x;
 }
 
-Vec3<float> MathFunctionLibrary::barycentric(Vec2<float>* triangle, int x, int y, float denominator)
+Vec3<float> Math::barycentric(Vec2<float>* triangle, int x, int y, float denominator)
 {
     Vec2<float> PA = triangle[0] - Vec2<float>(x + .5f, y + .5f);
     Vec2<float> E1 = triangle[1] - triangle[0];
@@ -184,7 +184,7 @@ Vec3<float> MathFunctionLibrary::barycentric(Vec2<float>* triangle, int x, int y
 }
 
 // TODO: Bug here
-void MathFunctionLibrary::bound_triangle(Vec2<float>* vertices, float* bounds)
+void Math::bound_triangle(Vec2<float>* vertices, float* bounds)
 {
     for (int i = 0; i < 3; i++)
     {
@@ -195,12 +195,12 @@ void MathFunctionLibrary::bound_triangle(Vec2<float>* vertices, float* bounds)
     }
 
     for (int i = 0; i < 3; i++)
-        MathFunctionLibrary::clamp_f(bounds[i], 0.f, 799.f);
+        Math::clamp_f(bounds[i], 0.f, 799.f);
 }
 
 // TODO: Fix this so that it samples uniformly from the surface
 //       of a hemi-sphere
-Vec3<float> MathFunctionLibrary::SampleAmbientDirection()
+Vec3<float> Math::SampleAmbientDirection()
 {
     std::random_device rd;
     std::mt19937 gen(rd());
@@ -219,12 +219,12 @@ Vec3<float> MathFunctionLibrary::SampleAmbientDirection()
 }
 
 template <class T>
-inline float MathFunctionLibrary::Length(const Vec3<T>& V0)
+inline float Math::Length(const Vec3<T>& V0)
 {
     return sqrt(V0.x * V0.x + V0.y * V0.y + V0.z * V0.z);
 }
 
-Vec3<float> MathFunctionLibrary::CrossProduct(const Vec3<float>& V0, const Vec3<float>& V1)
+Vec3<float> Math::CrossProduct(const Vec3<float>& V0, const Vec3<float>& V1)
 {
     /// \Note: |i     -j     k|
     ///        |v0.x v0.y v0.z|
@@ -238,7 +238,7 @@ Vec3<float> MathFunctionLibrary::CrossProduct(const Vec3<float>& V0, const Vec3<
     return Result;
 }
 
-Vec3<float> MathFunctionLibrary::Normalize(const Vec3<float>& v)
+Vec3<float> Math::Normalize(const Vec3<float>& v)
 {
     float Len = Length(v);
     return Vec3<float>(v.x / Len, v.y / Len, v.z / Len);

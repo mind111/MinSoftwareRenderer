@@ -86,7 +86,7 @@ void generate_occlusion_texture(Model& Model, Shader& shader) {
             // Flush the buffer
             for (int i = 0; i < image_size; i++) occlusion_depth_buffer[i] = 100.0f;
             // Random generate a ambient light direction
-            Vec3<float> ab_light_direction = MathFunctionLibrary::SampleAmbientDirection();
+            Vec3<float> ab_light_direction = Math::SampleAmbientDirection();
 
             // Vec3<float>(0.f, 0.f, -2.f) here refers to the center of the model
         //    occlusion_camera.Translation = Vec3<float>(0.f, 0.f, -2.f) + ab_light_direction * 2.f;
@@ -120,6 +120,9 @@ void generate_occlusion_texture(Model& Model, Shader& shader) {
         occlusion_texture.write_tga_file("occlusion_texture.tga");
 }
 
+// TODO: @ Rewrite whole rendering procedure
+// TODO: @ Bulletproof .obj loading
+
 // TODO: @ Change to another .obj model
 // TODO: @ Skybox
 // TODO: @ SSAO
@@ -127,6 +130,10 @@ void generate_occlusion_texture(Model& Model, Shader& shader) {
 // TODO: @ For some reasons, normal mapping is not working, DEBUG!!
 int main(int argc, char* argv[]) {
     Scene scene;
+
+    // Loaed scene data
+
+    // Set up main camera
     scene.main_camera.position = Vec3<float>(0.f, 0.f, 0.f);
     scene.main_camera.target = Vec3<float>(0.f, 0.f, -1.f);
     scene.main_camera.world_up = Vec3<float>(0.f, 1.f, 0.f);

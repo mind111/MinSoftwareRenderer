@@ -184,6 +184,14 @@ struct Vec4
         this->w -= RHS.w;
     }
 
+    Vec4<T>& operator/(const T scalar) {
+        this->x /= scalar;
+        this->y /= scalar;
+        this->z /= scalar;
+        this->w /= scalar;
+        return *this;
+    }
+
     void Print();
 
 };
@@ -307,7 +315,7 @@ struct Mat4x4
     static Mat4x4<float> Perspective(float AspectRatio, float Near, float Far, float FOV);
 };
 
-class MathFunctionLibrary
+class Math
 {
 public:
     static float clamp_f(float x, float min, float max);

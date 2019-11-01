@@ -201,3 +201,15 @@ Vec3<float> Mesh_Manager::get_vertex(Mesh& mesh, uint32_t idx) {
                        mesh.vertex_buffer[idx * mesh.v_components + 1], 
                        mesh.vertex_buffer[idx * mesh.v_components + 2]);
 }
+
+Vec3<float> Mesh_Manager::get_vt(Mesh& mesh, uint32_t idx) {
+    return Vec3<float>(mesh.texture_uv_buffer[idx * mesh.vt_components], 
+                       mesh.texture_uv_buffer[idx * mesh.vt_components + 1], 
+                       mesh.texture_uv_buffer[idx * mesh.vt_components + 2]);
+}
+
+Vec3<float> Mesh_Manager::get_vn(Mesh& mesh, uint32_t idx) {
+    return Vec3<float>(mesh.normal_buffer[idx * mesh.vn_components], 
+                       mesh.normal_buffer[idx * mesh.vn_components + 1], 
+                       mesh.normal_buffer[idx * mesh.vn_components + 2]);
+}

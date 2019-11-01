@@ -309,7 +309,7 @@ struct Mat4x4
      *
      */
     void Print();
-    static Mat4x4<float> ViewPort(float VP_Width, float VP_Height);
+    static Mat4x4<float> viewport(float VP_Width, float VP_Height);
 
     // Projection matrix should operate on camera frame
     static Mat4x4<float> Perspective(float AspectRatio, float Near, float Far, float FOV);
@@ -320,6 +320,7 @@ class Math
 public:
     static float clamp_f(float x, float min, float max);
     static Vec3<float> barycentric(Vec2<float>* triangle, int x, int y, float denominator);
+    static Vec3<float> bary_interpolate(Vec3<float>* vertices, Vec3<float> bary_coord); 
     static void bound_triangle(Vec2<float>* vertices, float* bounds);
     static Vec3<float> SampleAmbientDirection();
     static Vec3<float> CrossProduct(const Vec3<float>& V0, const Vec3<float>& V1);

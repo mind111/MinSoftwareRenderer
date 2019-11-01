@@ -23,15 +23,27 @@ public:
     void set_view_matrix(Mat4x4<float>& view);
     void set_projection_matrix(Mat4x4<float>& projection);
 
-    virtual Vec4<float> vertex_shader(Vec3<float>& v) {};
-    void triangle_assmebly(); // should really be part of renderer
-    virtual void fragment_shader() {};  
+    virtual Vec4<float> vertex_shader(Vec3<float>& v) = 0;
+    virtual Vec4<float> fragment_shader(int x, int y) = 0;  
+};
+
+class Texture_Sampler {
+
 };
 
 class Phong_Shader : public Shader_Base {
+    // Need
+    // @ vertex normal
+    // @ texture uv
+    // @ diffuse map
+    // @ specular map
+    // @ view vector
 public:
+    Texture_Sampler* texture_sampler;
+
+    Phong_Shader();
     Vec4<float> vertex_shader(Vec3<float>& v) override;
-    void fragment_shader() override;
+    Vec4<float> fragment_shader(int x, int y) override;
 };
 
 

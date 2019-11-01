@@ -27,6 +27,8 @@ public:
 class Mesh_Manager {
 public:
     Vec3<float> get_vertex(Mesh& mesh, uint32_t idx);
+    Vec3<float> get_vt(Mesh& mesh, uint32_t idx); 
+    Vec3<float> get_vn(Mesh& mesh, uint32_t idx); 
 };
 
 extern Mesh_Manager mesh_manager;

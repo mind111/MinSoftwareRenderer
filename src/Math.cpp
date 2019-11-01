@@ -149,7 +149,7 @@ Mat4x4<float> Mat4x4<float>::Perspective(float AspectRatio,
     return Res;
 }
 
-Mat4x4<float> Mat4x4<float>::ViewPort(float VP_Width, float VP_Height)
+Mat4x4<float> Mat4x4<float>::viewport(float VP_Width, float VP_Height)
 {
    // Map [-1, 1] to [0, VP_Width]
    
@@ -171,16 +171,20 @@ float Math::clamp_f(float x, float min, float max)
     return x;
 }
 
-Vec3<float> Math::barycentric(Vec2<float>* triangle, int x, int y, float denominator)
-{
-    Vec2<float> PA = triangle[0] - Vec2<float>(x + .5f, y + .5f);
-    Vec2<float> E1 = triangle[1] - triangle[0];
-    Vec2<float> E2 = triangle[2] - triangle[0];
-    float u = (-1 * PA.x * E2.y + PA.y * E2.x) / denominator;
-    float v = (-1 * PA.y * E1.x + PA.x * E1.y) / denominator;
+Vec3<float> Math::barycentric(Vec2<float>* triangle, int x, int y, float denominator) {
+    Vec2<float> pa = triangle[0] - Vec2<float>(x + .5f, y + .5f);
+    Vec2<float> e1 = triangle[1] - triangle[0];
+    Vec2<float> e2 = triangle[2] - triangle[0];
+    float u = (-1 * pa.x * e2.y + pa.y * e2.x) / denominator;
+    float v = (-1 * pa.y * e1.x + pa.x * e1.y) / denominator;
     float w = 1 - u - v;
+    return Vec3<float>(w, u, v);
+}
 
-    return Vec3<float>(u, v, w);
+Vec3<float> Math::bary_interpolate(Vec3<float>* vertices, Vec3<float> bary_coord) {
+    Vec3<float> result;
+    result = vertices[0] * bary_coord.x + vertices[1] * bary_coord.y + vertices[2] * bary_coord.z;
+    return result;
 }
 
 // TODO: Bug here

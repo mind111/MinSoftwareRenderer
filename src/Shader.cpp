@@ -230,8 +230,8 @@ TGAColor FragmentShader::SampleTexture(TGAImage* TextureImage,
                                        Vec2<float> V2_UV)
 {
     Vec2<float> MappedTexturePos(
-            Weights.z * V0_UV.x + Weights.x * V1_UV.x + Weights.y * V2_UV.x,
-            Weights.z * V0_UV.y + Weights.x * V1_UV.y + Weights.y * V2_UV.y
+            Weights.x * V0_UV.x + Weights.y * V1_UV.x + Weights.z * V2_UV.x,
+            Weights.x * V0_UV.y + Weights.y * V1_UV.y + Weights.z * V2_UV.y
     );
 
     TGAColor Color = TextureImage->get(
@@ -299,7 +299,8 @@ bool FragmentShader::UpdateDepthBuffer(Vec3<float> V0,
         FragmentDepth = 1.f / FragmentDepth;
     */
     // This may be faster to compute compare to the procedure above, need testing
-    FragmentDepth = (V0.z * V1.z * V2.z) / (Weights.z * V1.z * V2.z + Weights.x * V0.z * V2.z + Weights.y * V0.z * V1.z);
+    //FragmentDepth = (V0.z * V1.z * V2.z) / (Weights.z * V1.z * V2.z + Weights.x * V0.z * V2.z + Weights.y * V0.z * V1.z);
+    FragmentDepth = 1 / (Weights.x / V0.z + Weights.y / V1.z + Weights.z / V2.z);
 
     if (FragmentDepth < ZBuffer[Index]) 
     {
@@ -449,15 +450,6 @@ void Shader::DrawShadow(Model& Model,
         Vec3<float> Surface_Normal = Math::Normalize(
                 Math::CrossProduct(V0V1, V0V2));
 
-        float ShadingCoef = Math::DotProduct_Vec3(LightDir, Surface_Normal);
-        // ShadingCoef < 0 means that the triangle is facing away from the light, simply discard
-        if (ShadingCoef < 0.0f) 
-        {
-            TriangleRendered++;
-            IndexPtr += 3;
-            continue;
-        }
-
         VS.Vertex_Shader(Model.VertexBuffer[IndexPtr->x],
                          Model.VertexBuffer[(IndexPtr + 1)->x],
                          Model.VertexBuffer[(IndexPtr + 2)->x], 
@@ -467,7 +459,6 @@ void Shader::DrawShadow(Model& Model,
         Vec2<float> E1 = Triangle[1] - Triangle[0];
         Vec2<float> E2 = Triangle[2] - Triangle[0];
         float Denom = E1.x * E2.y - E2.x * E1.y;
-        // TODO: Bug here, need to increment render count
         if (Denom == 0) continue;
         
         float bounds[4] = {
@@ -627,7 +618,7 @@ void Shader::Draw(Model& Model, TGAImage& image, Camera& Camera, Shader_Mode Sha
 
                         case Shader_Mode::Gouraud_Shader:
                         {
-                            float Diffuse_Coef = Weights.z * Diffuse_Coefs[0] + Weights.x * Diffuse_Coefs[1] + Weights.y * Diffuse_Coefs[2];
+                            float Diffuse_Coef = Weights.x * Diffuse_Coefs[0] + Weights.y * Diffuse_Coefs[1] + Weights.z * Diffuse_Coefs[2];
 
                             if (Diffuse_Coef > 1.f) Diffuse_Coef = 1.f;
                             if (Diffuse_Coef < 0.f) Diffuse_Coef = 0.f;
@@ -644,9 +635,9 @@ void Shader::Draw(Model& Model, TGAImage& image, Camera& Camera, Shader_Mode Sha
                             Vec3<float> V2_Normal = Model.VertexNormalBuffer[(IndexPtr + 2)->z];
 
                             // Interpolate normals
-                            Vec3<float> Interpolated_Normal(Weights.z * V0_Normal.x + Weights.x * V1_Normal.x + Weights.y * V2_Normal.x,
-                                                            Weights.z * V0_Normal.y + Weights.x * V1_Normal.y + Weights.y * V2_Normal.y,
-                                                            Weights.z * V0_Normal.z + Weights.x * V1_Normal.z + Weights.y * V2_Normal.z);
+                            Vec3<float> Interpolated_Normal(Weights.x * V0_Normal.x + Weights.y * V1_Normal.x + Weights.z * V2_Normal.x,
+                                                            Weights.x * V0_Normal.y + Weights.y * V1_Normal.y + Weights.z * V2_Normal.y,
+                                                            Weights.x * V0_Normal.z + Weights.y * V1_Normal.z + Weights.z * V2_Normal.z);
 
                             Vec3<float> n = Math::Normalize(Interpolated_Normal);
 
@@ -677,9 +668,9 @@ void Shader::Draw(Model& Model, TGAImage& image, Camera& Camera, Shader_Mode Sha
 
                             // TODO: clean this up 
                             Vec4<float> Fragment_Model;
-                            Fragment_Model.x = Weights.z * V0_Model.x + Weights.x * V1_Model.x + Weights.y * V2_Model.x;
-                            Fragment_Model.y = Weights.z * V0_Model.y + Weights.x * V1_Model.y + Weights.y * V2_Model.y;
-                            Fragment_Model.z = Weights.z * V0_Model.z + Weights.x * V1_Model.z + Weights.y * V2_Model.z;
+                            Fragment_Model.x = Weights.x * V0_Model.x + Weights.y * V1_Model.x + Weights.z * V2_Model.x;
+                            Fragment_Model.y = Weights.x * V0_Model.y + Weights.y * V1_Model.y + Weights.z * V2_Model.y;
+                            Fragment_Model.z = Weights.x * V0_Model.z + Weights.y * V1_Model.z + Weights.z * V2_Model.z;
                             Fragment_Model.w = 1.f;
 
                             Vec4<float> Fragment_World = VS.Model * Fragment_Model;
@@ -814,10 +805,16 @@ void Shader_Base::set_projection_matrix(Mat4x4<float>& _projection) {
     projection = _projection;
 }
 
+Phong_Shader::Phong_Shader() {
+    texture_sampler = nullptr;
+}
+
 Vec4<float> Phong_Shader::vertex_shader(Vec3<float>& v) {
     return model * view * projection * Vec4<float>(v, 1.f);    
 }
 
-void Phong_Shader::fragment_shader() {
-    
+Vec4<float> Phong_Shader::fragment_shader(int x, int y) {
+    Vec4<float> fragment_color(0.f, 0.f, 0.f, 1.f);
+
+    return fragment_color;
 }

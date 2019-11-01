@@ -6,6 +6,7 @@
 #include "../include/Globals.h"
 #include "../include/Model.h"
 #include "../include/scene.h"
+#include "../include/renderer.h"
 #include "../include/Shader.h"
 
 /// \TODO Clean up code to get rid of all the warnings
@@ -130,7 +131,8 @@ void generate_occlusion_texture(Model& Model, Shader& shader) {
 // TODO: @ For some reasons, normal mapping is not working, DEBUG!!
 int main(int argc, char* argv[]) {
     Scene scene;
-
+    Renderer renderer;
+    renderer.init(1024, 768);
     // Loaed scene data
 
     // Set up main camera
@@ -220,7 +222,7 @@ int main(int argc, char* argv[]) {
     shader.VS.Model = ModelToWorld;
     shader.VS.Projection = Perspective;
     shader.VS.MVP = Perspective * View * ModelToWorld;
-    shader.VS.Viewport = Mat4x4<float>::ViewPort(ImageWidth, ImageHeight);
+    shader.VS.Viewport = Mat4x4<float>::viewport(ImageWidth, ImageHeight);
     
     // Add a scope here to help trigger Model's destructor
     {

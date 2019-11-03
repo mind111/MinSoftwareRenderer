@@ -1,3 +1,5 @@
+#define GLEW_STATIC
+
 #include <iostream>
 #include <string>
 #include <cmath>
@@ -5,6 +7,7 @@
 #include "../include/tgaimage.h"
 #include "../include/Globals.h"
 #include "../include/Model.h"
+#include "../include/window.h"
 #include "../include/scene.h"
 #include "../include/renderer.h"
 #include "../include/Shader.h"
@@ -123,6 +126,7 @@ void generate_occlusion_texture(Model& Model, Shader& shader) {
 
 // TODO: @ Rewrite whole rendering procedure
 // TODO: @ Bulletproof .obj loading
+// TODO: @ Benchmark
 
 // TODO: @ Change to another .obj model
 // TODO: @ Skybox
@@ -262,10 +266,67 @@ int main(int argc, char* argv[]) {
     ///         can draw to a buffer, and display it using
     ///         a Win32 window
     // Draw the output to a file
-    image.flip_vertically();
-    image.write_tga_file("output.tga");
-    shadow_image.flip_vertically();
-    shadow_image.write_tga_file("shadow.tga");
+    //image.flip_vertically();
+    //image.write_tga_file("output.tga");
+
+    // TODO: @ render the renderer's backbuffer to a texture
+    // TODO: @ Using the renderer's backbuffer as texture data
+    // TODO: @ and then render the texture to the screen
+    glfwInit();
+    Window window = { };
+    window.m_window = glfwCreateWindow(800, 600, "minimal_renderer", 0, 0);
+    glfwMakeContextCurrent(window.m_window);
+    glewInit();
+    glClearColor(1.f, .5f, .4f, 1.f);
+
+    window_manager.init_window(window);
+
+    float quad[18] = {
+        -1.f, 1.f, 0.f, 
+         1.f,-1.f, 0.f, 
+         1.f, 1.f, 0.f, 
+
+         -1.f, 1.f, 0.f,
+         -1.f,-1.f, 0.f,
+          1.f,-1.f, 1.f,
+    };
+
+    float quad_uv[12] = {
+        0.f, 1.f,
+        1.f, 0.f,
+        1.f, 1.f,
+
+        0.f, 1.f,
+        0.f, 0.f,
+        1.f, 0.f
+    };
+
+    GLuint vertex_buffer, texture_uv_buffer;
+    glGenBuffers(1, &vertex_buffer);
+    glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(quad), quad, GL_STATIC_DRAW);
+    glVertexAttribPointer(0, 3, GL_FLOAT, false, 0, 0);
+    glEnableVertexAttribArray(0);
+
+    glGenBuffers(1, &texture_uv_buffer);
+    glBindBuffer(GL_ARRAY_BUFFER, texture_uv_buffer);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(quad_uv), quad_uv, GL_STATIC_DRAW);
+    glVertexAttribPointer(1, 2, GL_FLOAT, false, 0, 0);
+    glEnableVertexAttribArray(1);
+
+    GLuint bitmap_texture;
+    glGenTextures(1, &bitmap_texture);
+    glBindTexture(GL_TEXTURE_2D, bitmap_texture);
+    // TODO: Use a pixel buffer object to boost uploading texture data to GPU
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 800, 600, 0, GL_RGBA8, GL_FLOAT, renderer.backbuffer);
+    glUseProgram(window.shader);
+
+    while(!glfwWindowShouldClose(window.m_window)) {
+        glClear(GL_COLOR_BUFFER_BIT);
+        glDrawArrays(GL_TRIANGLES, 0, 6);
+        glfwPollEvents();
+        glfwSwapBuffers(window.m_window);
+    }
 
     return 0;
 }   

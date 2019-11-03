@@ -13,11 +13,21 @@ enum class Shader_Mode : int8_t
     Toon_Shader
 };
 
+class Texture_Sampler {
+
+};
+
 class Shader_Base {
 public:
+    // vertex in
     Mat4x4<float> model;
     Mat4x4<float> view;
     Mat4x4<float> projection;
+
+    // fragment in
+    Vec3<float> fragment_texture_coord;
+    Vec3<float> fragment_normal;
+    Texture_Sampler* texture_sampler;
     
     void set_model_matrix(Mat4x4<float>& model);
     void set_view_matrix(Mat4x4<float>& view);
@@ -25,10 +35,6 @@ public:
 
     virtual Vec4<float> vertex_shader(Vec3<float>& v) = 0;
     virtual Vec4<float> fragment_shader(int x, int y) = 0;  
-};
-
-class Texture_Sampler {
-
 };
 
 class Phong_Shader : public Shader_Base {
@@ -39,8 +45,6 @@ class Phong_Shader : public Shader_Base {
     // @ specular map
     // @ view vector
 public:
-    Texture_Sampler* texture_sampler;
-
     Phong_Shader();
     Vec4<float> vertex_shader(Vec3<float>& v) override;
     Vec4<float> fragment_shader(int x, int y) override;

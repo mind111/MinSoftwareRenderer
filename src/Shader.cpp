@@ -200,7 +200,7 @@ void FragmentShader::Phong_Shader(Vec2<int> Fragment,
     for (int i = 0; i < 3; i++) 
         Phong_Color[i] = std::min<float>(Ka * MaterialColor[i] + Color[i] * (Kd * Diffuse_Coef + Ks * std::pow(Specular_Coef, 10)), 255); 
 
-    image.set(Fragment.x, Fragment.y, Phong_Color * (1.f - ShadowCoef));
+    image.set(Fragment.x, Fragment.y, Phong_Color * ShadowCoef);
 //    image.set(Fragment.x, Fragment.y, MaterialColor);
 }
 
@@ -676,10 +676,10 @@ void Shader::Draw(Model& Model, TGAImage& image, Camera& Camera, Shader_Mode Sha
                             Vec4<float> Fragment_World = VS.Model * Fragment_Model;
 
                             // Shadow mapping
-                            float ShadowCoef = FS.IsInShadow(Fragment_Model, FS.Shadow_MVP, VS.Viewport, FS.ShadowBuffer) ? 0.6f : 0.f;
-
+                            //float ShadowCoef = FS.IsInShadow(Fragment_Model, FS.Shadow_MVP, VS.Viewport, FS.ShadowBuffer) ? 0.6f : 0.f;
+                            float shadow_coef = 1.f;
                             // TODO: Need to swap out the hard-coded viewing direction later
-                            FS.Phong_Shader(Vec2<int>(x, y), Normal, LightDir, Math::Normalize(Vec3<float>(1.f, .5f, 1.f)), image, Color, TGAColor(200, 200, 200), ShadowCoef);
+                            FS.Phong_Shader(Vec2<int>(x, y), Normal, LightDir, Math::Normalize(Vec3<float>(1.f, .5f, 1.f)), image, Color, TGAColor(200, 200, 200), shadow_coef);
                             
                             break;
                         }

@@ -16,7 +16,7 @@ public:
     std::vector<Shader_Base*> shader_list; // shader pool that include all available style of shaders
 
     //float* xform_vertex_buffer; save this for later
-    // TODO: texture_uv may be Vec2<float>
+    // This maybe refactored to be part of rasterizer
     Vec4<float> triangle_clip[3];
     Vec2<float> triangle_screen[3];
     Vec3<float> triangle_uv[3]; // if uv only has two components then fill z with 0
@@ -26,6 +26,7 @@ public:
 
     uint16_t active_shader_id;
     Mat4x4<float> viewport;
+    float* backbuffer;
 
     Renderer();
     void init(int w, int h);
@@ -34,7 +35,6 @@ public:
 
 private:
     float* z_buffer;
-    float* backbuffer;
     void draw_mesh(Mesh& mesh);
     void draw_instance(Scene& scene, Mesh_Instance& mesh_instance);
     bool depth_test(int fragment_x, int fragment_y, Vec3<float> _bary_coord);

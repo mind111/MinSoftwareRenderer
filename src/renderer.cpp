@@ -53,9 +53,7 @@ void Renderer::draw_instance(Scene& scene, Mesh_Instance& mesh_instance) {
 
         // TODO: @ frustum culling
         // if projected triangle is partially out of screen, discard it for now
-        if (triangle_screen[0].x ) {
-            continue;
-        }
+        
         // backface cull
 
         // -------------
@@ -69,6 +67,7 @@ bool Renderer::depth_test(int fragment_x, int fragment_y, Vec3<float> _bary_coor
     return false;
 }
 
+// TODO: Improve normal mapping
 void Renderer::fill_triangle(Shader_Base* active_shader_ptr) {
     // TODO: @ Clean up using a determinant()
     Vec2<float> e1 = triangle_screen[1] - triangle_screen[0];
@@ -99,12 +98,13 @@ void Renderer::fill_triangle(Shader_Base* active_shader_ptr) {
             if (!depth_test(x, y, bary_coord)) {
                 continue;
             }
+            // TODO: may not even need to bother checking
             // interpolate given vertex attribute
             if (mesh_attrib_flag & 0x0001) {
-                Vec3<float> framgnet_uv = Math::bary_interpolate(triangle_uv, bary_coord);
+                active_shader_ptr->fragment_texture_coord = Math::bary_interpolate(triangle_uv, bary_coord);
             }
             if (mesh_attrib_flag & 0x0010) {
-                Vec3<float> fragment_normal = Math::bary_interpolate(triangle_normal, bary_coord);
+                active_shader_ptr->fragment_normal = Math::bary_interpolate(triangle_normal, bary_coord);
             }
             // compute fragment color
             Vec4<float> fragment_color = active_shader_ptr->fragment_shader(x, y);

@@ -70,14 +70,28 @@ void generate_shader_program(GLuint vertex_shader, GLuint fragment_shader, GLuin
     check_shader_linkage(shader_program);
 }
 
-void Window_Manager::create_window() {
-
+void Window_Manager::create_window(Window& window, int width, int height) {
+    window.width = width;
+    window.height = height;
+    window.m_window = glfwCreateWindow(width, height, "min-renderer", 0, 0);
 }
 
 void Window_Manager::init_window(Window& window) {
+    glGenTextures(1, &window.bitmap_texture);
+    glBindTexture(GL_TEXTURE_2D, window.bitmap_texture);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+
     GLuint vertex_shader = glCreateShader(GL_VERTEX_SHADER);
     GLuint fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
     window.shader = glCreateProgram();
     load_shader_source("shaders/shader.vert", "shaders/shader.frag", vertex_shader, fragment_shader);
     generate_shader_program(vertex_shader, fragment_shader, window.shader);
+}
+
+void Window_Manager::blit_buffer(unsigned char* buffer, int buffer_width, int buffer_height, int num_channels, Window& window) {
+    glBindTexture(GL_TEXTURE_2D, window.bitmap_texture);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, buffer_width, buffer_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, buffer);
 }

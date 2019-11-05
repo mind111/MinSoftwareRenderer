@@ -1,6 +1,6 @@
 #include "Shader.h"
 #include "scene.h"
-#include <bitset>
+#include "window.h"
 
 class Rasterizer {
 
@@ -26,11 +26,15 @@ public:
 
     uint16_t active_shader_id;
     Mat4x4<float> viewport;
-    float* backbuffer;
+    unsigned char* backbuffer;
+    
+    uint32_t buffer_width, buffer_height;
 
     Renderer();
     void init(int w, int h);
+    void alloc_backbuffer(Window& window);
     void bind_mesh_buffers(Mesh& mesh);
+    void draw_pixel(int x, int y, Vec4<int>& color);
     void draw_scene(Scene& scene);
 
 private:

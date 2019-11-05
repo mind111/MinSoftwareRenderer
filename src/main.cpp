@@ -274,21 +274,22 @@ int main(int argc, char* argv[]) {
     // TODO: @ and then render the texture to the screen
     glfwInit();
     Window window = { };
-    window.m_window = glfwCreateWindow(800, 600, "minimal_renderer", 0, 0);
+    window_manager.create_window(window, 800, 600);
     glfwMakeContextCurrent(window.m_window);
     glewInit();
     glClearColor(1.f, .5f, .4f, 1.f);
 
     window_manager.init_window(window);
+    renderer.alloc_backbuffer(window);
 
     float quad[18] = {
         -1.f, 1.f, 0.f, 
          1.f,-1.f, 0.f, 
          1.f, 1.f, 0.f, 
 
-         -1.f, 1.f, 0.f,
-         -1.f,-1.f, 0.f,
-          1.f,-1.f, 1.f,
+        -1.f, 1.f, 0.f,
+        -1.f,-1.f, 0.f,
+         1.f,-1.f, 0.f,
     };
 
     float quad_uv[12] = {
@@ -314,15 +315,16 @@ int main(int argc, char* argv[]) {
     glVertexAttribPointer(1, 2, GL_FLOAT, false, 0, 0);
     glEnableVertexAttribArray(1);
 
-    GLuint bitmap_texture;
-    glGenTextures(1, &bitmap_texture);
-    glBindTexture(GL_TEXTURE_2D, bitmap_texture);
-    // TODO: Use a pixel buffer object to boost uploading texture data to GPU
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 800, 600, 0, GL_RGBA8, GL_FLOAT, renderer.backbuffer);
     glUseProgram(window.shader);
+    for (int x = 0; x < renderer.buffer_width; x++) {
+        for (int y = 0; y < renderer.buffer_height; y++) {
+            renderer.draw_pixel(x, y, Vec4<int>(250, 0, 100, 255));
+        }
+    }
 
     while(!glfwWindowShouldClose(window.m_window)) {
         glClear(GL_COLOR_BUFFER_BIT);
+        window_manager.blit_buffer(renderer.backbuffer, renderer.buffer_width, renderer.buffer_height, 4, window);
         glDrawArrays(GL_TRIANGLES, 0, 6);
         glfwPollEvents();
         glfwSwapBuffers(window.m_window);

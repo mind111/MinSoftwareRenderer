@@ -4,6 +4,8 @@
 Renderer::Renderer() {
     mesh_attrib_flag = 0;
     active_shader_id = 0;
+    buffer_width = 0;
+    buffer_height = 0;
 }
 
 void Renderer::init(int w, int h) {
@@ -17,6 +19,19 @@ void Renderer::init(int w, int h) {
     // setup viewport matrix here
     viewport = Mat4x4<float>::viewport(w, h);
     // setup available shader here
+}
+
+void Renderer::alloc_backbuffer(Window& window) {
+    buffer_width = window.width;
+    buffer_height = window.height;
+    backbuffer = new unsigned char[4 * buffer_width * buffer_height];
+}
+
+void Renderer::draw_pixel(int x, int y, Vec4<int>& color) {
+    backbuffer[(y * buffer_width + x) * 4] = (unsigned char)color.x;     // r
+    backbuffer[(y * buffer_width + x) * 4 + 1] = (unsigned char)color.y; // g
+    backbuffer[(y * buffer_width + x) * 4 + 2] = (unsigned char)color.z; // b
+    backbuffer[(y * buffer_width + x) * 4 + 3] = (unsigned char)color.w; // a
 }
 
 void Renderer::draw_instance(Scene& scene, Mesh_Instance& mesh_instance) {    

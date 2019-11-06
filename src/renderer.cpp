@@ -8,16 +8,16 @@ Renderer::Renderer() {
     buffer_height = 0;
 }
 
-void Renderer::init(int w, int h) {
-    z_buffer = new float[w * h];
+void Renderer::init() {
+    z_buffer = new float[buffer_width * buffer_height];
     // init z_buffer depth value to a huge number
-    for (int j = 0; j < h; j++) {
-        for (int i = 0; i < w; i++) {
-            z_buffer[w * j + i] = 100.f;
+    for (int j = 0; j < buffer_height; j++) {
+        for (int i = 0; i < buffer_width; i++) {
+            z_buffer[buffer_width * j + i] = 100.f;
         }
     }
     // setup viewport matrix here
-    viewport = Mat4x4<float>::viewport(w, h);
+    viewport = Mat4x4<float>::viewport(buffer_width, buffer_height);
     // setup available shader here
 }
 
@@ -34,6 +34,15 @@ void Renderer::draw_pixel(int x, int y, Vec4<int>& color) {
     backbuffer[(y * buffer_width + x) * 4 + 3] = (unsigned char)color.w; // a
 }
 
+void Renderer::clearBuffer() {
+    for (int pixel = 0; pixel < buffer_width * buffer_height; pixel++) {
+        backbuffer[pixel] = 0;
+        backbuffer[pixel + 1] = 0;
+        backbuffer[pixel + 2] = 0;
+        backbuffer[pixel + 3] = 0;
+    }
+}
+
 void Renderer::draw_instance(Scene& scene, Mesh_Instance& mesh_instance) {    
     Shader_Base* active_shader = shader_list[active_shader_id];
     Mesh mesh = scene.mesh_list[mesh_instance.mesh_id];
@@ -45,6 +54,7 @@ void Renderer::draw_instance(Scene& scene, Mesh_Instance& mesh_instance) {
     }
 
     // TODO: @ Clean up
+    // TODO: @ Debug rendering
     // render face by face
     for (int f_idx = 0; f_idx < mesh.num_faces; f_idx++) {
         for (int v = 0; v < 3; v++) {
@@ -78,7 +88,13 @@ void Renderer::draw_instance(Scene& scene, Mesh_Instance& mesh_instance) {
     }
 }
 
-bool Renderer::depth_test(int fragment_x, int fragment_y, Vec3<float> _bary_coord) {
+bool Renderer::depth_test(int fragmentX, int fragmentY, Vec3<float> _bary_coord) {
+    int index = fragmentY * buffer_width + fragmentX;
+    float fragmentZ = 1 / (_bary_coord.x / triangle_clip[0].z + _bary_coord.y / triangle_clip[1].z + _bary_coord.z / triangle_clip[2].z);
+    if (fragmentZ < z_buffer[index]) {
+        z_buffer[index] = fragmentZ;
+        return true;
+    }
     return false;
 }
 
@@ -124,8 +140,7 @@ void Renderer::fill_triangle(Shader_Base* active_shader_ptr) {
             // compute fragment color
             Vec4<float> fragment_color = active_shader_ptr->fragment_shader(x, y);
             // write to backbuffer
-            // TODO: @ How to interface with SDL
-
+            draw_pixel(x, y, Vec4<int>(200, 100, 0, 255) * (z_buffer[y * buffer_width + x] - 1) / 4.f);
             // -------------------
         }
     }

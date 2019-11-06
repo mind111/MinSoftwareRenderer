@@ -134,9 +134,25 @@ void generate_occlusion_texture(Model& Model, Shader& shader) {
 // TODO: @ become real time, requires multi-threading & SIMD
 // TODO: @ For some reasons, normal mapping is not working, DEBUG!!
 int main(int argc, char* argv[]) {
+    // TODO: @ render the renderer's backbuffer to a texture
+    // TODO: @ Using the renderer's backbuffer as texture data
+    // TODO: @ and then render the texture to the screen
+    glfwInit();
+    Window window = { };
+    window_manager.create_window(window, 800, 600);
+    glfwMakeContextCurrent(window.m_window);
+    glewInit();
+    glClearColor(1.f, .5f, .4f, 1.f);
+
+    window_manager.init_window(window);
     Scene scene;
+    Phong_Shader phongShader;
     Renderer renderer;
-    renderer.init(1024, 768);
+    renderer.alloc_backbuffer(window);
+    renderer.init();
+    renderer.shader_list.emplace_back(&phongShader);
+    renderer.active_shader_id = 0;
+
     // Loaed scene data
 
     // Set up main camera
@@ -221,6 +237,10 @@ int main(int argc, char* argv[]) {
 
     // Projection
     Mat4x4<float> Perspective = Mat4x4<float>::Perspective(1.f, -1.f, -5.f, 90.f);
+
+    phongShader.set_model_matrix(ModelToWorld);
+    phongShader.set_view_matrix(View);
+    phongShader.set_projection_matrix(Perspective);
     
     Shader shader;
     shader.VS.Model = ModelToWorld;
@@ -246,7 +266,10 @@ int main(int argc, char* argv[]) {
         shader.FS.ShadowBuffer = ShadowBuffer;
 
 //        shader.DrawShadow(Model, shadow_image, LightPos, LightDir, ShadowBuffer);
-        shader.Draw(Model, image, scene.main_camera, Shader_Mode::Phong_Shader);
+        {
+            PerformanceTimer timer;
+            shader.Draw(Model, image, scene.main_camera, Shader_Mode::Phong_Shader);
+        }
     }
 
     // New meshes
@@ -256,6 +279,11 @@ int main(int argc, char* argv[]) {
     // diablo mesh
     Mesh diablo_mesh;
     diablo_mesh.load_obj("Assets/Mesh/diablo3_pose.obj");
+    scene.mesh_list.emplace_back(diablo_mesh);
+    Mesh_Instance diabloInstance0 = {};
+    diabloInstance0.instance_id = 0;
+    diabloInstance0.mesh_id = 0;
+    scene.instance_list.emplace_back(diabloInstance0);
 
     // Skybox
     {
@@ -269,18 +297,6 @@ int main(int argc, char* argv[]) {
     //image.flip_vertically();
     //image.write_tga_file("output.tga");
 
-    // TODO: @ render the renderer's backbuffer to a texture
-    // TODO: @ Using the renderer's backbuffer as texture data
-    // TODO: @ and then render the texture to the screen
-    glfwInit();
-    Window window = { };
-    window_manager.create_window(window, 800, 600);
-    glfwMakeContextCurrent(window.m_window);
-    glewInit();
-    glClearColor(1.f, .5f, .4f, 1.f);
-
-    window_manager.init_window(window);
-    renderer.alloc_backbuffer(window);
 
     float quad[18] = {
         -1.f, 1.f, 0.f, 
@@ -318,8 +334,13 @@ int main(int argc, char* argv[]) {
     glUseProgram(window.shader);
     for (int x = 0; x < renderer.buffer_width; x++) {
         for (int y = 0; y < renderer.buffer_height; y++) {
-            renderer.draw_pixel(x, y, Vec4<int>(250, 0, 100, 255));
+            renderer.draw_pixel(x, y, Vec4<int>(0, 0, 0, 255));
         }
+    }
+
+    {
+        PerformanceTimer renderTimer;
+        renderer.draw_instance(scene, diabloInstance0);
     }
 
     while(!glfwWindowShouldClose(window.m_window)) {

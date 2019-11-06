@@ -192,6 +192,14 @@ struct Vec4
         return *this;
     }
 
+    Vec4<T>& operator*(const T scalar) {
+        this->x *= scalar;
+        this->y *= scalar;
+        this->z *= scalar;
+        this->w *= scalar;
+        return *this;
+    }
+
     void Print();
 
 };

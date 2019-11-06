@@ -810,7 +810,7 @@ Phong_Shader::Phong_Shader() {
 }
 
 Vec4<float> Phong_Shader::vertex_shader(Vec3<float>& v) {
-    return model * view * projection * Vec4<float>(v, 1.f);    
+    return projection * view * model * Vec4<float>(v, 1.f);    
 }
 
 Vec4<float> Phong_Shader::fragment_shader(int x, int y) {

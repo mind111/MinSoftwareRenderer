@@ -793,28 +793,55 @@ void Shader::DrawOcclusion(Model& Model, TGAImage& occlusion_texture, float* occ
     }
 }
 
-void Shader_Base::set_model_matrix(Mat4x4<float>& _model) {
-    model = _model;
+void Shader_Base::initFragmentAttrib(uint32_t bufferWidth, uint32_t bufferHeight) {
+    bufferWidth_ = bufferWidth;
+    bufferHeight_ = bufferHeight;
+    fragmentAttribBuffer = new FragmentAttrib[bufferWidth * bufferHeight];
 }
 
-void Shader_Base::set_view_matrix(Mat4x4<float>& _view) {
-    view = _view;
+void Shader_Base::set_model_matrix(Mat4x4<float>& model) {
+    model_ = model;
 }
 
-void Shader_Base::set_projection_matrix(Mat4x4<float>& _projection) {
-    projection = _projection;
+void Shader_Base::set_view_matrix(Mat4x4<float>& view) {
+    view_ = view;
+}
+
+void Shader_Base::set_projection_matrix(Mat4x4<float>& projection) {
+    projection_ = projection;
+}
+
+void Shader_Base::bindTexture(Texture* texture) {
+    texture_ = texture;
 }
 
 Phong_Shader::Phong_Shader() {
-    texture_sampler = nullptr;
+    textureSampler = nullptr;
 }
 
 Vec4<float> Phong_Shader::vertex_shader(Vec3<float>& v) {
-    return projection * view * model * Vec4<float>(v, 1.f);    
+    return projection_ * view_ * model_ * Vec4<float>(v, 1.f);    
 }
 
+// Fragment normal
+// Fragment textureUV
+// Fragment lightDirection
+// Fragment viewDirection
 Vec4<float> Phong_Shader::fragment_shader(int x, int y) {
-    Vec4<float> fragment_color(0.f, 0.f, 0.f, 1.f);
+    FragmentAttrib& attribs = fragmentAttribBuffer[y * bufferWidth_ + x];
+    Vec4<float> fragmentColor(0.f, 0.f, 0.f, 1.f);
 
-    return fragment_color;
+    // Ambient + Diffuse + Specular
+    //Vec3<float> ambient();
+    //Vec3<float> diffuse(0.f, 0.f, 0.f);
+
+    //diffuse =  
+    Vec3<float> ambient = textureSampler->sampleTexture2D(*texture_, attribs.textureCoord.x, attribs.textureCoord.y);
+
+    return fragmentColor;
+}
+
+Vec3<float> TextureSampler::sampleTexture2D(Texture& texture, float u, float v) {
+    Vec3<float> res;
+    return res;
 }

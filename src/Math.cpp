@@ -113,40 +113,41 @@ void Mat4x4<float>::Print()
 }
 
 // TODO: Need to handle remapping of Z from world space to [0, 1] 
-Mat4x4<float> Mat4x4<float>::Perspective(float AspectRatio, 
-                                         float Near, 
-                                         float Far, 
-                                         float FOV)
-{ 
-    Mat4x4<float> Res;
-    float r = std::tan((FOV / 2) * M_PI / 180.f); // Converting degrees to radians
-    float Left = Near * r * AspectRatio;
-    float Right = -Left;
-    float Bottom = Near * r;
-    float Up = -Bottom;
+// TODO: @Find out whether zNear and zFar and defined in world space or view space
+//        to fix the sign issues within this function
+// TODO: @For now assuming that zNear and zFar are defined in view space (all positive)
+Mat4x4<float> Mat4x4<float>::Perspective(float aspectRatio, 
+                                         float near, 
+                                         float far, 
+                                         float fov)
+{
+    Mat4x4<float> res;
+    float r = std::tan((fov / 2) * M_PI / 180.f); // Converting degrees to radians
+    float left = near * r * aspectRatio;
+    float right = -left;
+    float bottom = near * r;
+    float top = -bottom;
 
-    Res.Identity();
-    Res.Mat[3][3] = 0.f;
+    res.Identity();
+    res.Mat[3][3] = 0.f;
     
-    // ---------------------
-    // [ 1, 0, 0,         0]
-    // [ 0, 1, 0,         0]
-    // [ 0, 0, 1,         0]
-    // [ 0, 0, -1 / Near, 0]
-    // ---------------------
-    Res.Mat[3][2] = -1.f / Near;
+    // negative 1 since after the view transformation, the z should all be positive for
+    // all the vertices in the scene, while zNear and zFar are defined in world coordinate
+    // space which are negative
+    res.Mat[3][2] = -1.f; // make the result of multiplication has -z in w-component
 
     // Handle conversion from world space to NDC space
-    Res.Mat[0][0] = 2.f / (Right - Left); 
-    Res.Mat[0][2] = -(Right + Left) / (Right - Left);
-    Res.Mat[2][2] = -1.f / (Far - Near);
-    Res.Mat[2][3] = -Near / (Far - Near);
+    // x is mapped to [-1, 1]
+    // y is mapped to [-1, 1]
+    // z is mapped to [0, 1]
+    res.Mat[0][0] = 2.f * near / (right - left); 
+    res.Mat[0][2] = (right + left) / (right - left);
+    res.Mat[1][1] = 2.f * near / (top - bottom); 
+    res.Mat[1][2] = (top + bottom) / (top - bottom);
+    res.Mat[2][2] = -far / (far - near);
+    res.Mat[2][3] = -far * near / (far - near);
 
-    // Maybe need to consider aspect-ratio here
-    Res.Mat[1][1] = 2.f / (Up - Bottom); 
-    Res.Mat[1][2] = -(Up + Bottom) / (Up - Bottom);
-
-    return Res;
+    return res;
 }
 
 Mat4x4<float> Mat4x4<float>::viewport(float VP_Width, float VP_Height)
@@ -181,7 +182,7 @@ Vec3<float> Math::barycentric(Vec2<float>* triangle, int x, int y, float denomin
     return Vec3<float>(w, u, v);
 }
 
-Vec3<float> Math::bary_interpolate(Vec3<float>* vertices, Vec3<float> bary_coord) {
+Vec3<float> Math::bary_interpolate(Vec3<float>* vertices, const Vec3<float>& bary_coord) {
     Vec3<float> result;
     result = vertices[0] * bary_coord.x + vertices[1] * bary_coord.y + vertices[2] * bary_coord.z;
     return result;

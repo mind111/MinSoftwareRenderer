@@ -1,5 +1,8 @@
 #  Graphx
 
+## Progress
+* 
+
 ##  Study Notes
 
 ######  This documentation is meant as study notes that compiled from my experiences of implementing this project, so that I can keep things more organized and make it a more meaningful learning experience
@@ -44,25 +47,13 @@
 ###### Matrix Transformation pipeline
 
 * Model -> World: Model matrix is pretty intuitive. It can be further decomposed in to 
-
   * Translation * Rotation *  Scale (order matters!!!)
 
-* World->Camera space: 
-
-* Camera space-> Clip space: where projection happens. In order to make matrix multiplication to handle the process of perspective divide, a trick is used
-
-  * > [1, 0, 0,              0]
-    >
-    > [0, 1, 0,              0]
-    >
-    > [0, 0, 0,              0]           
-    >
-    > [0, 0, 1/Near.z, 1]
-
-* This leads to the w-component of the transformed Vec4 becomes  z / Near.z + Translation.z / Near.z + 1 -> 1 / Near.z (z + Translation.z) + 1 = z (in world space) / Near.z + 1
-  * Knowing that a point in homogenous space [x, y, z, w] is equivalent to a 3D point [x/w, y/w, z/w], we can make the perspective divide happen here by dividing each component of  current transformed point (a Vec4) by its w-component (minus 1). (x / (z / Near.z)) -> x * Near.z / z)
-    * **Caveat**: I'm not sure where is the best place for this "normalizing" step to happen. I ran into a mistake by including Viewport transformation matrix into the matrix transformation pipeline and lead to wrong transformation because of the entry "1 / Near.z" introduced in the projection matrix. So my approach is to do the division step here after "[Projection * View * Model ]* Vertex pos in model space" and then do the Viewport transformation instead of doing [Viewport * Projection * View * Model]
-
+* World->Camera space:
+  * View transformation: by default, the camera is looking down -z direction, in this case, after the view transformation, all the vertices 
+* Camera space -> clip space:
+    * I misunderstood the camera's forward vector. I used to thought forward should pointing to camera's target, while the opposite is true. Though camera's looking down -z direction, its initial three axis should still be aligned with directions of world space axises. In this case, the forward vector should be derived using ```target.position - camera.position```. 
+    * Therefore, after the view transform, vertices that has negative z-components should still remains negative. My initial implementation having camera's forward facing pointing to -z direction which cause some sign issues when later constructing perspective projection matrix.
 ###### Normal Mapping
 
 * Global frame

@@ -146,10 +146,11 @@ int main(int argc, char* argv[]) {
 
     window_manager.init_window(window);
     Scene scene;
-    Phong_Shader phongShader;
     Renderer renderer;
     renderer.alloc_backbuffer(window);
     renderer.init();
+    Phong_Shader phongShader;
+    phongShader.initFragmentAttrib(renderer.buffer_width, renderer.buffer_height);
     renderer.shader_list.emplace_back(&phongShader);
     renderer.active_shader_id = 0;
 
@@ -236,7 +237,7 @@ int main(int argc, char* argv[]) {
     Mat4x4<float> View = scene_manager.get_camera_view(scene.main_camera);
 
     // Projection
-    Mat4x4<float> Perspective = Mat4x4<float>::Perspective(1.f, -1.f, -5.f, 90.f);
+    Mat4x4<float> Perspective = Mat4x4<float>::Perspective((float)window.width / window.height, 1.f, 5.f, 90.f);
 
     phongShader.set_model_matrix(ModelToWorld);
     phongShader.set_view_matrix(View);

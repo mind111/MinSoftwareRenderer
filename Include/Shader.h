@@ -1,9 +1,9 @@
 #pragma once
 
-#include <map>
 #include "tgaimage.h"
 #include "Math.h"
 #include "Model.h"
+#include "scene.h"
 
 enum class Shader_Mode : int8_t
 {
@@ -13,28 +13,38 @@ enum class Shader_Mode : int8_t
     Toon_Shader
 };
 
-class Texture_Sampler {
+class TextureSampler {
+public:
+    Vec3<float> sampleTexture2D(Texture& texture, float u, float v);
+};
 
+struct FragmentAttrib {
+    Vec3<float> textureCoord;
+    Vec3<float> normal;
 };
 
 class Shader_Base {
 public:
     // vertex in
-    Mat4x4<float> model;
-    Mat4x4<float> view;
-    Mat4x4<float> projection;
+    Mat4x4<float> model_;
+    Mat4x4<float> view_;
+    Mat4x4<float> projection_;
 
-    // fragment in
-    Vec3<float> fragment_texture_coord;
-    Vec3<float> fragment_normal;
-    Texture_Sampler* texture_sampler;
+    // per fragment attrib
+    FragmentAttrib* fragmentAttribBuffer;
+    uint32_t bufferWidth_, bufferHeight_;
+
+    TextureSampler* textureSampler;
+    Texture* texture_;
     
     void set_model_matrix(Mat4x4<float>& model);
     void set_view_matrix(Mat4x4<float>& view);
     void set_projection_matrix(Mat4x4<float>& projection);
+    void bindTexture(Texture* texture);
 
     virtual Vec4<float> vertex_shader(Vec3<float>& v) = 0;
     virtual Vec4<float> fragment_shader(int x, int y) = 0;  
+    void initFragmentAttrib(uint32_t bufferWidth, uint32_t bufferHeight);
 };
 
 class Phong_Shader : public Shader_Base {

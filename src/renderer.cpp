@@ -13,7 +13,7 @@ void Renderer::init() {
     // init z_buffer depth value to a huge number
     for (int j = 0; j < buffer_height; j++) {
         for (int i = 0; i < buffer_width; i++) {
-            z_buffer[buffer_width * j + i] = 100.f;
+            z_buffer[buffer_width * j + i] = 1.f;
         }
     }
     // setup viewport matrix here
@@ -27,11 +27,14 @@ void Renderer::alloc_backbuffer(Window& window) {
     backbuffer = new unsigned char[4 * buffer_width * buffer_height];
 }
 
+// @: Flipped the y coordinates to match OpenGL's screen space coordinates
+//    since I later pass this buffer as a texture data for OpenGL to render
 void Renderer::draw_pixel(int x, int y, Vec4<int>& color) {
-    backbuffer[(y * buffer_width + x) * 4] = (unsigned char)color.x;     // r
-    backbuffer[(y * buffer_width + x) * 4 + 1] = (unsigned char)color.y; // g
-    backbuffer[(y * buffer_width + x) * 4 + 2] = (unsigned char)color.z; // b
-    backbuffer[(y * buffer_width + x) * 4 + 3] = (unsigned char)color.w; // a
+    uint32_t screenY = buffer_height - y - 1;
+    backbuffer[(screenY * buffer_width + x) * 4] = (unsigned char)color.x;     // r
+    backbuffer[(screenY * buffer_width + x) * 4 + 1] = (unsigned char)color.y; // g
+    backbuffer[(screenY * buffer_width + x) * 4 + 2] = (unsigned char)color.z; // b
+    backbuffer[(screenY * buffer_width + x) * 4 + 3] = (unsigned char)color.w; // a
 }
 
 void Renderer::clearBuffer() {
@@ -43,6 +46,9 @@ void Renderer::clearBuffer() {
     }
 }
 
+// TODO: @ Frustum culling
+// TODO: @ Backface culling
+// TODO: @ PBR
 void Renderer::draw_instance(Scene& scene, Mesh_Instance& mesh_instance) {    
     Shader_Base* active_shader = shader_list[active_shader_id];
     Mesh mesh = scene.mesh_list[mesh_instance.mesh_id];
@@ -55,6 +61,8 @@ void Renderer::draw_instance(Scene& scene, Mesh_Instance& mesh_instance) {
 
     // TODO: @ Clean up
     // TODO: @ Debug rendering
+    // TODO: @ OpenMP
+    #pragma omp parallel
     // render face by face
     for (int f_idx = 0; f_idx < mesh.num_faces; f_idx++) {
         for (int v = 0; v < 3; v++) {
@@ -71,7 +79,7 @@ void Renderer::draw_instance(Scene& scene, Mesh_Instance& mesh_instance) {
                 triangle_uv[v] = mesh_manager.get_vt(mesh, f_idx * 3 + v); 
             } 
             // has normal attrib 
-            if (mesh_attrib_flag & 0x0010) {
+            if (mesh_attrib_flag & 0x0002) {
                 triangle_normal[v] = mesh_manager.get_vn(mesh, f_idx * 3 + v);
             } 
         }
@@ -99,6 +107,8 @@ bool Renderer::depth_test(int fragmentX, int fragmentY, Vec3<float> _bary_coord)
 }
 
 // TODO: Improve normal mapping
+// TODO: Create multiple fragmentShader instance
+// TODO: Maybe something like fragmentShaderPools[bufferWidth][bufferHeight]
 void Renderer::fill_triangle(Shader_Base* active_shader_ptr) {
     // TODO: @ Clean up using a determinant()
     Vec2<float> e1 = triangle_screen[1] - triangle_screen[0];
@@ -117,6 +127,8 @@ void Renderer::fill_triangle(Shader_Base* active_shader_ptr) {
     }; 
     Math::bound_triangle(triangle_screen, bbox);
 
+    // TODO: @ OpenMP
+    #pragma omp parallel
     for (int x = bbox[0]; x < bbox[1]; x++) {
         for (int y = bbox[2]; y < bbox[3]; y++) {
             // compute barycentric coord
@@ -129,18 +141,24 @@ void Renderer::fill_triangle(Shader_Base* active_shader_ptr) {
             if (!depth_test(x, y, bary_coord)) {
                 continue;
             }
+
             // TODO: may not even need to bother checking
+            // TODO: if normal is not provided, pass in interpolated normal
             // interpolate given vertex attribute
+            uint32_t attribIdx = y * buffer_width + x; 
+            // TODO: @ pass in light to fragment shader
             if (mesh_attrib_flag & 0x0001) {
-                active_shader_ptr->fragment_texture_coord = Math::bary_interpolate(triangle_uv, bary_coord);
+                active_shader_ptr->fragmentAttribBuffer[attribIdx].textureCoord = Math::bary_interpolate(triangle_uv, bary_coord);
             }
-            if (mesh_attrib_flag & 0x0010) {
-                active_shader_ptr->fragment_normal = Math::bary_interpolate(triangle_normal, bary_coord);
+            if (mesh_attrib_flag & 0x0002) {
+                active_shader_ptr->fragmentAttribBuffer[attribIdx].normal = Math::bary_interpolate(triangle_normal, bary_coord);
             }
+
             // compute fragment color
             Vec4<float> fragment_color = active_shader_ptr->fragment_shader(x, y);
+
             // write to backbuffer
-            draw_pixel(x, y, Vec4<int>(200, 100, 0, 255) * (z_buffer[y * buffer_width + x] - 1) / 4.f);
+            draw_pixel(x, y, Vec4<int>(200, 100, 0, 255));
             // -------------------
         }
     }

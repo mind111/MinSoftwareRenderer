@@ -5,7 +5,9 @@ Scene_Manager scene_manager;
 Mat4x4<float> Scene_Manager::get_camera_view(Camera& camera) {
     Mat4x4<float> model_view;
 
-    Vec3<float> forward = Math::Normalize(camera.target - camera.position);
+    // TODO: @It's still seems counter-intuitive to me that the forward basis is 
+    //        camera.position_ - target;
+    Vec3<float> forward = Math::Normalize(camera.position - camera.target);
     Vec3<float> right = Math::CrossProduct(forward, camera.world_up);   
     Vec3<float> up = Math::CrossProduct(right, forward);
 

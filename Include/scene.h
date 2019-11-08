@@ -14,10 +14,17 @@ struct Camera {
     float z_far;
 };
 
+struct Texture {
+    unsigned char* pixels;
+};
+
 struct Light {
-    Vec3<float> direction;
     Vec3<float> color;
 };
+
+struct DirectionalLight : Light {
+    Vec3<float> direction;
+}; 
 
 struct Scene {
     std::vector<Mesh> mesh_list;
@@ -34,6 +41,7 @@ public:
     Scene_Manager() {}
     void load_scene_form_file(const char* filename);
     void add_instance(Scene& scene, uint32_t mesh_id);
+    void loadTextureFromFile(const char* filename);
     Mat4x4<float> get_camera_view(Camera& camera);
 };
 

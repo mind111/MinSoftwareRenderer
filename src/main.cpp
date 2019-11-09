@@ -160,6 +160,11 @@ int main(int argc, char* argv[]) {
     scene.main_camera.position = Vec3<float>(0.f, 0.f, 0.f);
     scene.main_camera.target = Vec3<float>(0.f, 0.f, -1.f);
     scene.main_camera.world_up = Vec3<float>(0.f, 1.f, 0.f);
+    DirectionalLight directionalLight = { };
+    directionalLight.color = Vec3<float>(1.f, 1.f, 1.f);
+    directionalLight.direction = Vec3<float>(1.f, 1.5f, 2.f);
+    directionalLight.intensity = .8f;
+    scene.directionalLightList.emplace_back(directionalLight);
 
     int image_size = ImageWidth * ImageHeight;    
     // Create an image for writing pixels
@@ -167,12 +172,12 @@ int main(int argc, char* argv[]) {
     TGAImage shadow_image(ImageWidth, ImageHeight, TGAImage::RGB);
 
     // Mesh .obj file path
-    char ModelPath[64] = { "Assets/Mesh/Model.obj" };
-    char ModelPath_Diablo[64] = { "Assets/Mesh/diablo3_pose.obj" };
-    char TexturePath[64] = { "Assets/Textures/african_head_diffuse.tga" };
-    char TexturePath_Diablo[64] = { "Assets/Textures/diablo3_pose_diffuse.tga"};
-    char NormalPath[64] = { "Assets/Textures/african_head_nm_tangent.tga" };
-    char NormalPath_Diablo[64] = { "Assets/Textures/diablo3_pose_nm_tangent.tga" };
+    char ModelPath[64] = { "assets/mesh/Model.obj" };
+    char ModelPath_Diablo[64] = { "assets/mesh/diablo3_pose.obj" };
+    char TexturePath[64] = { "assets/texture/african_head_diffuse.tga" };
+    char TexturePath_Diablo[64] = { "assets/texture/diablo3_pose_diffuse.tga"};
+    char NormalPath[64] = { "assets/texture/african_head_nm_tangent.tga" };
+    char NormalPath_Diablo[64] = { "assets/texture/diablo3_pose_nm_tangent.tga" };
 
     // Skybox related stuff
     const char* cubamap_texture_paths[6] = {
@@ -279,12 +284,15 @@ int main(int argc, char* argv[]) {
 
     // diablo mesh
     Mesh diablo_mesh;
-    diablo_mesh.load_obj("Assets/Mesh/diablo3_pose.obj");
+    diablo_mesh.textureName = "diablo_diffuse"; 
+    diablo_mesh.load_obj("assets/mesh/diablo3_pose.obj");
     scene.mesh_list.emplace_back(diablo_mesh);
     Mesh_Instance diabloInstance0 = {};
     diabloInstance0.instance_id = 0;
     diabloInstance0.mesh_id = 0;
     scene.instance_list.emplace_back(diabloInstance0);
+    scene_manager.loadTextureFromFile(scene, std::string("diablo_diffuse"), "assets/texture/diablo3_pose_diffuse.tga");
+    scene_manager.findTextureForMesh(scene, diablo_mesh);
 
     // Skybox
     {
@@ -341,7 +349,8 @@ int main(int argc, char* argv[]) {
 
     {
         PerformanceTimer renderTimer;
-        renderer.draw_instance(scene, diabloInstance0);
+        renderer.shader_list[renderer.active_shader_id]->texture_ = &scene.texture_list[diablo_mesh.textureID];  
+        renderer.draw_instance(&directionalLight, diablo_mesh);
     }
 
     while(!glfwWindowShouldClose(window.m_window)) {

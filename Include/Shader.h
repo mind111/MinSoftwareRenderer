@@ -15,12 +15,19 @@ enum class Shader_Mode : int8_t
 
 class TextureSampler {
 public:
-    Vec3<float> sampleTexture2D(Texture& texture, float u, float v);
+    Vec3<int> sampleTexture2D(Texture& texture, float u, float v);
 };
 
 struct FragmentAttrib {
     Vec3<float> textureCoord;
     Vec3<float> normal;
+};
+
+struct LightingParams {
+    Vec3<float> color;
+    Vec3<float> direction;
+    Vec3<float> viewDirection;
+    float intensity;
 };
 
 class Shader_Base {
@@ -32,9 +39,10 @@ public:
 
     // per fragment attrib
     FragmentAttrib* fragmentAttribBuffer;
+    LightingParams* lightingParamBuffer;
     uint32_t bufferWidth_, bufferHeight_;
 
-    TextureSampler* textureSampler;
+    TextureSampler textureSampler;
     Texture* texture_;
     
     void set_model_matrix(Mat4x4<float>& model);
@@ -43,7 +51,7 @@ public:
     void bindTexture(Texture* texture);
 
     virtual Vec4<float> vertex_shader(Vec3<float>& v) = 0;
-    virtual Vec4<float> fragment_shader(int x, int y) = 0;  
+    virtual Vec4<int> fragment_shader(int x, int y) = 0;  
     void initFragmentAttrib(uint32_t bufferWidth, uint32_t bufferHeight);
 };
 
@@ -57,7 +65,7 @@ class Phong_Shader : public Shader_Base {
 public:
     Phong_Shader();
     Vec4<float> vertex_shader(Vec3<float>& v) override;
-    Vec4<float> fragment_shader(int x, int y) override;
+    Vec4<int> fragment_shader(int x, int y) override;
 };
 
 

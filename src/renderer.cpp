@@ -46,12 +46,23 @@ void Renderer::clearBuffer() {
     }
 }
 
+void Renderer::drawScene(Scene& scene) {
+    for (auto& instance : scene.instance_list) {
+        for (auto directionalLight : scene.directionalLightList) {
+            Mesh& mesh = scene.mesh_list[instance.mesh_id];
+            // bind the texture to active shader
+            shader_list[active_shader_id]->texture_ = &scene.texture_list[mesh.textureID];  
+            draw_instance(&directionalLight, mesh);
+        }
+    }
+}
+
 // TODO: @ Frustum culling
 // TODO: @ Backface culling
 // TODO: @ PBR
-void Renderer::draw_instance(Scene& scene, Mesh_Instance& mesh_instance) {    
+// TODO: @ Should deal with instance xform in here
+void Renderer::draw_instance(Light* light, Mesh& mesh) {    
     Shader_Base* active_shader = shader_list[active_shader_id];
-    Mesh mesh = scene.mesh_list[mesh_instance.mesh_id];
     if (mesh.texture_uv_buffer) {
         mesh_attrib_flag = mesh_attrib_flag | 1;
     }
@@ -69,9 +80,9 @@ void Renderer::draw_instance(Scene& scene, Mesh_Instance& mesh_instance) {
             // vertex transform
             triangle_clip[v] = active_shader->vertex_shader(mesh_manager.get_vertex(mesh, f_idx * 3 + v));
             // perspective division
-            triangle_clip[v] = triangle_clip[v] / triangle_clip[v].w;
+            //triangle_clip[v] = triangle_clip[v] / triangle_clip[v].w;
             // viewport transform
-            Vec4<float> v_screen = viewport * triangle_clip[v];
+            Vec4<float> v_screen = viewport * (triangle_clip[v] / triangle_clip[v].w);
             triangle_screen[v].x = v_screen.x;
             triangle_screen[v].y = v_screen.y;
             // has texture uv attrib 
@@ -92,12 +103,13 @@ void Renderer::draw_instance(Scene& scene, Mesh_Instance& mesh_instance) {
         // -------------
 
         // rasterization
-        fill_triangle(active_shader);
+        fill_triangle(active_shader, light);
     }
 }
 
 bool Renderer::depth_test(int fragmentX, int fragmentY, Vec3<float> _bary_coord) {
     int index = fragmentY * buffer_width + fragmentX;
+    // Maybe this is wrong here, I was using the z after perspective division
     float fragmentZ = 1 / (_bary_coord.x / triangle_clip[0].z + _bary_coord.y / triangle_clip[1].z + _bary_coord.z / triangle_clip[2].z);
     if (fragmentZ < z_buffer[index]) {
         z_buffer[index] = fragmentZ;
@@ -109,7 +121,7 @@ bool Renderer::depth_test(int fragmentX, int fragmentY, Vec3<float> _bary_coord)
 // TODO: Improve normal mapping
 // TODO: Create multiple fragmentShader instance
 // TODO: Maybe something like fragmentShaderPools[bufferWidth][bufferHeight]
-void Renderer::fill_triangle(Shader_Base* active_shader_ptr) {
+void Renderer::fill_triangle(Shader_Base* active_shader_ptr, Light* light) {
     // TODO: @ Clean up using a determinant()
     Vec2<float> e1 = triangle_screen[1] - triangle_screen[0];
     Vec2<float> e2 = triangle_screen[2] - triangle_screen[0];
@@ -132,8 +144,7 @@ void Renderer::fill_triangle(Shader_Base* active_shader_ptr) {
     for (int x = bbox[0]; x < bbox[1]; x++) {
         for (int y = bbox[2]; y < bbox[3]; y++) {
             // compute barycentric coord
-            Vec3<float> bary_coord = Math::barycentric(triangle_screen, x, y, denom);
-            // overlapping test
+            Vec3<float> bary_coord = Math::barycentric(triangle_screen, x, y, denom); // overlapping test
             if (bary_coord.x < 0.f || bary_coord.y < 0.f || bary_coord.z < 0.f) {
                 continue;
             }
@@ -141,6 +152,7 @@ void Renderer::fill_triangle(Shader_Base* active_shader_ptr) {
             if (!depth_test(x, y, bary_coord)) {
                 continue;
             }
+            // get fragment depth
 
             // TODO: may not even need to bother checking
             // TODO: if normal is not provided, pass in interpolated normal
@@ -153,12 +165,20 @@ void Renderer::fill_triangle(Shader_Base* active_shader_ptr) {
             if (mesh_attrib_flag & 0x0002) {
                 active_shader_ptr->fragmentAttribBuffer[attribIdx].normal = Math::bary_interpolate(triangle_normal, bary_coord);
             }
-
+            // TODO: Bulletproof this setup for lighting computation
+            // point light
+            if (light->getPosition()) {
+                // compute per fragment light direction
+            } else {
+                active_shader_ptr->lightingParamBuffer[attribIdx].color = light->color;
+                active_shader_ptr->lightingParamBuffer[attribIdx].intensity = light->intensity;
+                active_shader_ptr->lightingParamBuffer[attribIdx].direction = *(light->getDirection());
+                // view
+            }
             // compute fragment color
-            Vec4<float> fragment_color = active_shader_ptr->fragment_shader(x, y);
-
+            Vec4<int> fragmentColor = active_shader_ptr->fragment_shader(x, y);
             // write to backbuffer
-            draw_pixel(x, y, Vec4<int>(200, 100, 0, 255));
+            draw_pixel(x, y, fragmentColor);
             // -------------------
         }
     }

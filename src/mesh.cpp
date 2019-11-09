@@ -18,7 +18,7 @@ Mesh::Mesh() {
     vt_components = -1;
     vn_components = -1;
     idx_components = -1;
-    material_id = -1;
+    textureID = -1;
 }
 
 void Mesh::load_texture(const char* filename) {

@@ -26,11 +26,6 @@ class Rasterizer {
 
 };
 
-struct Attrib_Ptr {
-    void* data;
-    int num_components;
-};
-
 class Renderer {
 public:
     std::vector<Shader_Base*> shader_list; // shader pool that include all available style of shaders
@@ -55,14 +50,14 @@ public:
     void alloc_backbuffer(Window& window);
     void bind_mesh_buffers(Mesh& mesh);
     void draw_pixel(int x, int y, Vec4<int>& color);
-    void draw_scene(Scene& scene);
-    void draw_instance(Scene& scene, Mesh_Instance& mesh_instance);
+    void drawScene(Scene& scene);
+    void draw_instance(Light* light, Mesh& mesh);
     void clearBuffer();
 
 private:
     float* z_buffer;
     void draw_mesh(Mesh& mesh);
     bool depth_test(int fragment_x, int fragment_y, Vec3<float> _bary_coord);
-    void fill_triangle(Shader_Base* active_shader_ptr);
+    void fill_triangle(Shader_Base* active_shader_ptr, Light* light);
 };
 

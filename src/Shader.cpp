@@ -797,6 +797,7 @@ void Shader_Base::initFragmentAttrib(uint32_t bufferWidth, uint32_t bufferHeight
     bufferWidth_ = bufferWidth;
     bufferHeight_ = bufferHeight;
     fragmentAttribBuffer = new FragmentAttrib[bufferWidth * bufferHeight];
+    lightingParamBuffer = new LightingParams[bufferWidth * bufferHeight];
 }
 
 void Shader_Base::set_model_matrix(Mat4x4<float>& model) {
@@ -816,7 +817,7 @@ void Shader_Base::bindTexture(Texture* texture) {
 }
 
 Phong_Shader::Phong_Shader() {
-    textureSampler = nullptr;
+
 }
 
 Vec4<float> Phong_Shader::vertex_shader(Vec3<float>& v) {
@@ -827,21 +828,27 @@ Vec4<float> Phong_Shader::vertex_shader(Vec3<float>& v) {
 // Fragment textureUV
 // Fragment lightDirection
 // Fragment viewDirection
-Vec4<float> Phong_Shader::fragment_shader(int x, int y) {
+Vec4<int> Phong_Shader::fragment_shader(int x, int y) {
     FragmentAttrib& attribs = fragmentAttribBuffer[y * bufferWidth_ + x];
-    Vec4<float> fragmentColor(0.f, 0.f, 0.f, 1.f);
-
+    Vec4<int> fragmentColor(0, 0, 0, 255);
     // Ambient + Diffuse + Specular
     //Vec3<float> ambient();
     //Vec3<float> diffuse(0.f, 0.f, 0.f);
-
-    //diffuse =  
-    Vec3<float> ambient = textureSampler->sampleTexture2D(*texture_, attribs.textureCoord.x, attribs.textureCoord.y);
-
+    Vec3<int> ambient = textureSampler.sampleTexture2D(*texture_, attribs.textureCoord.x, attribs.textureCoord.y);
+    fragmentColor += Vec4<int>(ambient, 0);
     return fragmentColor;
 }
 
-Vec3<float> TextureSampler::sampleTexture2D(Texture& texture, float u, float v) {
-    Vec3<float> res;
+Vec3<int> TextureSampler::sampleTexture2D(Texture& texture, float u, float v) {
+    Vec3<int> res;
+    uint32_t samplePosX = u * texture.textureWidth;
+    // 1 - v here because the texture image coord y starts at the top while
+    // texture coord y starts from bottom, thus flip vertically 
+    uint32_t samplePosY = (1 - v) * texture.textureHeight;
+
+    uint32_t pixelIdx = texture.textureWidth * samplePosY + samplePosX;
+    res.x = texture.pixels[pixelIdx * texture.numChannels];     // R
+    res.y = texture.pixels[pixelIdx * texture.numChannels + 1]; // G
+    res.z = texture.pixels[pixelIdx * texture.numChannels + 2]; // B
     return res;
 }

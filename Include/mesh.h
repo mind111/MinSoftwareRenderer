@@ -10,6 +10,7 @@ struct Mesh_Instance {
 class Mesh {
 public:
     std::string name;
+    std::string textureName;
     float* vertex_buffer;
     float* texture_uv_buffer;
     float* normal_buffer;
@@ -17,7 +18,7 @@ public:
 
     int num_vertices, num_faces, num_texture_coord, num_normal;
     int v_components, vt_components, vn_components, idx_components;
-    int material_id;
+    int textureID;
 
     Mesh();
     void load_obj(const char* filename);

@@ -40,6 +40,7 @@ int split_by_spaces(std::string& s) {
 }
 
 // Helpers for parsing obj
+// TODO: This won't work for .obj that has format like 1//3, it will still produce 3 components for each index
 int count_slash(std::string& s) {
     int result = 0;
     for (int i = 0; i < s.length(); i++) {
@@ -52,7 +53,7 @@ int count_slash(std::string& s) {
 
 // Helpers for parsing obj
 int get_index(std::string& s) {
-    int result = -1;
+    int result = 0;
     int l = 0, r = 0;
 
     for ( ; r < s.length(); r++) {
@@ -65,6 +66,48 @@ int get_index(std::string& s) {
     return result;
 }
 
+void processIndexString(std::string& indexStr, unsigned int* indexArray, int numComponents) {
+    std::string token, dump;
+    std::stringstream ss(indexStr);
+    ss >> dump;
+    while (ss >> token) {
+        for (int i = 0; i < numComponents; i++) {
+            *(indexArray + i) = get_index(token);
+        }
+        indexArray += 3;
+    } 
+}
+
+// TODO: @ Add a parameter "stride"
+Vec3<float> fetchPositionFromBuffer(const float* buffer, int idx) {
+    return Vec3<float>(buffer[idx * 3], buffer[idx * 3 + 1],
+                       buffer[idx * 3 + 2]);
+}
+
+Vec2<float> fetchTextureUVFromBuffer(const float* buffer, int idx, int numComponents, int offset) {
+    return Vec2<float>(buffer[idx * numComponents + offset], buffer[idx * numComponents + offset + 1]);
+}
+
+Vec3<float> computeTangent(Vec3<float>& v0, Vec3<float>& v1, Vec3<float>& v2,
+                           Vec2<float>& uv0, Vec2<float>& uv1, Vec2<float>& uv2) {
+    Vec3<float> tangent;
+    Mat2x2<float> a;
+    Vec3<float> e1 = v1 - v0;
+    Vec3<float> e2 = v2 - v0;
+    Vec2<float> deltaUV1 = uv1 - uv0;
+    Vec2<float> deltaUV2 = uv2 - uv0;
+    a.Mat[0][0] = deltaUV1.x; // U1 - U0 
+    a.Mat[0][1] = deltaUV1.y; // V1 - V0
+    a.Mat[1][0] = deltaUV2.x; // U2 - U0
+    a.Mat[1][1] = deltaUV2.y; // V2 - V0
+    Mat2x2<float> aInv = a.Inverse(); 
+    tangent.x = aInv.Mat[0][0] * e1.x + aInv.Mat[0][1] * e2.x;
+    tangent.y = aInv.Mat[0][0] * e1.y + aInv.Mat[0][1] * e2.y;
+    tangent.z = aInv.Mat[0][0] * e1.z + aInv.Mat[0][1] * e2.z;
+    return Math::Normalize(tangent);
+}
+
+// TODO: @ Maybe compute tangent at load time
 void Mesh::load_obj(const char* filename) {
     using std::string;
     using std::stringstream;
@@ -115,9 +158,14 @@ void Mesh::load_obj(const char* filename) {
     float* vertex_buffer_raw = new float[num_vertices * v_components];
     float* texture_uv_buffer_raw = 0; 
     float* normal_buffer_raw = 0;
+    float* tangentBufferRaw = 0;
 
     if (vt_components != -1) {
         texture_uv_buffer_raw = new float[num_texture_coord * vt_components];
+        tangentBufferRaw = new float[num_vertices * v_components];
+        for (int i = 0; i < num_vertices * v_components; i++) {
+            tangentBufferRaw[i] = 0.f;
+        }
         texture_uv_buffer = new float[3 * num_faces * vt_components];
     }
     if (vn_components != -1) {
@@ -128,7 +176,9 @@ void Mesh::load_obj(const char* filename) {
     vertex_buffer = new float[3 * num_faces * v_components];
     indices = new unsigned int[3 * num_faces];
 
-    int loaded_vertex = 0, loaded_vt = 0, loaded_vn = 0, loaded_index = 0;
+    int loaded_vertex = 0, loaded_vt = 0, loaded_vn = 0, loaded_index = 0, loadedFace = 0;
+    Vec3<float> p0, p1, p2;
+    Vec2<float> uv0, uv1, uv2;
     
     // second pass
     while (std::getline(file, line)) {
@@ -154,17 +204,40 @@ void Mesh::load_obj(const char* filename) {
             }
             loaded_vn++;
         } else if (line[0] == 'f') {
+            unsigned int faceIndexArray[9] = {0};
+            processIndexString(line, faceIndexArray, index_sub_component);
+            // generate tangent
+            if (index_sub_component > 1) {
+                p0 = fetchPositionFromBuffer(vertex_buffer_raw, faceIndexArray[0] - 1);
+                p1 = fetchPositionFromBuffer(vertex_buffer_raw, faceIndexArray[3] - 1);
+                p2 = fetchPositionFromBuffer(vertex_buffer_raw, faceIndexArray[6] - 1);
+                uv0 = fetchTextureUVFromBuffer(texture_uv_buffer_raw, faceIndexArray[1] - 1, vt_components, 0);
+                uv1 = fetchTextureUVFromBuffer(texture_uv_buffer_raw, faceIndexArray[4] - 1, vt_components, 0);
+                uv2 = fetchTextureUVFromBuffer(texture_uv_buffer_raw, faceIndexArray[7] - 1, vt_components, 0);
+                // compute tangents
+                Vec3<float> faceTangent = computeTangent(p0, p1, p2, uv0, uv1, uv2);
+                for (int i = 0; i < 3; i++) {
+                    int tangentIndex = (faceIndexArray[i * 3] - 1) * 3; 
+                    tangentBufferRaw[tangentIndex]     += faceTangent.x;
+                    tangentBufferRaw[tangentIndex + 1] += faceTangent.y;
+                    tangentBufferRaw[tangentIndex + 2] += faceTangent.z;
+                }
+            }
             ss >> dump;
+            // TODO: the idx_components here seems misleading, it actually indicate
+            // how many indices per face
+            int vertexIdx[3] = {-1, -1, -1}, uvIndex[3] = {-1, -1, -1};
             for (int i = 0; i < idx_components; i++) {
                 unsigned int index;
-                string token, index_str;
+                string token;
                 unsigned int loaded_sub_component = 1;
                 ss >> token;
                 index = get_index(token);
-                vertex_buffer[loaded_index * v_components] = vertex_buffer_raw[(index - 1) * v_components];  
-                vertex_buffer[loaded_index * v_components + 1] = vertex_buffer_raw[(index - 1) * v_components + 1];  
-                vertex_buffer[loaded_index * v_components + 2] = vertex_buffer_raw[(index - 1) * v_components + 2];  
-
+                int nextVertex = loaded_index * v_components; 
+                vertex_buffer[nextVertex] = vertex_buffer_raw[(index - 1) * v_components];  
+                vertex_buffer[nextVertex + 1] = vertex_buffer_raw[(index - 1) * v_components + 1];  
+                vertex_buffer[nextVertex + 2] = vertex_buffer_raw[(index - 1) * v_components + 2];  
+            
                 for ( ; loaded_sub_component < index_sub_component; loaded_sub_component++) {
                     switch (loaded_sub_component % index_sub_component) {
                         case 1: {
@@ -190,10 +263,29 @@ void Mesh::load_obj(const char* filename) {
         }
     }
 
+    if (tangentBufferRaw) {
+        for (int i = 0; i < num_vertices; i++) {
+            Vec3<float> summedTangents(tangentBufferRaw[i * v_components],
+                                       tangentBufferRaw[i * v_components + 1],
+                                       tangentBufferRaw[i * v_components + 2]);
+            Vec3<float> normalizedTangent = Math::Normalize(summedTangents);
+            tangentBufferRaw[i * v_components] = normalizedTangent.x;
+            tangentBufferRaw[i * v_components + 1] = normalizedTangent.y;
+            tangentBufferRaw[i * v_components + 2] = normalizedTangent.z;
+        }
+    }
+
     // Clean up
     delete []vertex_buffer_raw;
     delete []texture_uv_buffer_raw;
     delete []normal_buffer_raw;
+}
+
+
+void Mesh_Manager::generateTangents(Mesh& mesh) {
+    if (!mesh.texture_uv_buffer) {
+        return;
+    }
 }
 
 Vec3<float> Mesh_Manager::get_vertex(Mesh& mesh, uint32_t idx) {

@@ -44,6 +44,7 @@ public:
 
     TextureSampler textureSampler;
     Texture* texture_;
+    Texture* bumpMap_;
     
     void set_model_matrix(Mat4x4<float>& model);
     void set_view_matrix(Mat4x4<float>& view);

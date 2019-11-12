@@ -285,6 +285,7 @@ int main(int argc, char* argv[]) {
     // diablo mesh
     Mesh diablo_mesh;
     diablo_mesh.textureName = "diablo_diffuse"; 
+    diablo_mesh.normalMapName = "diablo_normal_map";
     diablo_mesh.load_obj("assets/mesh/diablo3_pose.obj");
     scene.mesh_list.emplace_back(diablo_mesh);
     Mesh_Instance diabloInstance0 = {};
@@ -294,6 +295,7 @@ int main(int argc, char* argv[]) {
     scene_manager.loadTextureFromFile(scene, std::string("diablo_diffuse"), "assets/texture/diablo3_pose_diffuse.tga");
     scene_manager.loadTextureFromFile(scene, std::string("diablo_normal_map"), "assets/texture/diablo3_pose_nm_tangent.tga");
     scene_manager.findTextureForMesh(scene, diablo_mesh);
+    scene_manager.findNormalMapForMesh(scene, diablo_mesh);
 
     // Skybox
     {
@@ -306,7 +308,6 @@ int main(int argc, char* argv[]) {
     // Draw the output to a file
     //image.flip_vertically();
     //image.write_tga_file("output.tga");
-
 
     float quad[18] = {
         -1.f, 1.f, 0.f, 
@@ -349,8 +350,10 @@ int main(int argc, char* argv[]) {
     }
 
     {
+        // TODO: Refactor texture binding process
         PerformanceTimer renderTimer;
         renderer.shader_list[renderer.active_shader_id]->texture_ = &scene.texture_list[diablo_mesh.textureID];  
+        renderer.shader_list[renderer.active_shader_id]->normalMap_ = &scene.texture_list[diablo_mesh.normalMapID];  
         renderer.draw_instance(&directionalLight, diablo_mesh);
     }
 

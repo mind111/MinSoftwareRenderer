@@ -25,7 +25,7 @@ public:
 
     int num_vertices, num_faces, num_texture_coord, num_normal;
     int v_components, vt_components, vn_components, idx_components;
-    int textureID, bumpMapID;
+    int textureID, normalMapID;
 
     // TODO: These methods should be moved into Mesh_Manager
     Mesh();

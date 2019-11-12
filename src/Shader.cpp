@@ -883,14 +883,21 @@ Vec4<int> Phong_Shader::fragment_shader(int x, int y) {
 
     Vec4<float> result(0.f, 0.f, 0.f, 255.f);
     Vec3<float> ambient = sampleTexture2D(*texture_, attribs.textureCoord.x, attribs.textureCoord.y);
+    Vec3<float> normal = attribs.normal;
     if (normalMap_) { 
         Vec3<float> sampledNormal = sampleNormal(*normalMap_, attribs.textureCoord.x, attribs.textureCoord.y); 
+        // TODO: Need to consider the handed-ness of the tangent space where normals are defined in
         Vec3<float> interpolatedNormal = attribs.normal;
-        Vec3<float> bitangent = Math::CrossProduct(attribs.tangent, interpolatedNormal);
-        // Gram-Schemidt process to adjust tangent so that it maintains perpendicular to normal
+        Vec3<float> tangent = attribs.tangent;
+        // Gram-Schemidt process to re-orthoganize the tangent and fragmentNormal
+        tangent = Math::Normalize(tangent - interpolatedNormal * Math::DotProduct_Vec3(tangent, interpolatedNormal));
+        Vec3<float> biTangent = Math::CrossProduct(tangent, interpolatedNormal);
+        normal.x = tangent.x * sampledNormal.x + biTangent.x * sampledNormal.y + interpolatedNormal.x * sampledNormal.z;
+        normal.y = tangent.y * sampledNormal.x + biTangent.y * sampledNormal.y + interpolatedNormal.y * sampledNormal.z;
+        normal.z = tangent.z * sampledNormal.x + biTangent.z * sampledNormal.y + interpolatedNormal.z * sampledNormal.z;
     }
     // Assuming that lightDirection is already normalized
-    float diffuseCoef = Math::DotProduct_Vec3(attribs.normal, lightDirection);
+    float diffuseCoef = Math::DotProduct_Vec3(normal, lightDirection);
     diffuseCoef = Math::clamp_f(diffuseCoef, 0.f, 1.f);
     Vec3<float> diffuse = lightColor * diffuseCoef;
     result = Vec4<float>(ambient * 0.f, 0.f) + Vec4<float>(diffuse, 0.f);

@@ -65,3 +65,11 @@ void Scene_Manager::findTextureForMesh(Scene& scene, Mesh& mesh) {
         }
     }
 }
+
+void Scene_Manager::findNormalMapForMesh(Scene& scene, Mesh& mesh) {
+    for (int i = 0; i < scene.texture_list.size(); i++) {
+        if (scene.texture_list[i].textureName == mesh.normalMapName) {
+            mesh.normalMapID = i;
+        }
+    }
+}

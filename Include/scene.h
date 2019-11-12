@@ -59,6 +59,7 @@ public:
     void add_instance(Scene& scene, uint32_t mesh_id);
     void loadTextureFromFile(Scene& scene, std::string& name, const char* filename);
     void findTextureForMesh(Scene& scene, Mesh& mesh);
+    void findNormalMapForMesh(Scene& scene, Mesh& diablo_mesh);
     Mat4x4<float> get_camera_view(Camera& camera);
 };
 

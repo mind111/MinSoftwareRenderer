@@ -793,11 +793,48 @@ void Shader::DrawOcclusion(Model& Model, TGAImage& occlusion_texture, float* occ
     }
 }
 
+Shader_Base::Shader_Base() {
+    vertexAttribFlag = 1;
+    texture_ = nullptr;
+    normalMap_ = nullptr;
+}
+
 void Shader_Base::initFragmentAttrib(uint32_t bufferWidth, uint32_t bufferHeight) {
     bufferWidth_ = bufferWidth;
     bufferHeight_ = bufferHeight;
     fragmentAttribBuffer = new FragmentAttrib[bufferWidth * bufferHeight];
     lightingParamBuffer = new LightingParams[bufferWidth * bufferHeight];
+}
+
+Vec3<float> Shader_Base::sampleTexture2D(Texture& texture, float u, float v) {
+    Vec3<float> res;
+    uint32_t samplePosX = u * texture.textureWidth;
+    // 1 - v here because the texture image coord y starts at the top while
+    // texture coord y starts from bottom, thus flip vertically 
+    uint32_t samplePosY = (1 - v) * texture.textureHeight;
+    uint32_t pixelIdx = texture.textureWidth * samplePosY + samplePosX;
+    res.x = (float)(texture.pixels[pixelIdx * texture.numChannels]);     // R
+    res.y = (float)(texture.pixels[pixelIdx * texture.numChannels + 1]); // G
+    res.z = (float)(texture.pixels[pixelIdx * texture.numChannels + 2]); // B
+    return res;
+}
+
+Vec3<float> Shader_Base::sampleNormal(Texture& normalMap, float u, float v) {
+    Vec3<float> res;
+    uint32_t samplePosX = u * normalMap.textureWidth;
+    // 1 - v here because the texture image coord y starts at the top while
+    // texture coord y starts from bottom, thus flip vertically 
+    uint32_t samplePosY = (1 - v) * normalMap.textureHeight;
+    uint32_t pixelIdx = normalMap.textureWidth * samplePosY + samplePosX;
+    res.x = normalMap.pixels[pixelIdx * normalMap.numChannels];     // R
+    res.y = normalMap.pixels[pixelIdx * normalMap.numChannels + 1]; // G
+    res.z = normalMap.pixels[pixelIdx * normalMap.numChannels + 2]; // B
+    // normalize the component value from [0, 255] to [-1, 1]
+    res.x = (float)res.x / 255.f * 2 - 1.f; 
+    res.y = (float)res.y / 255.f * 2 - 1.f; 
+    res.z = (float)res.z / 255.f * 2 - 1.f; 
+    // Do I need to normalize the remapped result here?
+    return res;
 }
 
 void Shader_Base::set_model_matrix(Mat4x4<float>& model) {
@@ -824,31 +861,39 @@ Vec4<float> Phong_Shader::vertex_shader(Vec3<float>& v) {
     return projection_ * view_ * model_ * Vec4<float>(v, 1.f);    
 }
 
+Vec3<float> Shader_Base::transformNormal(Vec3<float>& normal) {
+    Vec4<float> result = view_ * model_ * Vec4<float>(normal, 0.f);
+    return Vec3<float>(result.x, result.y, result.z);
+}
+
+Vec3<float> Shader_Base::transformTangent(Vec3<float>& tangent) {
+    Vec4<float> result = view_ * model_ * Vec4<float>(tangent, 0.f);
+    return Vec3<float>(result.x, result.y, result.z);
+}
+
 // Fragment normal
 // Fragment textureUV
 // Fragment lightDirection
 // Fragment viewDirection
 Vec4<int> Phong_Shader::fragment_shader(int x, int y) {
     FragmentAttrib& attribs = fragmentAttribBuffer[y * bufferWidth_ + x];
-    Vec4<int> fragmentColor(0, 0, 0, 255);
-    // Ambient + Diffuse + Specular
-    //Vec3<float> ambient();
-    //Vec3<float> diffuse(0.f, 0.f, 0.f);
-    Vec3<int> ambient = textureSampler.sampleTexture2D(*texture_, attribs.textureCoord.x, attribs.textureCoord.y);
-    fragmentColor += Vec4<int>(ambient, 0);
+    LightingParams& lightingParams = lightingParamBuffer[y * bufferWidth_ + x];
+    Vec3<float> lightDirection = lightingParams.direction;
+    Vec3<float> lightColor = lightingParams.color;
+
+    Vec4<float> result(0.f, 0.f, 0.f, 255.f);
+    Vec3<float> ambient = sampleTexture2D(*texture_, attribs.textureCoord.x, attribs.textureCoord.y);
+    if (normalMap_) { 
+        Vec3<float> sampledNormal = sampleNormal(*normalMap_, attribs.textureCoord.x, attribs.textureCoord.y); 
+        Vec3<float> interpolatedNormal = attribs.normal;
+        Vec3<float> bitangent = Math::CrossProduct(attribs.tangent, interpolatedNormal);
+        // Gram-Schemidt process to adjust tangent so that it maintains perpendicular to normal
+    }
+    // Assuming that lightDirection is already normalized
+    float diffuseCoef = Math::DotProduct_Vec3(attribs.normal, lightDirection);
+    diffuseCoef = Math::clamp_f(diffuseCoef, 0.f, 1.f);
+    Vec3<float> diffuse = lightColor * diffuseCoef;
+    result = Vec4<float>(ambient * 0.f, 0.f) + Vec4<float>(diffuse, 0.f);
+    Vec4<int> fragmentColor((int)result.x, (int)result.y, (int)result.z, (int)result.w);
     return fragmentColor;
-}
-
-Vec3<int> TextureSampler::sampleTexture2D(Texture& texture, float u, float v) {
-    Vec3<int> res;
-    uint32_t samplePosX = u * texture.textureWidth;
-    // 1 - v here because the texture image coord y starts at the top while
-    // texture coord y starts from bottom, thus flip vertically 
-    uint32_t samplePosY = (1 - v) * texture.textureHeight;
-
-    uint32_t pixelIdx = texture.textureWidth * samplePosY + samplePosX;
-    res.x = texture.pixels[pixelIdx * texture.numChannels];     // R
-    res.y = texture.pixels[pixelIdx * texture.numChannels + 1]; // G
-    res.z = texture.pixels[pixelIdx * texture.numChannels + 2]; // B
-    return res;
 }

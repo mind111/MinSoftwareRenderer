@@ -69,6 +69,11 @@ void Renderer::draw_instance(Light* light, Mesh& mesh) {
     if (mesh.normal_buffer) {
         mesh_attrib_flag = mesh_attrib_flag | (1 << 1);
     }
+    if (mesh.tangentBuffer) {
+        mesh_attrib_flag = mesh_attrib_flag | (1 << 2);
+    }
+
+    active_shader->vertexAttribFlag = mesh_attrib_flag;
 
     // TODO: @ Clean up
     // TODO: @ Debug rendering
@@ -79,8 +84,10 @@ void Renderer::draw_instance(Light* light, Mesh& mesh) {
         for (int v = 0; v < 3; v++) {
             // vertex transform
             triangle_clip[v] = active_shader->vertex_shader(mesh_manager.get_vertex(mesh, f_idx * 3 + v));
-            // perspective division
-            //triangle_clip[v] = triangle_clip[v] / triangle_clip[v].w;
+            if (mesh.tangentBuffer) {
+                Vec3<float> vertexTangent = mesh_manager.getTangent(mesh, f_idx * 3 + v);
+                //drawTangents(mesh_manager.get_vertex(mesh, f_idx * 3 + v), vertexTangent);
+            }
             // viewport transform
             Vec4<float> v_screen = viewport * (triangle_clip[v] / triangle_clip[v].w);
             triangle_screen[v].x = v_screen.x;
@@ -91,8 +98,18 @@ void Renderer::draw_instance(Light* light, Mesh& mesh) {
             } 
             // has normal attrib 
             if (mesh_attrib_flag & 0x0002) {
-                triangle_normal[v] = mesh_manager.get_vn(mesh, f_idx * 3 + v);
+                // TODO: do correct transformation for normals and tangents that will work for any
+                // transformation involving non-uniform scaling. For now, since I am not doing any scaling
+                // so using the same modelView transform should be suffice for now
+                // need to transform the normal here
+                normalIn[v] = mesh_manager.get_vn(mesh, f_idx * 3 + v);
+                normalOut[v] = active_shader->transformNormal(normalIn[v]);
             } 
+            // has vertex tangent
+            if (mesh_attrib_flag & 0x0004) {
+                tangentIn[v] = mesh_manager.getTangent(mesh, f_idx * 3 + v);
+                tangentOut[v] = active_shader->transformNormal(tangentIn[v]);
+            }
         }
 
         // TODO: @ frustum culling
@@ -163,7 +180,10 @@ void Renderer::fill_triangle(Shader_Base* active_shader_ptr, Light* light) {
                 active_shader_ptr->fragmentAttribBuffer[attribIdx].textureCoord = Math::bary_interpolate(triangle_uv, bary_coord);
             }
             if (mesh_attrib_flag & 0x0002) {
-                active_shader_ptr->fragmentAttribBuffer[attribIdx].normal = Math::bary_interpolate(triangle_normal, bary_coord);
+                active_shader_ptr->fragmentAttribBuffer[attribIdx].normal = Math::bary_interpolate(normalOut, bary_coord);
+            }
+            if (mesh_attrib_flag & 0x0004) {
+                active_shader_ptr->fragmentAttribBuffer[attribIdx].tangent = Math::bary_interpolate(tangentOut, bary_coord);
             }
             // TODO: Bulletproof this setup for lighting computation
             // point light
@@ -181,5 +201,67 @@ void Renderer::fill_triangle(Shader_Base* active_shader_ptr, Light* light) {
             draw_pixel(x, y, fragmentColor);
             // -------------------
         }
+    }
+}
+
+void Renderer::drawLine(Vec2<int> start, Vec2<int> end) {
+    int d = 1;
+    //**** Divide by 0
+    if (start.x == end.x)
+    {
+        if (start.y > end.y) start.Swap(end);
+        for (int i = start.y; i <= end.y; i++)
+        {
+            draw_pixel(start.x, i, Vec4<int>(50, 0, 250, 255));
+        }
+
+        return;
+    }
+    // Always start from left marching toward right
+    // Swap start and end
+    if (start.x > end.x) start.Swap(end);
+    // Derive the line function
+    float slope = (float)(start.y - end.y) / (float)(start.x - end.x);
+    float intercept = (float)end.y - slope * end.x;
+    Vec2<int> next(start);
+    Vec2<int> stepA(1, 0);
+    Vec2<int> stepB(1, 1);
+
+    if (slope < 0)
+    {
+        d *= -1;
+        stepA.Swap(stepB);
+    }
+    if (slope > 1 || slope < -1)
+    {
+        stepA.Transpose();
+        stepB.Transpose();
+    }
+
+    stepA.y *= d;
+    stepB.y *= d;
+
+    while (next.x < end.x || next.y != end.y)
+    {
+        //**** slope < 1
+        if (slope >= -1 && slope <= 1)
+        {
+            // Eval F(x+1,y+0.5)
+            if (next.y + d * 0.5f - slope * (next.x + 1.0f) - intercept >= 0)
+                next += stepA;
+            else
+                next += stepB;
+        }
+        /// \Bug: When slope is greater than 0, can invert x, y
+        else
+        {
+            // Eval F(x+0.5, y+1)
+            if (next.y + d * 1.0f - slope * (next.x + .5f) - intercept >= 0)
+                next += stepB;
+            else
+                next += stepA;
+        }
+        //**** Draw pixel to the buffer
+        draw_pixel(next.x, next.y, Vec4<int>(50, 0, 250, 255));
     }
 }

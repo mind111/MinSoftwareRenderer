@@ -35,7 +35,10 @@ public:
     Vec4<float> triangle_clip[3];
     Vec2<float> triangle_screen[3];
     Vec3<float> triangle_uv[3]; // if uv only has two components then fill z with 0
-    Vec3<float> triangle_normal[3];
+    Vec3<float> normalIn[3];
+    Vec3<float> normalOut[3];
+    Vec3<float> tangentIn[3];
+    Vec3<float> tangentOut[3];
 
     uint8_t mesh_attrib_flag;
 
@@ -52,6 +55,17 @@ public:
     void draw_pixel(int x, int y, Vec4<int>& color);
     void drawScene(Scene& scene);
     void draw_instance(Light* light, Mesh& mesh);
+    void drawLine(Vec2<int> start, Vec2<int> end);
+    void drawTangents(Vec3<float>& vertexPos, Vec3<float>& tangent) {
+        Vec3<float> end = vertexPos + tangent * 0.03f;
+        Vec4<float> vertexClip = shader_list[active_shader_id]->vertex_shader(vertexPos);
+        Vec4<float> vertexScreen = viewport * (vertexClip / vertexClip.w);
+        Vec2<int> startScreen(vertexScreen.x, vertexScreen.y);
+        Vec4<float> endClip = shader_list[active_shader_id]->vertex_shader(end);
+        Vec4<float> endScreenVec4 = viewport * (endClip / endClip.w);
+        Vec2<int> endScreen(endScreenVec4.x, endScreenVec4.y);
+        drawLine(startScreen, endScreen);
+    }
     void clearBuffer();
 
 private:

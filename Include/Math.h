@@ -167,6 +167,14 @@ struct Vec4
     Vec4(T x, T y, T z, T w): x(x), y(y), z(z), w(w) {}
     Vec4(Vec3<T> V, T w): x(V.x), y(V.y), z(V.z), w(w) {}
 
+    Vec4<T> operator+(const Vec4& rhs) {
+        Vec4<T> result;
+        result.x = this->x + rhs.x; 
+        result.y = this->y + rhs.y; 
+        result.z = this->z + rhs.z; 
+        return result;
+    }
+
     Vec4<T>& operator+=(const Vec4& rhs) {
         this->x += rhs.x;
         this->y += rhs.y;

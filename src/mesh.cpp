@@ -108,6 +108,7 @@ Vec3<float> computeTangent(Vec3<float>& v0, Vec3<float>& v1, Vec3<float>& v2,
 }
 
 // TODO: @ Maybe compute tangent at load time
+// TODO: @ Maybe benchmark this?
 void Mesh::load_obj(const char* filename) {
     using std::string;
     using std::stringstream;
@@ -166,6 +167,7 @@ void Mesh::load_obj(const char* filename) {
         for (int i = 0; i < num_vertices * v_components; i++) {
             tangentBufferRaw[i] = 0.f;
         }
+        tangentBuffer = new float[3 * num_faces * v_components];
         texture_uv_buffer = new float[3 * num_faces * vt_components];
     }
     if (vn_components != -1) {
@@ -226,7 +228,6 @@ void Mesh::load_obj(const char* filename) {
             ss >> dump;
             // TODO: the idx_components here seems misleading, it actually indicate
             // how many indices per face
-            int vertexIdx[3] = {-1, -1, -1}, uvIndex[3] = {-1, -1, -1};
             for (int i = 0; i < idx_components; i++) {
                 unsigned int index;
                 string token;
@@ -237,6 +238,7 @@ void Mesh::load_obj(const char* filename) {
                 vertex_buffer[nextVertex] = vertex_buffer_raw[(index - 1) * v_components];  
                 vertex_buffer[nextVertex + 1] = vertex_buffer_raw[(index - 1) * v_components + 1];  
                 vertex_buffer[nextVertex + 2] = vertex_buffer_raw[(index - 1) * v_components + 2];  
+                indices[loaded_index] = index;
             
                 for ( ; loaded_sub_component < index_sub_component; loaded_sub_component++) {
                     switch (loaded_sub_component % index_sub_component) {
@@ -273,21 +275,29 @@ void Mesh::load_obj(const char* filename) {
             tangentBufferRaw[i * v_components + 1] = normalizedTangent.y;
             tangentBufferRaw[i * v_components + 2] = normalizedTangent.z;
         }
+        // reorder the tangents to match vertex buffer
+        for (int i = 0; i < num_faces * 3; i++) {
+            int vertexIdx = (indices[i] - 1) * 3;
+            tangentBuffer[i * 3] = tangentBufferRaw[vertexIdx];
+            tangentBuffer[i * 3 + 1] = tangentBufferRaw[vertexIdx + 1];
+            tangentBuffer[i * 3 + 2] = tangentBufferRaw[vertexIdx + 2];
+        }
     }
 
     // Clean up
     delete []vertex_buffer_raw;
     delete []texture_uv_buffer_raw;
     delete []normal_buffer_raw;
+    delete []tangentBufferRaw;
+    delete []indices;
 }
 
-
-void Mesh_Manager::generateTangents(Mesh& mesh) {
-    if (!mesh.texture_uv_buffer) {
-        return;
-    }
+Vec3<float> Mesh_Manager::getTangent(Mesh& mesh, uint32_t idx) {
+    return Vec3<float>(mesh.tangentBuffer[idx * mesh.v_components],
+                       mesh.tangentBuffer[idx * mesh.v_components + 1],
+                       mesh.tangentBuffer[idx * mesh.v_components + 2]);
 }
-
+ 
 Vec3<float> Mesh_Manager::get_vertex(Mesh& mesh, uint32_t idx) {
     return Vec3<float>(mesh.vertex_buffer[idx * mesh.v_components], 
                        mesh.vertex_buffer[idx * mesh.v_components + 1], 

@@ -13,14 +13,10 @@ enum class Shader_Mode : int8_t
     Toon_Shader
 };
 
-class TextureSampler {
-public:
-    Vec3<int> sampleTexture2D(Texture& texture, float u, float v);
-};
-
 struct FragmentAttrib {
     Vec3<float> textureCoord;
     Vec3<float> normal;
+    Vec3<float> tangent;
 };
 
 struct LightingParams {
@@ -37,23 +33,28 @@ public:
     Mat4x4<float> view_;
     Mat4x4<float> projection_;
 
+    uint8_t vertexAttribFlag;
     // per fragment attrib
     FragmentAttrib* fragmentAttribBuffer;
     LightingParams* lightingParamBuffer;
     uint32_t bufferWidth_, bufferHeight_;
 
-    TextureSampler textureSampler;
     Texture* texture_;
-    Texture* bumpMap_;
+    Texture* normalMap_;
     
+    Shader_Base();
     void set_model_matrix(Mat4x4<float>& model);
     void set_view_matrix(Mat4x4<float>& view);
     void set_projection_matrix(Mat4x4<float>& projection);
     void bindTexture(Texture* texture);
 
     virtual Vec4<float> vertex_shader(Vec3<float>& v) = 0;
-    virtual Vec4<int> fragment_shader(int x, int y) = 0;  
+    virtual Vec4<int> fragment_shader(int x, int y) = 0;
     void initFragmentAttrib(uint32_t bufferWidth, uint32_t bufferHeight);
+    Vec3<float> sampleTexture2D(Texture& texture, float u, float v);
+    Vec3<float> sampleNormal(Texture& normalMap, float u, float v);
+    Vec3<float> transformNormal(Vec3<float>& normal);
+    Vec3<float> transformTangent(Vec3<float>& tangent);
 };
 
 class Phong_Shader : public Shader_Base {

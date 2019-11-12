@@ -161,8 +161,8 @@ int main(int argc, char* argv[]) {
     scene.main_camera.target = Vec3<float>(0.f, 0.f, -1.f);
     scene.main_camera.world_up = Vec3<float>(0.f, 1.f, 0.f);
     DirectionalLight directionalLight = { };
-    directionalLight.color = Vec3<float>(1.f, 1.f, 1.f);
-    directionalLight.direction = Vec3<float>(1.f, 1.5f, 2.f);
+    directionalLight.color = Vec3<float>(255.f, 255.f, 255.f);
+    directionalLight.direction = Math::Normalize(Vec3<float>(1.f, 1.5f, 2.f));
     directionalLight.intensity = .8f;
     scene.directionalLightList.emplace_back(directionalLight);
 
@@ -236,13 +236,13 @@ int main(int argc, char* argv[]) {
     // Model
     Mat4x4<float> ModelToWorld;
     ModelToWorld.Identity();
-    ModelToWorld.SetTranslation(Vec3<float>(0.f, 0.f, -2.f));
+    ModelToWorld.SetTranslation(Vec3<float>(0.f, 0.f, -1.25f));
 
     // View
     Mat4x4<float> View = scene_manager.get_camera_view(scene.main_camera);
 
     // Projection
-    Mat4x4<float> Perspective = Mat4x4<float>::Perspective((float)window.width / window.height, 1.f, 5.f, 90.f);
+    Mat4x4<float> Perspective = Mat4x4<float>::Perspective((float)window.width / window.height, .1f, 5.f, 90.f);
 
     phongShader.set_model_matrix(ModelToWorld);
     phongShader.set_view_matrix(View);
@@ -292,6 +292,7 @@ int main(int argc, char* argv[]) {
     diabloInstance0.mesh_id = 0;
     scene.instance_list.emplace_back(diabloInstance0);
     scene_manager.loadTextureFromFile(scene, std::string("diablo_diffuse"), "assets/texture/diablo3_pose_diffuse.tga");
+    scene_manager.loadTextureFromFile(scene, std::string("diablo_normal_map"), "assets/texture/diablo3_pose_nm_tangent.tga");
     scene_manager.findTextureForMesh(scene, diablo_mesh);
 
     // Skybox

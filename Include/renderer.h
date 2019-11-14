@@ -1,7 +1,7 @@
+#include <chrono>
 #include "Shader.h"
 #include "scene.h"
 #include "window.h"
-#include <chrono>
 
 // TODO: @ Benchmarking
 class PerformanceTimer {

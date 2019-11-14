@@ -4,7 +4,7 @@
 #include <fstream>
 #include <string>
 #include "../include/tgaimage.h"
-#include "../include/Math.h"
+#include "../include/mathLib.h"
 
 // TODO: Rewrite Mesh class, and .obj loader
 // TODO: Substitude current scene data

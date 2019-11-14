@@ -2,10 +2,10 @@
     "cameras": [
         {
             "name": "main_camera",
-            "position": "0.f, 0.f, 0.f",
-            "target": "0.f, 0.f, -1.f",
-            "world_up": "0.f, 1.f, 0.f",
-            "FOV": 90.0,
+            "position": [0.0, 0.0, 0.0],
+            "target": [0.0, 0.0, -1.0],
+            "world_up": [0.0, 1.0, 0.0],
+            "fov": 90.0,
             "z_near": 0.1,
             "z_far": 100.0
         }
@@ -13,31 +13,38 @@
 
     "lights": [
         {
-            "name": "directional_light",
-            "direction": ""
+            "type": "directional",
+            "direction": [1, 1.5, 2.0]
         }
-
     ],
 
     "mesh_info_list": [
         {
             "name": "diablo3_pose",
-            "path": "Assets/Mesh/diablo3_pose.obj"
-        },
-
-        {
-            "name": "utah_teapot",
-            "path": "Assets/Mesh/utah_teapot.obj"
+            "path": "assets/mesh/diablo3_pose.obj",
+            "textureName": "diablo_mesh",
+            "normalMapName": "diablo_normal_map"
         }
     ],
 
     "texture_info_list": [
+        {
+            "textureName": "diablo_mesh",
+            "texturePath": "assets/texture/diablo3_diffuse.tga"
+        },
 
+        {
+            "textureName": "diablo_normal_map",
+            "texturePath": "assets/texture/diablo3_pose_nm_tangent.tga"
+        }
     ],
 
     "instance_list": [
         {
-            
+            "meshName": "diablo3_pose",
+            "xform": {
+                "translation": [0, 0, -1.25]
+            }            
         }
     ]
 }

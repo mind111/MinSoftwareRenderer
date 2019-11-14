@@ -1,5 +1,4 @@
-#include "../include/renderer.h"
-#include "Math.h"
+#include "renderer.h"
 
 Renderer::Renderer() {
     mesh_attrib_flag = 0;

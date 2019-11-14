@@ -1,8 +1,12 @@
 # Ignore intermediate project files
+build/
 Debug/
 src/.vscode/
 .vs/
+.vscode/
+include/.vscode/
 
 *.vcxproj*
 Graphx.sln
 output.tga
+*.code-workspace

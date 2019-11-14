@@ -1,8 +1,9 @@
 #pragma once
 
+#include <vector>
+#include <map>
 #include "mesh.h"
 #include "Math.h"
-#include <vector>
 
 struct Camera {
     Vec3<float> position;
@@ -12,6 +13,13 @@ struct Camera {
     float fov;
     float z_near;
     float z_far;
+};
+
+// TODO: Quaternion?
+struct Transform {
+    Vec3<float> translation;
+    Vec3<float> rotation; // yaw, pitch, roll
+    Vec3<float> scale;
 };
 
 struct Texture {
@@ -55,7 +63,8 @@ struct Scene {
 class Scene_Manager {
 public:
     Scene_Manager() {}
-    void load_scene_form_file(const char* filename);
+    void loadObj(Mesh& mesh, const char* filename);
+    void loadSceneFromFile(Scene& scene, const char* filename);
     void add_instance(Scene& scene, uint32_t mesh_id);
     void loadTextureFromFile(Scene& scene, std::string& name, const char* filename);
     void findTextureForMesh(Scene& scene, Mesh& mesh);

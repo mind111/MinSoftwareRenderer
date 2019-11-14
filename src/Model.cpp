@@ -1,7 +1,7 @@
 #pragma once
 
-#include "../include/Model.h"
 #include <sstream>
+#include "Model.h"
 
 #define MAX_NUM_TEXTURE 5
 

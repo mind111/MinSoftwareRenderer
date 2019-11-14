@@ -1,6 +1,6 @@
 #pragma once
 #include <string>
-#include "Math.h"
+#include "mathLib.h"
 
 struct Mesh_Instance {
     uint32_t mesh_id;
@@ -29,8 +29,6 @@ public:
 
     // TODO: These methods should be moved into Mesh_Manager
     Mesh();
-    void load_obj(const char* filename);
-    void load_texture(const char* filename);
 };
 
 class Mesh_Manager {

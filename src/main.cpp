@@ -4,13 +4,13 @@
 #include <string>
 #include <cmath>
 #include <vector>
-#include "../include/tgaimage.h"
-#include "../include/Globals.h"
-#include "../include/Model.h"
-#include "../include/window.h"
-#include "../include/scene.h"
-#include "../include/renderer.h"
-#include "../include/Shader.h"
+#include "tgaimage.h"
+#include "Globals.h"
+#include "Model.h"
+#include "window.h"
+#include "scene.h"
+#include "renderer.h"
+#include "Shader.h"
 
 /// \TODO Clean up code to get rid of all the warnings
 const TGAColor white = TGAColor(255, 255, 255, 255);
@@ -137,6 +137,9 @@ int main(int argc, char* argv[]) {
     // TODO: @ render the renderer's backbuffer to a texture
     // TODO: @ Using the renderer's backbuffer as texture data
     // TODO: @ and then render the texture to the screen
+    Scene testScene;
+    scene_manager.loadSceneFromFile(testScene, "scenes/default_scene/scene_config.json");
+    // ---------------------------
     glfwInit();
     Window window = { };
     window_manager.create_window(window, 800, 600);
@@ -280,13 +283,13 @@ int main(int argc, char* argv[]) {
 
     // New meshes
     Mesh teapot_mesh;
-    teapot_mesh.load_obj("../Graphx/Assets/Mesh/utah_teapot.obj");
+    scene_manager.loadObj(teapot_mesh, "assets/mesh/utah_teapot.obj");
 
     // diablo mesh
     Mesh diablo_mesh;
     diablo_mesh.textureName = "diablo_diffuse"; 
     diablo_mesh.normalMapName = "diablo_normal_map";
-    diablo_mesh.load_obj("assets/mesh/diablo3_pose.obj");
+    scene_manager.loadObj(diablo_mesh, "assets/mesh/diablo3_pose.obj");
     scene.mesh_list.emplace_back(diablo_mesh);
     Mesh_Instance diabloInstance0 = {};
     diabloInstance0.instance_id = 0;

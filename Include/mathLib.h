@@ -51,7 +51,7 @@ struct Vec2
         this->y *= Scalar;
     }
 
-    void operator/(const T Scalar)
+    Vec2<T> operator/(const T Scalar)
     {
 	return Vec2<T>(this.x / Scalar, this.y / Scalar);
     }
@@ -348,6 +348,11 @@ public:
     static Vec3<float> SampleAmbientDirection();
     static Vec3<float> CrossProduct(const Vec3<float>& V0, const Vec3<float>& V1);
     static Vec3<float> Normalize(const Vec3<float>& v);
+    static Mat4x4<float> constructTransformMatrix(const struct Transform& t);
+    // transform
+    static void translate(Mat4x4<float>& m, Vec3<float> translation);
+    static void rotate(Mat4x4<float>& m, Vec3<float> rotAxis, float degree);
+    static void scale(Mat4x4<float>& m, Vec3<float> scaleVector);
     template <class T>
     static float Length(const Vec3<T>& V0);
     template <class T>

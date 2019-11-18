@@ -1,5 +1,3 @@
-#define GLEW_STATIC
-
 #include <iostream>
 #include <string>
 #include <cmath>
@@ -70,6 +68,7 @@ void FillTriangle(Vec2<int>& V0, Vec2<int>& V1, Vec2<int>& V2, TGAImage& image, 
     }
 }
 
+/*
 // @ Leave this out for now
 void generate_occlusion_texture(Model& Model, Shader& shader) {
         int number_of_ab_samples = 1;
@@ -123,13 +122,16 @@ void generate_occlusion_texture(Model& Model, Shader& shader) {
         occlusion_texture.flip_vertically();
         occlusion_texture.write_tga_file("occlusion_texture.tga");
 }
+*/
 
 // TODO: @ Rewrite whole rendering procedure
 // TODO: @ Bulletproof .obj loading
 // TODO: @ Benchmark
 
 // TODO: @ Change to another .obj model
-// TODO: @ Skybox
+// TODO: @ Skybox 
+//       @ Maybe use openGL to handle texture sampling for skybox
+//       @
 // TODO: @ SSAO
 // TODO: @ become real time, requires multi-threading & SIMD
 // TODO: @ For some reasons, normal mapping is not working, DEBUG!!
@@ -137,8 +139,6 @@ int main(int argc, char* argv[]) {
     // TODO: @ render the renderer's backbuffer to a texture
     // TODO: @ Using the renderer's backbuffer as texture data
     // TODO: @ and then render the texture to the screen
-    Scene testScene;
-    scene_manager.loadSceneFromFile(testScene, "scenes/default_scene/scene_config.json");
     // ---------------------------
     glfwInit();
     Window window = { };
@@ -155,163 +155,12 @@ int main(int argc, char* argv[]) {
     Phong_Shader phongShader;
     phongShader.initFragmentAttrib(renderer.buffer_width, renderer.buffer_height);
     renderer.shader_list.emplace_back(&phongShader);
-    renderer.active_shader_id = 0;
+    renderer.activeShaderPtr_ = &phongShader;
+    SkyboxShader skyboxShader;
+    renderer.skyboxShader_ = &skyboxShader;
+    scene_manager.loadSceneFromFile(scene, "scenes/default_scene/scene_config.json");
 
-    // Loaed scene data
-
-    // Set up main camera
-    scene.main_camera.position = Vec3<float>(0.f, 0.f, 0.f);
-    scene.main_camera.target = Vec3<float>(0.f, 0.f, -1.f);
-    scene.main_camera.world_up = Vec3<float>(0.f, 1.f, 0.f);
-    DirectionalLight directionalLight = { };
-    directionalLight.color = Vec3<float>(255.f, 255.f, 255.f);
-    directionalLight.direction = Math::Normalize(Vec3<float>(1.f, 1.5f, 2.f));
-    directionalLight.intensity = .8f;
-    scene.directionalLightList.emplace_back(directionalLight);
-
-    int image_size = ImageWidth * ImageHeight;    
-    // Create an image for writing pixels
-    TGAImage image(ImageWidth, ImageHeight, TGAImage::RGB);
-    TGAImage shadow_image(ImageWidth, ImageHeight, TGAImage::RGB);
-
-    // Mesh .obj file path
-    char ModelPath[64] = { "assets/mesh/Model.obj" };
-    char ModelPath_Diablo[64] = { "assets/mesh/diablo3_pose.obj" };
-    char TexturePath[64] = { "assets/texture/african_head_diffuse.tga" };
-    char TexturePath_Diablo[64] = { "assets/texture/diablo3_pose_diffuse.tga"};
-    char NormalPath[64] = { "assets/texture/african_head_nm_tangent.tga" };
-    char NormalPath_Diablo[64] = { "assets/texture/diablo3_pose_nm_tangent.tga" };
-
-    // Skybox related stuff
-    const char* cubamap_texture_paths[6] = {
-        "assets/textures/ice/icyhell_rt.tga",
-        "assets/textures/ice/icyhell_lf.tga",
-        "assets/textures/ice/icyhell_up.tga",
-        "assets/textures/ice/icyhell_dn.tga",
-        "assets/textures/ice/icyhell_bk.tga",
-        "assets/textures/ice/icyhell_ft.tga"
-    };
-
-    float cubemap_vertices[108] = {
-        -1.0f,  1.0f, -1.0f,
-        -1.0f, -1.0f, -1.0f,
-        1.0f, -1.0f, -1.0f,
-        1.0f, -1.0f, -1.0f,
-        1.0f,  1.0f, -1.0f,
-        -1.0f,  1.0f, -1.0f,
-
-        -1.0f, -1.0f,  1.0f,
-        -1.0f, -1.0f, -1.0f,
-        -1.0f,  1.0f, -1.0f,
-        -1.0f,  1.0f, -1.0f,
-        -1.0f,  1.0f,  1.0f,
-        -1.0f, -1.0f,  1.0f,
-
-        1.0f, -1.0f, -1.0f,
-        1.0f, -1.0f,  1.0f,
-        1.0f,  1.0f,  1.0f,
-        1.0f,  1.0f,  1.0f,
-        1.0f,  1.0f, -1.0f,
-        1.0f, -1.0f, -1.0f,
-
-        -1.0f, -1.0f,  1.0f,
-        -1.0f,  1.0f,  1.0f,
-        1.0f,  1.0f,  1.0f,
-        1.0f,  1.0f,  1.0f,
-        1.0f, -1.0f,  1.0f,
-        -1.0f, -1.0f,  1.0f,
-
-        -1.0f,  1.0f, -1.0f,
-        1.0f,  1.0f, -1.0f,
-        1.0f,  1.0f,  1.0f,
-        1.0f,  1.0f,  1.0f,
-        -1.0f,  1.0f,  1.0f,
-        -1.0f,  1.0f, -1.0f,
-
-        -1.0f, -1.0f, -1.0f,
-        -1.0f, -1.0f,  1.0f,
-        1.0f, -1.0f, -1.0f,
-        1.0f, -1.0f, -1.0f,
-        -1.0f, -1.0f,  1.0f,
-        1.0f, -1.0f,  1.0f
-    }; 
-
-    // Model
-    Mat4x4<float> ModelToWorld;
-    ModelToWorld.Identity();
-    ModelToWorld.SetTranslation(Vec3<float>(0.f, 0.f, -1.25f));
-
-    // View
-    Mat4x4<float> View = scene_manager.get_camera_view(scene.main_camera);
-
-    // Projection
-    Mat4x4<float> Perspective = Mat4x4<float>::Perspective((float)window.width / window.height, .1f, 5.f, 90.f);
-
-    phongShader.set_model_matrix(ModelToWorld);
-    phongShader.set_view_matrix(View);
-    phongShader.set_projection_matrix(Perspective);
-    
-    Shader shader;
-    shader.VS.Model = ModelToWorld;
-    shader.VS.Projection = Perspective;
-    shader.VS.MVP = Perspective * View * ModelToWorld;
-    shader.VS.Viewport = Mat4x4<float>::viewport(ImageWidth, ImageHeight);
-    
-    // Add a scope here to help trigger Model's destructor
-    {
-        Model Model;
-        Model.Parse(ModelPath_Diablo);
-        TGAImage Texture;
-        TGAImage NormalTexture;
-        Model.LoadTexture(&Texture, TexturePath_Diablo);
-        Texture.flip_vertically();
-        Model.LoadNormalMap(&NormalTexture, NormalPath_Diablo);
-        NormalTexture.flip_vertically();
-        float* ZBuffer = new float[ImageWidth * ImageHeight];
-        float* ShadowBuffer = new float[ImageWidth * ImageHeight];
-        for (int i = 0; i < image_size; i++) ZBuffer[i] = 100.0f;
-        for (int i = 0; i < image_size; i++) ShadowBuffer[i] = 100.0f;
-        shader.FS.ZBuffer = ZBuffer;
-        shader.FS.ShadowBuffer = ShadowBuffer;
-
-//        shader.DrawShadow(Model, shadow_image, LightPos, LightDir, ShadowBuffer);
-        {
-            PerformanceTimer timer;
-            shader.Draw(Model, image, scene.main_camera, Shader_Mode::Phong_Shader);
-        }
-    }
-
-    // New meshes
-    Mesh teapot_mesh;
-    scene_manager.loadObj(teapot_mesh, "assets/mesh/utah_teapot.obj");
-
-    // diablo mesh
-    Mesh diablo_mesh;
-    diablo_mesh.textureName = "diablo_diffuse"; 
-    diablo_mesh.normalMapName = "diablo_normal_map";
-    scene_manager.loadObj(diablo_mesh, "assets/mesh/diablo3_pose.obj");
-    scene.mesh_list.emplace_back(diablo_mesh);
-    Mesh_Instance diabloInstance0 = {};
-    diabloInstance0.instance_id = 0;
-    diabloInstance0.mesh_id = 0;
-    scene.instance_list.emplace_back(diabloInstance0);
-    scene_manager.loadTextureFromFile(scene, std::string("diablo_diffuse"), "assets/texture/diablo3_pose_diffuse.tga");
-    scene_manager.loadTextureFromFile(scene, std::string("diablo_normal_map"), "assets/texture/diablo3_pose_nm_tangent.tga");
-    scene_manager.findTextureForMesh(scene, diablo_mesh);
-    scene_manager.findNormalMapForMesh(scene, diablo_mesh);
-
-    // Skybox
-    {
-        Cubemap skybox;
-    }
-
-    /// \TODO: Maybe instead of writing to an image,
-    ///         can draw to a buffer, and display it using
-    ///         a Win32 window
-    // Draw the output to a file
-    //image.flip_vertically();
-    //image.write_tga_file("output.tga");
-
+    // TODO: this should be move to part of Window class
     float quad[18] = {
         -1.f, 1.f, 0.f, 
          1.f,-1.f, 0.f, 
@@ -346,22 +195,20 @@ int main(int argc, char* argv[]) {
     glEnableVertexAttribArray(1);
 
     glUseProgram(window.shader);
-    for (int x = 0; x < renderer.buffer_width; x++) {
-        for (int y = 0; y < renderer.buffer_height; y++) {
-            renderer.draw_pixel(x, y, Vec4<int>(0, 0, 0, 255));
-        }
-    }
-
+    renderer.clearBuffer();
     {
-        // TODO: Refactor texture binding process
-        PerformanceTimer renderTimer;
-        renderer.shader_list[renderer.active_shader_id]->texture_ = &scene.texture_list[diablo_mesh.textureID];  
-        renderer.shader_list[renderer.active_shader_id]->normalMap_ = &scene.texture_list[diablo_mesh.normalMapID];  
-        renderer.draw_instance(&directionalLight, diablo_mesh);
+         PerformanceTimer renderTimer;
+         renderer.drawScene(scene);
     }
 
     while(!glfwWindowShouldClose(window.m_window)) {
+        // Update transform of moving instances
+        //scene_manager.updateScene(scene, 0.f);
+        // Rendering
         glClear(GL_COLOR_BUFFER_BIT);
+        renderer.clearBuffer(); // clear color bit
+        renderer.clearDepth();  // clear depth bit
+        renderer.drawScene(scene);
         window_manager.blit_buffer(renderer.backbuffer, renderer.buffer_width, renderer.buffer_height, 4, window);
         glDrawArrays(GL_TRIANGLES, 0, 6);
         glfwPollEvents();

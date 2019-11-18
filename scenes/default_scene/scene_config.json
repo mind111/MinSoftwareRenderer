@@ -14,37 +14,87 @@
     "lights": [
         {
             "type": "directional",
+            "color": [255, 255, 255],
             "direction": [1, 1.5, 2.0]
         }
     ],
+
+    "hasSkybox": true,
+
+    "skyboxMesh": {
+            "name": "skybox_mesh",
+            "path": "assets/mesh/skybox.obj",
+            "textureName": "",
+            "normalMapName": ""
+    },
 
     "mesh_info_list": [
         {
             "name": "diablo3_pose",
             "path": "assets/mesh/diablo3_pose.obj",
-            "textureName": "diablo_mesh",
+            "textureName": "diablo_diffuse",
             "normalMapName": "diablo_normal_map"
+        },
+
+        {
+            "name": "teapot_mesh",
+            "path": "assets/mesh/utah_teapot.obj",
+            "textureName": "",
+            "normalMapName": ""
+        },
+
+        {
+            "name": "floor_mesh",
+            "path": "assets/mesh/floor.obj",
+            "textureName": "grid_texture",
+            "normalMapName": ""
+        },
+        
+        {
+            "name": "skybox_mesh",
+            "path": "assets/mesh/skybox.obj",
+            "textureName": "",
+            "normalMapName": ""
         }
     ],
 
     "texture_info_list": [
         {
-            "textureName": "diablo_mesh",
-            "texturePath": "assets/texture/diablo3_diffuse.tga"
+            "textureName": "diablo_diffuse",
+            "texturePath": "assets/texture/diablo3_pose_diffuse.tga"
         },
 
         {
             "textureName": "diablo_normal_map",
             "texturePath": "assets/texture/diablo3_pose_nm_tangent.tga"
+        },
+
+        {
+            "textureName": "grid_texture",
+            "texturePath": "assets/texture/grid.png"
         }
+
     ],
 
     "instance_list": [
         {
             "meshName": "diablo3_pose",
             "xform": {
-                "translation": [0, 0, -1.25]
-            }            
+                "translation": [0, 0, -1.8],
+                "rotation": [0, 0, 0],
+                "scale": [1.0, 1.0, 1.0]
+            },
+            "movable": "true"
+        },
+
+        {
+            "meshName": "floor_mesh",
+            "xform": {
+                "translation": [0, -1.0, -1.8],
+                "rotation": [0, 0, 0],
+                "scale":[2.0, 2.0, 2.0]
+            },
+            "movable": "false"
         }
     ]
 }

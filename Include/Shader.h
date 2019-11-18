@@ -46,7 +46,9 @@ public:
     void set_model_matrix(Mat4x4<float>& model);
     void set_view_matrix(Mat4x4<float>& view);
     void set_projection_matrix(Mat4x4<float>& projection);
+    void clearFragmentAttribs();
     void bindTexture(Texture* texture);
+    void unbindTexture();
 
     virtual Vec4<float> vertex_shader(Vec3<float>& v) = 0;
     virtual Vec4<int> fragment_shader(int x, int y) = 0;
@@ -70,6 +72,12 @@ public:
     Vec4<int> fragment_shader(int x, int y) override;
 };
 
+class SkyboxShader : public Shader_Base {
+public:
+    Texture* texture_[6];
+    Vec4<float> vertex_shader(Vec3<float>& v) override;
+    Vec4<int> fragment_shader(int x, int y) override;
+};
 
 struct VertexShader
 {

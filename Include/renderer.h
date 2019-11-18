@@ -29,6 +29,7 @@ class Rasterizer {
 class Renderer {
 public:
     std::vector<Shader_Base*> shader_list; // shader pool that include all available style of shaders
+    SkyboxShader* skyboxShader_;
 
     //float* xform_vertex_buffer; save this for later
     // This maybe refactored to be part of rasterizer
@@ -42,7 +43,7 @@ public:
 
     uint8_t mesh_attrib_flag;
 
-    uint16_t active_shader_id;
+    Shader_Base* activeShaderPtr_;
     Mat4x4<float> viewport;
     unsigned char* backbuffer;
     
@@ -54,19 +55,21 @@ public:
     void bind_mesh_buffers(Mesh& mesh);
     void draw_pixel(int x, int y, Vec4<int>& color);
     void drawScene(Scene& scene);
+    void drawSkybox(Scene& scene);
     void draw_instance(Light* light, Mesh& mesh);
     void drawLine(Vec2<int> start, Vec2<int> end);
     void drawTangents(Vec3<float>& vertexPos, Vec3<float>& tangent) {
         Vec3<float> end = vertexPos + tangent * 0.03f;
-        Vec4<float> vertexClip = shader_list[active_shader_id]->vertex_shader(vertexPos);
+        Vec4<float> vertexClip = activeShaderPtr_->vertex_shader(vertexPos);
         Vec4<float> vertexScreen = viewport * (vertexClip / vertexClip.w);
         Vec2<int> startScreen(vertexScreen.x, vertexScreen.y);
-        Vec4<float> endClip = shader_list[active_shader_id]->vertex_shader(end);
+        Vec4<float> endClip = activeShaderPtr_->vertex_shader(end);
         Vec4<float> endScreenVec4 = viewport * (endClip / endClip.w);
         Vec2<int> endScreen(endScreenVec4.x, endScreenVec4.y);
         drawLine(startScreen, endScreen);
     }
     void clearBuffer();
+    void clearDepth();
 
 private:
     float* z_buffer;

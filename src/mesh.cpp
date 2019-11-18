@@ -9,6 +9,7 @@ Mesh::Mesh() {
     vertex_buffer = nullptr;
     texture_uv_buffer = nullptr;
     normal_buffer = nullptr;
+    tangentBuffer = nullptr;
     indices = nullptr;
     num_vertices = 0;
     num_texture_coord = 0;

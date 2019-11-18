@@ -18,7 +18,7 @@ struct Camera {
 // TODO: Quaternion?
 struct Transform {
     Vec3<float> translation;
-    Vec3<float> rotation; // yaw, pitch, roll
+    Vec3<float> rotation; // x, y, z
     Vec3<float> scale;
 };
 
@@ -50,8 +50,9 @@ struct PointLight : Light {
 };
 
 struct Scene {
+    int skyboxMeshID;
     std::vector<Mesh> mesh_list;
-    std::vector<Mat4x4<float>> xform_list;
+    std::vector<Transform> xform_list;
     std::vector<Mesh_Instance> instance_list;
     std::vector<Texture> texture_list;
 
@@ -69,6 +70,7 @@ public:
     void loadTextureFromFile(Scene& scene, std::string& name, const char* filename);
     void findTextureForMesh(Scene& scene, Mesh& mesh);
     void findNormalMapForMesh(Scene& scene, Mesh& diablo_mesh);
+    void updateScene(Scene& scene, float deltaTime);
     Mat4x4<float> get_camera_view(Camera& camera);
 };
 

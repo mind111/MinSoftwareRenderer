@@ -21,6 +21,12 @@ void from_json(const nlohmann::json& j, Mat4x4<float>& m) {
     m.SetTranslation(translation);
 }
 
+void from_json(const nlohmann::json& j, Transform& t) {
+    t.translation = j.at("translation").get<Vec3<float>>();
+    t.rotation = j.at("rotation").get<Vec3<float>>();
+    t.scale = j.at("scale").get<Vec3<float>>();
+}
+
 void from_json(const nlohmann::json& j, Camera& c) {
     c.position = j.at("position").get<Vec3<float>>();
     c.target = j.at("target").get<Vec3<float>>();
@@ -55,8 +61,8 @@ Mat4x4<float> Scene_Manager::get_camera_view(Camera& camera) {
     Mat4x4<float> model_view;
 
     Vec3<float> forward = Math::Normalize(camera.position - camera.target);
-    Vec3<float> right = Math::CrossProduct(forward, camera.world_up);   
-    Vec3<float> up = Math::CrossProduct(right, forward);
+    Vec3<float> right = Math::CrossProduct(camera.world_up, forward);   
+    Vec3<float> up = Math::CrossProduct(forward, right);
 
     // --- Right ---
     // --- Up ------
@@ -360,16 +366,24 @@ void Scene_Manager::loadSceneFromFile(Scene& scene, const char* filename) {
     for (auto camera : cameras) {
         scene.main_camera = camera.get<Camera>();
     }
-    for (auto light : lights) {
+    for (auto lightInfo : lights) {
         std::string lightType;
         DirectionalLight directionalLight;
         PointLight pointLight;
+        lightInfo.at("type").get_to(lightType);
+        if (lightType == "directional") {
+            directionalLight.direction = Math::Normalize(lightInfo.at("direction").get<Vec3<float>>());
+            directionalLight.color = lightInfo.at("color").get<Vec3<float>>();
+            scene.directionalLightList.emplace_back(directionalLight);
+        } else {
+
+        } // pointLight case
     }
     for (auto textureInfo : textureInfoList) {
         Texture texture;
         textureInfo.at("textureName").get_to(texture.textureName);
         textureInfo.at("texturePath").get_to(texture.texturePath);
-        scene.texture_list.emplace_back(texture);
+        loadTextureFromFile(scene, texture.textureName, texture.texturePath.c_str());
     }
     for (auto meshInfo : meshInfoList) {
         std::string path;
@@ -384,13 +398,13 @@ void Scene_Manager::loadSceneFromFile(Scene& scene, const char* filename) {
         findNormalMapForMesh(scene, mesh);
         scene.mesh_list.emplace_back(mesh);
     }
+    int instanceID = 0;
     for (auto instanceInfo : instanceInfoList) {
-        int instanceID = 0;
         std::string meshName;
         Mesh_Instance meshInstance = {};
         instanceInfo.at("meshName").get_to(meshName);
         auto xform_info = instanceInfo.at("xform");
-        Mat4x4<float> xform = instanceInfo.at("xform").get<Mat4x4<float>>();
+        Transform xform = instanceInfo.at("xform").get<Transform>();
         for (int i = 0; i < scene.mesh_list.size(); i++) {
             if (scene.mesh_list[i].name == meshName) {
                 meshInstance.instance_id = instanceID;
@@ -401,6 +415,20 @@ void Scene_Manager::loadSceneFromFile(Scene& scene, const char* filename) {
             }
         }
         instanceID++;
+    }
+    if (sceneJson["hasSkybox"]) {
+        std::string skyboxMeshName;
+        auto skyboxMeshInfo = sceneJson["skyboxMesh"];
+        skyboxMeshInfo.at("name").get_to(skyboxMeshName);
+        std::cout << "scene has skybox" << std::endl;
+        for (int i = 0; i < scene.mesh_list.size(); i++) {
+            if (scene.mesh_list[i].name == skyboxMeshName) {
+                scene.skyboxMeshID = i;
+                break;
+            }
+        }
+    } else {
+        scene.skyboxMeshID = -1;
     }
 }
 
@@ -425,5 +453,12 @@ void Scene_Manager::findNormalMapForMesh(Scene& scene, Mesh& mesh) {
         if (scene.texture_list[i].textureName == mesh.normalMapName) {
             mesh.normalMapID = i;
         }
+    }
+}
+
+// TODO: stop moving every object in the scene
+void Scene_Manager::updateScene(Scene& scene, float deltaTime) {
+    for (auto& instance : scene.instance_list) {
+        scene.xform_list[instance.instance_id].rotation.x += 0.005f;
     }
 }

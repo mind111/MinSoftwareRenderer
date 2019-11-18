@@ -1,9 +1,10 @@
 #include <iostream>
-#include "../include/mathLib.h"
+#include "scene.h"
+#include "mathLib.h"
 
-#define M_PI 3.14159265
-
-// Using basic elementary row operations to derive inverse matrix
+#define PI 3.1415926
+// Using basic elementary row operations to derive inverse matrix 
+template <>
 Mat4x4<float> Mat4x4<float>::Inverse()
 {
     Mat4x4<float> Res;
@@ -57,6 +58,7 @@ Mat4x4<float> Mat4x4<float>::Inverse()
     return Res;
 }
 
+template <>
 void Mat4x4<float>::SetRow(int RowIndex, Vec4<float> v)
 {
     Mat[RowIndex][0] = v.x;
@@ -65,6 +67,7 @@ void Mat4x4<float>::SetRow(int RowIndex, Vec4<float> v)
     Mat[RowIndex][3] = v.w;
 }
 
+template <>
 void Mat4x4<float>::SetColumn(int ColIndex, Vec4<float> v)
 {
     Mat[0][ColIndex] = v.x;
@@ -73,6 +76,7 @@ void Mat4x4<float>::SetColumn(int ColIndex, Vec4<float> v)
     Mat[3][ColIndex] = v.w;
 }
 
+template <>
 void Mat4x4<float>::SetTranslation(Vec3<float> v)
 {
     this->Mat[0][3] = v.x;
@@ -80,11 +84,13 @@ void Mat4x4<float>::SetTranslation(Vec3<float> v)
     this->Mat[2][3] = v.z;
 }
 
-void Mat4x4<float>::SetRotation(Vec3<float> r) 
-{
-
+template <>
+// r denotes degrees in x, y, z
+void Mat4x4<float>::SetRotation(Vec3<float> r) {
+    
 }
 
+template <>
 void Vec3<float>::Print()
 {
     std::cout << "[ " << this->x << " "
@@ -92,6 +98,7 @@ void Vec3<float>::Print()
                       << this->z << " ]" << std::endl;
 }
 
+template <>
 void Vec4<float>::Print()
 {
     std::cout << "[ " << this->x << " "
@@ -100,6 +107,7 @@ void Vec4<float>::Print()
                       << this->w << " ]" << std::endl;
 }
 
+template <>
 void Mat4x4<float>::Print()
 {
     std::cout << "-- Mat4x4 --" << std::endl;
@@ -116,17 +124,18 @@ void Mat4x4<float>::Print()
 // TODO: @Find out whether zNear and zFar and defined in world space or view space
 //        to fix the sign issues within this function
 // TODO: @For now assuming that zNear and zFar are defined in view space (all positive)
+template <>
 Mat4x4<float> Mat4x4<float>::Perspective(float aspectRatio, 
                                          float near, 
                                          float far, 
                                          float fov)
 {
     Mat4x4<float> res;
-    float r = std::tan((fov / 2) * M_PI / 180.f); // Converting degrees to radians
-    float left = near * r * aspectRatio;
+    float r = std::tan((fov / 2) * PI / 180.f); // Converting degrees to radians
+    float top = near * r;
+    float bottom = -top;
+    float left = bottom * aspectRatio;
     float right = -left;
-    float bottom = near * r;
-    float top = -bottom;
 
     res.Identity();
     res.Mat[3][3] = 0.f;
@@ -150,11 +159,12 @@ Mat4x4<float> Mat4x4<float>::Perspective(float aspectRatio,
     return res;
 }
 
+template <>
 Mat4x4<float> Mat4x4<float>::viewport(float VP_Width, float VP_Height)
 {
    // Map [-1, 1] to [0, VP_Width]
-   
    Mat4x4<float> Res;
+   float aspectRatio = VP_Width / VP_Height;
 
    Res.Identity();
    Res.Mat[0][0] = .5f * VP_Width;
@@ -199,8 +209,10 @@ void Math::bound_triangle(Vec2<float>* vertices, float* bounds)
         if (vertices[i].y > bounds[3]) bounds[3] = vertices[i].y;
     }
 
-    for (int i = 0; i < 3; i++)
-        Math::clamp_f(bounds[i], 0.f, 799.f);
+    for (int i = 0; i < 2; i++)
+        bounds[i] = Math::clamp_f(bounds[i], 0.f, 799.f);
+    for (int i = 2; i < 4; i++)
+        bounds[i] = Math::clamp_f(bounds[i], 0.f, 599.f);
 }
 
 // TODO: Fix this so that it samples uniformly from the surface
@@ -213,7 +225,7 @@ Vec3<float> Math::SampleAmbientDirection()
 
     float u = distribution(gen);
     float v = distribution(gen);
-    float theta = 2.f * M_PI * u;
+    float theta = 2.f * PI * u;
     float phi = std::acos(2.f * v - 1.f);
 
     float x = std::cos(theta) * std::sin(phi);
@@ -247,4 +259,52 @@ Vec3<float> Math::Normalize(const Vec3<float>& v)
 {
     float Len = Length(v);
     return Vec3<float>(v.x / Len, v.y / Len, v.z / Len);
+}
+
+void Math::translate(Mat4x4<float>& m, const Vec3<float> v) {
+    Mat4x4<float> t;
+    t.Identity();
+    t.SetColumn(3, Vec4<float>(v, 1.f));
+    m = t * m;
+}
+
+void Math::rotate(Mat4x4<float>& m, const Vec3<float> axis, float degree) {
+
+}
+
+void Math::scale(Mat4x4<float>& m, const Vec3<float> s) {
+    Mat4x4<float> t;
+    t.Identity();
+    t.Mat[0][0] *= s.x;
+    t.Mat[1][1] *= s.y;
+    t.Mat[2][2] *= s.z;
+    m = t * m;
+}
+
+Mat4x4<float> Math::constructTransformMatrix(const Transform& t) {
+    // pitch <- yaw, not dealing with roll for now
+    Mat4x4<float> rotYaw, rotPitch, rotation;
+    Mat4x4<float> m;
+    m.Identity();
+    // TODO: I'm still confused about how handed-ness affect sign of rotation
+    rotYaw.Identity();
+    rotYaw.Mat[0][0] = std::cos(t.rotation.x);
+    rotYaw.Mat[0][2] = std::sin(t.rotation.x);
+    rotYaw.Mat[2][0] = -std::sin(t.rotation.x);
+    rotYaw.Mat[2][2] = std::cos(t.rotation.x);
+
+    rotPitch.Identity();
+    rotPitch.Mat[1][1] = std::cos(t.rotation.y);
+    rotPitch.Mat[1][2] = -std::sin(t.rotation.y);
+    rotPitch.Mat[2][1] = std::sin(t.rotation.y);
+    rotPitch.Mat[2][2] = std::cos(t.rotation.y);
+    rotation = rotPitch * rotYaw;
+
+    // worth noting that the order of transformation is
+    // reversed compared to the order in well-know glm
+    // since I'm using row-major matrix here
+    Math::scale(m, t.scale);
+    m = rotation * m; // use this for rotation for now, impl general rotation later
+    Math::translate(m, t.translation);
+    return m;
 }

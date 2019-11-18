@@ -1,6 +1,7 @@
 #include <iostream>
 #include <fstream>
 #include <sstream>
+#include <cstring>
 #include "../include/window.h"
 
 Window_Manager window_manager;

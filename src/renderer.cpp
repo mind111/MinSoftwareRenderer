@@ -122,6 +122,7 @@ void Renderer::draw_instance(Light* light, Mesh& mesh) {
         for (int v = 0; v < 3; v++) {
             // vertex transform
             Vec3<float> vertex = mesh_manager.get_vertex(mesh, f_idx * 3 + v);
+            triangleView[v] = activeShaderPtr_->transformToViewSpace(vertex);
             triangle_clip[v] = activeShaderPtr_->vertex_shader(vertex);
             if (mesh.tangentBuffer) {
                 Vec3<float> vertexTangent = mesh_manager.getTangent(mesh, f_idx * 3 + v);
@@ -165,15 +166,22 @@ void Renderer::draw_instance(Light* light, Mesh& mesh) {
     }
 }
 
-bool Renderer::depth_test(int fragmentX, int fragmentY, Vec3<float> _bary_coord) {
+bool Renderer::depthTest(int fragmentX, int fragmentY, Vec3<float> baryCoord) {
     int index = fragmentY * buffer_width + fragmentX;
-    // Maybe this is wrong here, I was using the z after perspective division
-    float fragmentZ = 1 / (_bary_coord.x / triangle_clip[0].z + _bary_coord.y / triangle_clip[1].z + _bary_coord.z / triangle_clip[2].z);
+    float fragmentZ = triangle_clip[0].z * baryCoord.x + triangle_clip[1].z * baryCoord.y + triangle_clip[2].z * baryCoord.z;
     if (fragmentZ < z_buffer[index]) {
         z_buffer[index] = fragmentZ;
         return true;
     }
     return false;
+}
+
+void Renderer::perspectiveCorrection(Vec3<float>& baryCoord) {
+    baryCoord.x /= triangleView[0].z;
+    baryCoord.y /= triangleView[1].z;
+    baryCoord.z /= triangleView[2].z;
+    float pz = 1 / (baryCoord.x + baryCoord.y + baryCoord.z); 
+    baryCoord *= pz;
 }
 
 // TODO: Improve normal mapping
@@ -209,8 +217,11 @@ void Renderer::fill_triangle(Shader_Base* active_shader_ptr, Light* light) {
             if (bary_coord.x < 0.f || bary_coord.y < 0.f || bary_coord.z < 0.f) {
                 continue;
             }
+            // perspective correct interpolation of vertex attribs
+            perspectiveCorrection(bary_coord);
+            // ------------------------------------------------------
             // depth test
-            if (!depth_test(x, y, bary_coord)) {
+            if (!depthTest(x, y, bary_coord)) {
                 continue;
             }
             // get fragment depth
@@ -223,6 +234,7 @@ void Renderer::fill_triangle(Shader_Base* active_shader_ptr, Light* light) {
             if (mesh_attrib_flag & 0x0001) {
                 active_shader_ptr->fragmentAttribBuffer[attribIdx].textureCoord = Math::bary_interpolate(triangle_uv, bary_coord);
             }
+            // correct the interpolation for normal & tangents
             if (mesh_attrib_flag & 0x0002) {
                 active_shader_ptr->fragmentAttribBuffer[attribIdx].normal = Math::bary_interpolate(normalOut, bary_coord);
             }

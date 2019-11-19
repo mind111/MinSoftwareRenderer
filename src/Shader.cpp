@@ -339,6 +339,11 @@ Vec3<float> Shader_Base::sampleNormal(Texture& normalMap, float u, float v) {
     return res;
 }
 
+Vec4<float> Shader_Base::transformToViewSpace(Vec3<float>& v) {
+    modelView_ = view_ * model_;
+    return modelView_ * Vec4<float>(v, 1.f);
+}
+
 void Shader_Base::set_model_matrix(Mat4x4<float>& model) {
     model_ = model;
 }
@@ -376,6 +381,8 @@ void Shader_Base::clearFragmentAttribs() {
     }
 }
 
+// NOTES: skybox shader does not use modelView_ since the model matrix
+//        was never set and it does not need model matrix
 Vec4<float> SkyboxShader::vertex_shader(Vec3<float>& v) {
     Vec4<float> glPosition = projection_ * view_ * Vec4<float>(v, 1.f);
     glPosition.z = glPosition.w;
@@ -394,7 +401,7 @@ Phong_Shader::Phong_Shader() {
 }
 
 Vec4<float> Phong_Shader::vertex_shader(Vec3<float>& v) {
-    return projection_ * view_ * model_ * Vec4<float>(v, 1.f);    
+    return projection_ * modelView_ * Vec4<float>(v, 1.f);    
 }
 
 // Fragment normal

@@ -31,6 +31,7 @@ public:
     // vertex in
     Mat4x4<float> model_;
     Mat4x4<float> view_;
+    Mat4x4<float> modelView_;
     Mat4x4<float> projection_;
 
     uint8_t vertexAttribFlag;
@@ -50,6 +51,7 @@ public:
     void bindTexture(Texture* texture);
     void unbindTexture();
 
+
     virtual Vec4<float> vertex_shader(Vec3<float>& v) = 0;
     virtual Vec4<int> fragment_shader(int x, int y) = 0;
     void initFragmentAttrib(uint32_t bufferWidth, uint32_t bufferHeight);
@@ -57,6 +59,7 @@ public:
     Vec3<float> sampleNormal(Texture& normalMap, float u, float v);
     Vec3<float> transformNormal(Vec3<float>& normal);
     Vec3<float> transformTangent(Vec3<float>& tangent);
+    Vec4<float> transformToViewSpace(Vec3<float>& v);
 };
 
 class Phong_Shader : public Shader_Base {

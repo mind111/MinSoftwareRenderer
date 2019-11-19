@@ -144,6 +144,13 @@ struct Vec3
         return *this;
     }
 
+    Vec3<T>& operator*=(const T scalar) {
+        this->x *= scalar;
+        this->y *= scalar;
+        this->z *= scalar;
+        return *this;
+    }
+
     void Swap(Vec3<T>& Another)
     {
         Vec3<T> Holder;

@@ -31,8 +31,8 @@ public:
     std::vector<Shader_Base*> shader_list; // shader pool that include all available style of shaders
     SkyboxShader* skyboxShader_;
 
-    //float* xform_vertex_buffer; save this for later
     // This maybe refactored to be part of rasterizer
+    Vec4<float> triangleView[3];
     Vec4<float> triangle_clip[3];
     Vec2<float> triangle_screen[3];
     Vec3<float> triangle_uv[3]; // if uv only has two components then fill z with 0
@@ -74,7 +74,8 @@ public:
 private:
     float* z_buffer;
     void draw_mesh(Mesh& mesh);
-    bool depth_test(int fragment_x, int fragment_y, Vec3<float> _bary_coord);
+    void perspectiveCorrection(Vec3<float>& baryCoord);
+    bool depthTest(int x, int y, Vec3<float> baryCoord);
     void fill_triangle(Shader_Base* active_shader_ptr, Light* light);
 };
 

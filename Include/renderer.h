@@ -32,7 +32,7 @@ public:
     SkyboxShader* skyboxShader_;
 
     // This maybe refactored to be part of rasterizer
-    Vec4<float> triangleView[3];
+    Vec3<float> triangleView[3];
     Vec4<float> triangle_clip[3];
     Vec2<float> triangle_screen[3];
     Vec3<float> triangle_uv[3]; // if uv only has two components then fill z with 0
@@ -56,7 +56,7 @@ public:
     void draw_pixel(int x, int y, Vec4<int>& color);
     void drawScene(Scene& scene);
     void drawSkybox(Scene& scene);
-    void draw_instance(Light* light, Mesh& mesh);
+    void drawInstance(Light* light, Mesh& mesh);
     void drawLine(Vec2<int> start, Vec2<int> end);
     void drawTangents(Vec3<float>& vertexPos, Vec3<float>& tangent) {
         Vec3<float> end = vertexPos + tangent * 0.03f;

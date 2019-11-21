@@ -294,7 +294,6 @@ void Shader::DrawOcclusion(Model& Model, TGAImage& occlusion_texture, float* occ
 
 Shader_Base::Shader_Base() {
     vertexAttribFlag = 1;
-    texture_ = nullptr;
     normalMap_ = nullptr;
     fragmentAttribBuffer = nullptr;
     lightingParamBuffer = nullptr;
@@ -307,13 +306,12 @@ void Shader_Base::initFragmentAttrib(uint32_t bufferWidth, uint32_t bufferHeight
     lightingParamBuffer = new LightingParams[bufferWidth * bufferHeight];
 }
 
-// TODO: Perspective correct texture sampling
 Vec3<float> Shader_Base::sampleTexture2D(Texture& texture, float u, float v) {
     Vec3<float> res;
-    uint32_t samplePosX = std::fmod(u, 1.f) * texture.textureWidth;
+    uint32_t samplePosX = std::ceil(fmod(u, 1.f) * texture.textureWidth);
     // 1 - v here because the texture image coord y starts at the top while
     // texture coord y starts from bottom, thus flip vertically 
-    uint32_t samplePosY = (1 - std::fmod(v, 1.f)) * texture.textureHeight;
+    uint32_t samplePosY = std::ceil((1 - std::fmod(v, 1.f)) * texture.textureHeight);
     uint32_t pixelIdx = texture.textureWidth * samplePosY + samplePosX;
     res.x = (float)(texture.pixels[pixelIdx * texture.numChannels]);     // R
     res.y = (float)(texture.pixels[pixelIdx * texture.numChannels + 1]); // G
@@ -336,12 +334,13 @@ Vec3<float> Shader_Base::sampleNormal(Texture& normalMap, float u, float v) {
     res.y = (float)res.y / 255.f * 2 - 1.f; 
     res.z = (float)res.z / 255.f * 2 - 1.f; 
     // Do I need to normalize the remapped result here?
-    return res;
+    return Math::Normalize(res);
 }
 
-Vec4<float> Shader_Base::transformToViewSpace(Vec3<float>& v) {
+Vec3<float> Shader_Base::transformToViewSpace(Vec3<float>& v) {
     modelView_ = view_ * model_;
-    return modelView_ * Vec4<float>(v, 1.f);
+    Vec4<float> pos = modelView_ * Vec4<float>(v, 1.f);
+    return Vec3<float>(pos.x, pos.y, pos.z);
 }
 
 void Shader_Base::set_model_matrix(Mat4x4<float>& model) {
@@ -366,12 +365,16 @@ Vec3<float> Shader_Base::transformTangent(Vec3<float>& tangent) {
     return Vec3<float>(result.x, result.y, result.z);
 }
 
-void Shader_Base::bindTexture(Texture* texture) {
-    texture_ = texture;
+void Shader_Base::bindDiffuseTexture(Texture* texture) {
+    diffuseMaps.emplace_back(texture);
+}
+
+void Shader_Base::bindSpecTexture(Texture* texture) {
+    specularMaps.emplace_back(texture);
 }
 
 void Shader_Base::unbindTexture() {
-    texture_ = nullptr;
+    diffuseMaps.clear();
 }
 
 void Shader_Base::clearFragmentAttribs() {
@@ -404,34 +407,45 @@ Vec4<float> Phong_Shader::vertex_shader(Vec3<float>& v) {
     return projection_ * modelView_ * Vec4<float>(v, 1.f);    
 }
 
+void gammaCorrection(Vec3<float>& color, float pow) {
+    color.x = std::pow(color.x, pow);
+    color.y = std::pow(color.y, pow);
+    color.z = std::pow(color.z, pow);
+}
+
 // Fragment normal
 // Fragment textureUV
 // Fragment lightDirection
 // Fragment viewDirection
-// TODO: gamma-correction
-// TODO: specular mapping
 // TODO: if a given mesh does not come with vertex normal
 //     : generate normals at loading and feed interpolated vn in here instead
 //     : of using normal map
+// TODO: still need to figure out why specular highlight looks kinda weird
 Vec4<int> Phong_Shader::fragment_shader(int x, int y) {
     FragmentAttrib& attribs = fragmentAttribBuffer[y * bufferWidth_ + x];
     LightingParams& lightingParams = lightingParamBuffer[y * bufferWidth_ + x];
-    Vec3<float> lightDirection = lightingParams.direction;
-    Vec3<float> lightColor = lightingParams.color;
-    Vec3<float> diffuseSample, ambient, diffuse, specular;
+    Vec3<float> diffuseSample = {}, specularSample = {}, diffuse = {}, specular = {};
 
-    Vec4<float> result(0.f, 0.f, 0.f, 255.f);
     // default diffuse color
     diffuseSample = Vec3<float>(230.f, 154.f, 222.f);
-    if (texture_) {
-        diffuseSample = sampleTexture2D(*texture_, attribs.textureCoord.x, attribs.textureCoord.y);
-        // Gamma-correction at gamma of 2.0
-        diffuseSample.x *= diffuseSample.x;
-        diffuseSample.y *= diffuseSample.y;
-        diffuseSample.z *= diffuseSample.z;
+    // TODO: Handle texture blending, right now simply add
+    if (diffuseMaps.size() > 0) {
+        Vec3<float> diffuseSampleSum(0.f, 0.f, 0.f);
+        for (auto diffuseMap : diffuseMaps) {
+            diffuseSample = sampleTexture2D(*diffuseMap, attribs.textureCoord.x, attribs.textureCoord.y);
+            gammaCorrection(diffuseSample, 2.2);
+            diffuseSampleSum += diffuseSample;
+        }
+        diffuseSample = diffuseSampleSum;
     }
-    Vec3<float> normal = attribs.normal;
-    if (normalMap_) { 
+    if (specularMaps.size() > 0) {
+        // rn there is only one specular map, so
+        for(auto specularMap : specularMaps) {
+            specularSample = sampleTexture2D(*specularMap, attribs.textureCoord.x, attribs.textureCoord.y);
+        }
+    }
+    Vec3<float> normal = attribs.normal; // make sure normals are normalized
+    if (normalMap_) {
         Vec3<float> sampledNormal = sampleNormal(*normalMap_, attribs.textureCoord.x, attribs.textureCoord.y); 
         // TODO: Need to consider the handed-ness of the tangent space where normals are defined in
         Vec3<float> interpolatedNormal = attribs.normal;
@@ -444,20 +458,27 @@ Vec4<int> Phong_Shader::fragment_shader(int x, int y) {
         normal.z = tangent.z * sampledNormal.x + biTangent.z * sampledNormal.y + interpolatedNormal.z * sampledNormal.z;
     } 
     // Assuming that lightDirection is already normalized
-    float diffuseCoef = Math::DotProduct_Vec3(normal, lightDirection);
-    diffuseCoef = Math::clamp_f(diffuseCoef, 0.f, 1.f);
+    float diffuseCoef = Math::clamp_f(Math::DotProduct_Vec3(normal, lightingParams.direction), 0.f, 1.f);
+    Vec3<float> viewDirection = Math::Normalize(cameraPos - lightingParams.viewSpaceFragmentPos);
+    Vec3<float> reflectRay = Math::reflect(lightingParams.direction, normal);
+    float specularCoef = Math::clamp_f(Math::DotProduct_Vec3(viewDirection, reflectRay), 0.f, 1.f);
+    if (specularMaps.size() > 0 && specularSample.x == 0.f) {
+        specularCoef = 0.f;
+    } else {
+        specularCoef = std::max(pow(specularCoef, specularSample.x), 0.f);
+    }
     if (normalMap_) {
         diffuse = diffuseSample * diffuseCoef;
     } else {
         diffuse = diffuseSample;
     }
-    result = Vec4<float>(ambient + diffuse, 0.f);
-    // invert gamma-correction
-    if (texture_) {
-        result.x = sqrt(result.x);
-        result.y = sqrt(result.y);
-        result.z = sqrt(result.z);
+    // // TODO: be careful of color exploding here
+    // gammaCorrection(lightingParams.color, 2.2f);
+    specular = diffuseSample * specularCoef;
+    Vec3<float> phongColor = diffuse + specular * .6f;
+    if (diffuseMaps.size() > 0) {
+        gammaCorrection(phongColor, 0.4545);
     }
-    Vec4<int> fragmentColor((int)result.x, (int)result.y, (int)result.z, (int)result.w);
+    Vec4<int> fragmentColor(Math::clampRGB(phongColor), 255);
     return fragmentColor;
 }

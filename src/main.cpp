@@ -199,6 +199,7 @@ int main(int argc, char* argv[]) {
     {
          PerformanceTimer renderTimer;
          renderer.drawScene(scene);
+         window_manager.blit_buffer(renderer.backbuffer, renderer.buffer_width, renderer.buffer_height, 4, window);
     }
 
     while(!glfwWindowShouldClose(window.m_window)) {

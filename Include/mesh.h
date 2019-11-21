@@ -1,5 +1,6 @@
 #pragma once
 #include <string>
+#include <map>
 #include "mathLib.h"
 
 struct Mesh_Instance {
@@ -15,7 +16,8 @@ struct MeshTextureParams {
 class Mesh {
 public:
     std::string name;
-    std::string textureName;
+    std::map<std::string, int> diffuseMapTable;
+    std::map<std::string, int> specularMapTable;
     std::string normalMapName;
     float* vertex_buffer;
     float* texture_uv_buffer;
@@ -25,6 +27,7 @@ public:
 
     int num_vertices, num_faces, num_texture_coord, num_normal;
     int v_components, vt_components, vn_components, idx_components;
+    int colorMaps[3];
     int textureID, normalMapID;
 
     // TODO: These methods should be moved into Mesh_Manager

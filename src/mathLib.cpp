@@ -182,8 +182,17 @@ float Math::clamp_f(float x, float min, float max)
     return x;
 }
 
+// TODO: Do I need to do std::ceil(here) ?
+Vec3<int> Math::clampRGB(Vec3<float> color) {
+    Vec3<int> result(color.x, color.y, color.z);
+    if (result.x > 255) result.x = 255;
+    if (result.y > 255) result.y = 255;
+    if (result.z > 255)  result.z = 255;
+    return result; 
+}
+
 Vec3<float> Math::barycentric(Vec2<float>* triangle, int x, int y, float denominator) {
-    Vec2<float> pa = triangle[0] - Vec2<float>(x + .5f, y + .5f);
+    Vec2<float> pa = triangle[0] - Vec2<float>(x, y);
     Vec2<float> e1 = triangle[1] - triangle[0];
     Vec2<float> e2 = triangle[2] - triangle[0];
     float u = (-1 * pa.x * e2.y + pa.y * e2.x) / denominator;
@@ -253,6 +262,12 @@ Vec3<float> Math::CrossProduct(const Vec3<float>& V0, const Vec3<float>& V1)
     Result.z = V0.x * V1.y - V0.y * V1.x;
 
     return Result;
+}
+
+// reflected ray should be automatically normalized
+Vec3<float> Math::reflect(Vec3<float>& v, Vec3<float> normal) {
+    Vec3<float> result = normal * 2 * Math::DotProduct_Vec3(normal, v) - v;
+    return result;
 }
 
 Vec3<float> Math::Normalize(const Vec3<float>& v)

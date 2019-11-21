@@ -88,6 +88,7 @@ struct Vec3
     T y;
     T z;
 
+
     //**** Constructor
     Vec3() {
 
@@ -349,6 +350,8 @@ class Math
 {
 public:
     static float clamp_f(float x, float min, float max);
+    static Vec3<int> clampRGB(Vec3<float> color);
+    static Vec3<float> reflect(Vec3<float>& v, Vec3<float> normal);
     static Vec3<float> barycentric(Vec2<float>* triangle, int x, int y, float denominator);
     static Vec3<float> bary_interpolate(Vec3<float>* vertices, const Vec3<float>& bary_coord); 
     static void bound_triangle(Vec2<float>* vertices, float* bounds);

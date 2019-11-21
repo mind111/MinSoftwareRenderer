@@ -390,11 +390,42 @@ void Scene_Manager::loadSceneFromFile(Scene& scene, const char* filename) {
         Mesh mesh;
         meshInfo.at("name").get_to(mesh.name);
         meshInfo.at("path").get_to(path);
-        meshInfo.at("textureName").get_to(mesh.textureName);
+        auto diffuseMaps = meshInfo.at("diffuseTexture");
+        auto specularMaps = meshInfo.at("specularTexture");
+        for (auto& diffuseMap : diffuseMaps) {
+            std::string textureName;
+            diffuseMap.get_to(textureName);
+            if (textureName == "") {
+                continue;
+            }
+            mesh.diffuseMapTable.insert(std::pair<std::string, int>(textureName, -1));
+        }
+        for (auto& specularMap : specularMaps) {
+            std::string textureName;
+            specularMap.get_to(textureName);
+            if (textureName == "") {
+                continue;
+            }
+            mesh.specularMapTable.insert(std::pair<std::string, int>(textureName, -1));
+        }
         meshInfo.at("normalMapName").get_to(mesh.normalMapName);
+        
+        // binding diffuse map ids
+        for(auto itr = mesh.diffuseMapTable.begin(); itr != mesh.diffuseMapTable.end(); itr++) {
+            int idx = findTextureIndex(scene, itr->first);
+            if (idx != -1) {
+                itr->second = idx;
+            }
+        }
+        // binding specular map ids
+        for(auto itr = mesh.specularMapTable.begin(); itr != mesh.specularMapTable.end(); itr++) {
+            int idx = findTextureIndex(scene, itr->first);
+            if (idx != -1) {
+                itr->second = idx;
+            }
+        }
 
         loadObj(mesh, path.c_str());
-        findTextureForMesh(scene, mesh);
         findNormalMapForMesh(scene, mesh);
         scene.mesh_list.emplace_back(mesh);
     }
@@ -440,12 +471,13 @@ void Scene_Manager::loadTextureFromFile(Scene& scene, std::string& name, const c
     scene.texture_list.emplace_back(newTexture);
 }
 
-void Scene_Manager::findTextureForMesh(Scene& scene, Mesh& mesh) {
+int Scene_Manager::findTextureIndex(const Scene& scene, const std::string& textureName) {
     for (int i = 0; i < scene.texture_list.size(); i++) {
-        if (scene.texture_list[i].textureName == mesh.textureName) {
-            mesh.textureID = i;
-        }
+            if (scene.texture_list[i].textureName == textureName) {
+                return i;
+            }
     }
+    return -1;
 }
 
 void Scene_Manager::findNormalMapForMesh(Scene& scene, Mesh& mesh) {

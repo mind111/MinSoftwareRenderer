@@ -22,7 +22,7 @@ struct FragmentAttrib {
 struct LightingParams {
     Vec3<float> color;
     Vec3<float> direction;
-    Vec3<float> viewDirection;
+    Vec3<float> viewSpaceFragmentPos;
     float intensity;
 };
 
@@ -34,13 +34,16 @@ public:
     Mat4x4<float> modelView_;
     Mat4x4<float> projection_;
 
+    Vec3<float> cameraPos;
+
     uint8_t vertexAttribFlag;
     // per fragment attrib
     FragmentAttrib* fragmentAttribBuffer;
     LightingParams* lightingParamBuffer;
     uint32_t bufferWidth_, bufferHeight_;
 
-    Texture* texture_;
+    std::vector<Texture*> diffuseMaps;
+    std::vector<Texture*> specularMaps;
     Texture* normalMap_;
     
     Shader_Base();
@@ -48,9 +51,9 @@ public:
     void set_view_matrix(Mat4x4<float>& view);
     void set_projection_matrix(Mat4x4<float>& projection);
     void clearFragmentAttribs();
-    void bindTexture(Texture* texture);
+    void bindDiffuseTexture(Texture* texture);
+    void bindSpecTexture(Texture* texture);
     void unbindTexture();
-
 
     virtual Vec4<float> vertex_shader(Vec3<float>& v) = 0;
     virtual Vec4<int> fragment_shader(int x, int y) = 0;
@@ -59,7 +62,7 @@ public:
     Vec3<float> sampleNormal(Texture& normalMap, float u, float v);
     Vec3<float> transformNormal(Vec3<float>& normal);
     Vec3<float> transformTangent(Vec3<float>& tangent);
-    Vec4<float> transformToViewSpace(Vec3<float>& v);
+    Vec3<float> transformToViewSpace(Vec3<float>& v);
 };
 
 class Phong_Shader : public Shader_Base {

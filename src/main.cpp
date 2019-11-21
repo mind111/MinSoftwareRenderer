@@ -134,11 +134,7 @@ void generate_occlusion_texture(Model& Model, Shader& shader) {
 //       @
 // TODO: @ SSAO
 // TODO: @ become real time, requires multi-threading & SIMD
-// TODO: @ For some reasons, normal mapping is not working, DEBUG!!
 int main(int argc, char* argv[]) {
-    // TODO: @ render the renderer's backbuffer to a texture
-    // TODO: @ Using the renderer's backbuffer as texture data
-    // TODO: @ and then render the texture to the screen
     // ---------------------------
     glfwInit();
     Window window = { };
@@ -204,7 +200,7 @@ int main(int argc, char* argv[]) {
 
     while(!glfwWindowShouldClose(window.m_window)) {
         // Update transform of moving instances
-        //scene_manager.updateScene(scene, 0.f);
+        // scene_manager.updateScene(scene, 0.f);
         // Rendering
         glClear(GL_COLOR_BUFFER_BIT);
         renderer.clearBuffer(); // clear color bit

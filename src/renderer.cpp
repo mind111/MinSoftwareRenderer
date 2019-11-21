@@ -29,6 +29,17 @@ void Renderer::alloc_backbuffer(Window& window) {
     backbuffer = new unsigned char[4 * buffer_width * buffer_height];
 }
 
+bool Renderer::backfaceCulling() {
+    Vec3<float> v = Math::Normalize(triangleView[0] * -1.f);
+    Vec3<float> e1 = Math::Normalize(triangleView[1] - triangleView[0]);    
+    Vec3<float> e2 = Math::Normalize(triangleView[2] - triangleView[0]);    
+    Vec3<float> facetNormal = Math::CrossProduct(e1, e2);
+    if (Math::DotProduct_Vec3(facetNormal, v) < 0.f) {
+        return true;
+    }
+    return false;
+}
+
 // @: Flipped the y coordinates to match OpenGL's screen space coordinates
 //    since I later pass this buffer as a texture data for OpenGL to render
 void Renderer::draw_pixel(int x, int y, Vec4<int>& color) {
@@ -166,11 +177,13 @@ void Renderer::drawInstance(Light* light, Mesh& mesh) {
         // if projected triangle is partially out of screen, discard it for now
         
         // backface cull
-
+        if (backfaceCulling()) {
+            continue;
+        }
         // -------------
+        // view frustum culling and clipping
 
-        // draw out mesh wireframe for debugging purposes
-
+        // ---------------------------------
         // rasterization
         fill_triangle(activeShaderPtr_, light);
     }

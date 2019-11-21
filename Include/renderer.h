@@ -74,6 +74,7 @@ public:
 private:
     float* z_buffer;
     void draw_mesh(Mesh& mesh);
+    bool backfaceCulling();
     void perspectiveCorrection(Vec3<float>& baryCoord);
     bool depthTest(int x, int y, Vec3<float> baryCoord);
     void fill_triangle(Shader_Base* active_shader_ptr, Light* light);

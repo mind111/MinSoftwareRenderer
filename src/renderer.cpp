@@ -1,5 +1,8 @@
+#include <thread>
+#include <future>
 #include "omp.h"
 #include "renderer.h"
+
 
 Renderer::Renderer() {
     mesh_attrib_flag = 0;
@@ -50,6 +53,7 @@ void Renderer::draw_pixel(int x, int y, Vec4<int>& color) {
 }
 
 void Renderer::clearBuffer() {
+    #pragma omp parallel for
     for (int pixel = 0; pixel < buffer_width * buffer_height; pixel++) {
         backbuffer[pixel * 4] = 0;
         backbuffer[pixel * 4 + 1] = 0;
@@ -59,6 +63,7 @@ void Renderer::clearBuffer() {
 }
 
 void Renderer::clearDepth() {
+    #pragma omp parallel for
     for (int pixel = 0; pixel < buffer_width * buffer_height; pixel++) {
         z_buffer[pixel] = 1.5f;
     }
@@ -96,11 +101,9 @@ void Renderer::drawScene(Scene& scene) {
             }
             Mat4x4<float> model = Math::constructTransformMatrix(scene.xform_list[instance.instance_id]);
             activeShaderPtr_->set_model_matrix(model);
-            // TODO: Pass in camera position here
             drawInstance(&directionalLight, mesh);
             // clear shader's per fragment attrib buffer
-            // TODO: Do I actually need to do this here
-            // activeShaderPtr_->clearFragmentAttribs();
+            activeShaderPtr_->clearFragmentAttribs();
             // unbind texture and normal map
             activeShaderPtr_->unbindTexture();
             activeShaderPtr_->normalMap_ = nullptr;
@@ -117,8 +120,7 @@ void Renderer::drawScene(Scene& scene) {
     }
 }
 
-// TODO: @ Frustum culling
-// TODO: @ Backface culling
+// TODO: @ Shadow mapping
 // TODO: @ PBR
 // TODO: @ Should deal with instance xform in here
 void Renderer::drawInstance(Light* light, Mesh& mesh) {    
@@ -145,10 +147,6 @@ void Renderer::drawInstance(Light* light, Mesh& mesh) {
             Vec3<float> vertex = mesh_manager.get_vertex(mesh, f_idx * 3 + v);
             triangleView[v] = activeShaderPtr_->transformToViewSpace(vertex);
             triangle_clip[v] = activeShaderPtr_->vertex_shader(vertex);
-            if (mesh.tangentBuffer) {
-                Vec3<float> vertexTangent = mesh_manager.getTangent(mesh, f_idx * 3 + v);
-                //drawTangents(mesh_manager.get_vertex(mesh, f_idx * 3 + v), vertexTangent);
-            }
             // viewport transform
             Vec4<float> v_screen = viewport * (triangle_clip[v] / triangle_clip[v].w);
             triangle_screen[v].x = v_screen.x;
@@ -164,12 +162,12 @@ void Renderer::drawInstance(Light* light, Mesh& mesh) {
                 // so using the same modelView transform should be suffice for now
                 // need to transform the normal here
                 normalIn[v] = mesh_manager.get_vn(mesh, f_idx * 3 + v);
-                normalOut[v] = activeShaderPtr_->transformNormal(normalIn[v]);
+                normalOut[v] = Math::Normalize(activeShaderPtr_->transformNormal(normalIn[v]));
             } 
             // has vertex tangent
             if (mesh_attrib_flag & 0x0004) {
                 tangentIn[v] = mesh_manager.getTangent(mesh, f_idx * 3 + v);
-                tangentOut[v] = activeShaderPtr_->transformNormal(tangentIn[v]);
+                tangentOut[v] = Math::Normalize(activeShaderPtr_->transformTangent(tangentIn[v]));
             }
         }
 
@@ -177,15 +175,33 @@ void Renderer::drawInstance(Light* light, Mesh& mesh) {
         // if projected triangle is partially out of screen, discard it for now
         
         // backface cull
-        if (backfaceCulling()) {
-            continue;
-        }
+        // TODO: @ produce holes in render
+         if (backfaceCulling()) {
+             continue;
+         }
         // -------------
-        // view frustum culling and clipping
-
-        // ---------------------------------
         // rasterization
-        fill_triangle(activeShaderPtr_, light);
+        fill_triangle(light);
+        // ---------------------------------
+    }
+}
+
+void Renderer::drawDebugLines(Mesh& mesh, uint32_t f_idx) {
+    // wireframe debugging
+    drawTriangleWireFrame(Vec2<int>(triangle_screen[0].x, triangle_screen[0].y), 
+                          Vec2<int>(triangle_screen[1].x, triangle_screen[1].y),
+                          Vec2<int>(triangle_screen[2].x, triangle_screen[2].y));
+    if (mesh.tangentBuffer) {
+        for (int v = 0; v < 3; v++) {
+            Vec3<float> vertexTangent = mesh_manager.getTangent(mesh, f_idx * 3 + v);
+            drawTangents(mesh_manager.get_vertex(mesh, f_idx * 3 + v), vertexTangent);
+        }
+    }
+    if (mesh.normal_buffer) {
+        for (int v = 0; v < 3; v++) {
+            Vec3<float> vertexNormal = mesh_manager.get_vn(mesh, f_idx * 3 + v);
+            drawTangents(mesh_manager.get_vertex(mesh, f_idx * 3 + v), vertexNormal);
+        }
     }
 }
 
@@ -210,7 +226,7 @@ void Renderer::perspectiveCorrection(Vec3<float>& baryCoord) {
 // TODO: Improve normal mapping
 // TODO: Create multiple fragmentShader instance
 // TODO: Maybe something like fragmentShaderPools[bufferWidth][bufferHeight]
-void Renderer::fill_triangle(Shader_Base* active_shader_ptr, Light* light) {
+void Renderer::fill_triangle(Light* light) {
     // TODO: @ Clean up using a determinant()
     Vec2<float> e1 = triangle_screen[1] - triangle_screen[0];
     Vec2<float> e2 = triangle_screen[2] - triangle_screen[0];
@@ -226,15 +242,19 @@ void Renderer::fill_triangle(Shader_Base* active_shader_ptr, Light* light) {
         triangle_screen[0].y,
         triangle_screen[0].y,
     }; 
+
     // TODO: Fix clamping
     Math::bound_triangle(triangle_screen, bbox);
-    int xMin = std::floor(bbox[0]), xMax = std::ceil(bbox[1]);
-    int yMin = std::floor(bbox[2]), yMax = std::ceil(bbox[3]);
-    for (int x = xMin; x < xMax; x++) {
-        for (int y = yMin; y < yMax; y++) {
+    int xMin = bbox[0], xMax = std::ceil(bbox[1]);
+    int yMin = bbox[2], yMax = std::ceil(bbox[3]);
+    
+    #pragma omp parallel for
+    for (int x = xMin; x <= xMax; x++) {
+        for (int y = yMin; y <= yMax; y++) {
             // compute barycentric coord
             Vec3<float> bary_coord = Math::barycentric(triangle_screen, x, y, denom); // overlapping test
-            if (bary_coord.x < 0.f || bary_coord.y < 0.f || bary_coord.z < 0.f) {
+            // TODO: @Work-around
+            if (bary_coord.x < 0.f || bary_coord.y < 0.f  || bary_coord.z < 0.f) {
                 continue;
             }
             // perspective correct interpolation of vertex attribs
@@ -250,30 +270,30 @@ void Renderer::fill_triangle(Shader_Base* active_shader_ptr, Light* light) {
             uint32_t attribIdx = y * buffer_width + x; 
             // TODO: @ pass in light to fragment shader
             if (mesh_attrib_flag & 0x0001) {
-                active_shader_ptr->fragmentAttribBuffer[attribIdx].textureCoord = Math::bary_interpolate(triangle_uv, bary_coord);
+                activeShaderPtr_->fragmentAttribBuffer[attribIdx].textureCoord = Math::bary_interpolate(triangle_uv, bary_coord);
             }
             // correct the interpolation for normal & tangents
             // note that the interpolation may make the length no longer unit 
             if (mesh_attrib_flag & 0x0002) {
-                active_shader_ptr->fragmentAttribBuffer[attribIdx].normal = Math::Normalize(Math::bary_interpolate(normalOut, bary_coord));
+                activeShaderPtr_->fragmentAttribBuffer[attribIdx].normal = Math::Normalize(Math::bary_interpolate(normalOut, bary_coord));
             }
             if (mesh_attrib_flag & 0x0004) {
-                active_shader_ptr->fragmentAttribBuffer[attribIdx].tangent = Math::Normalize(Math::bary_interpolate(tangentOut, bary_coord));
+                activeShaderPtr_->fragmentAttribBuffer[attribIdx].tangent = Math::Normalize(Math::bary_interpolate(tangentOut, bary_coord));
             }
             // TODO: Bulletproof this setup for lighting computation
             // point light
             if (light->getPosition()) {
                 // compute per fragment light direction
             } else {
-                if (active_shader_ptr->lightingParamBuffer) {
-                    active_shader_ptr->lightingParamBuffer[attribIdx].color = light->color;
-                    active_shader_ptr->lightingParamBuffer[attribIdx].intensity = light->intensity;
-                    active_shader_ptr->lightingParamBuffer[attribIdx].direction = *(light->getDirection());
-                    active_shader_ptr->lightingParamBuffer[attribIdx].viewSpaceFragmentPos = Math::bary_interpolate(triangleView, bary_coord);
+                if (activeShaderPtr_->lightingParamBuffer) {
+                    activeShaderPtr_->lightingParamBuffer[attribIdx].color = light->color;
+                    activeShaderPtr_->lightingParamBuffer[attribIdx].intensity = light->intensity;
+                    activeShaderPtr_->lightingParamBuffer[attribIdx].direction = *(light->getDirection());
+                    activeShaderPtr_->lightingParamBuffer[attribIdx].viewSpaceFragmentPos = Math::bary_interpolate(triangleView, bary_coord);
                 }
             }
             // compute fragment color
-            Vec4<int> fragmentColor = active_shader_ptr->fragment_shader(x, y);
+            Vec4<int> fragmentColor = activeShaderPtr_->fragment_shader(x, y);
             // write to backbuffer
             draw_pixel(x, y, fragmentColor);
             // -------------------
@@ -343,4 +363,10 @@ void Renderer::drawLine(Vec2<int> start, Vec2<int> end) {
         Vec4<int> color(50, 0, 250, 255);
         draw_pixel(next.x, next.y, color);
     }
+}
+
+void Renderer::drawTriangleWireFrame(Vec2<int> V0, Vec2<int> V1, Vec2<int> V2) {
+    drawLine(V0, V1);
+    drawLine(V1, V2);
+    drawLine(V2, V0);
 }

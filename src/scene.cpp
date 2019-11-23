@@ -262,7 +262,7 @@ void Scene_Manager::loadObj(Mesh& mesh, const char* filename) {
             loaded_vt++;
         } else if (line[0] == 'v' && line[1] == 'n') {
             ss >> dump;
-            for (int i = 0; i < mesh.vt_components; i++) {
+            for (int i = 0; i < mesh.vn_components; i++) {
                 ss >> normal_buffer_raw[loaded_vn * mesh.vn_components + i];
             }
             loaded_vn++;

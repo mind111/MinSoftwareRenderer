@@ -58,8 +58,9 @@ public:
     void drawSkybox(Scene& scene);
     void drawInstance(Light* light, Mesh& mesh);
     void drawLine(Vec2<int> start, Vec2<int> end);
+    void drawTriangleWireFrame(Vec2<int> v0, Vec2<int> v1, Vec2<int> v2);
     void drawTangents(Vec3<float>& vertexPos, Vec3<float>& tangent) {
-        Vec3<float> end = vertexPos + tangent * 0.03f;
+        Vec3<float> end = vertexPos + tangent * 0.1f;
         Vec4<float> vertexClip = activeShaderPtr_->vertex_shader(vertexPos);
         Vec4<float> vertexScreen = viewport * (vertexClip / vertexClip.w);
         Vec2<int> startScreen(vertexScreen.x, vertexScreen.y);
@@ -74,9 +75,10 @@ public:
 private:
     float* z_buffer;
     void draw_mesh(Mesh& mesh);
+    void drawDebugLines(Mesh&, uint32_t f_idx);
     bool backfaceCulling();
     void perspectiveCorrection(Vec3<float>& baryCoord);
     bool depthTest(int x, int y, Vec3<float> baryCoord);
-    void fill_triangle(Shader_Base* active_shader_ptr, Light* light);
+    void fill_triangle(Light* light);
 };
 

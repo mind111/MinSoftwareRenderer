@@ -1,0 +1,74 @@
+{
+    "cameras": [
+        {
+            "name": "main_camera",
+            "position": [0.0, 0.0, 0.0],
+            "target": [0.0, 0.0, -1.0],
+            "world_up": [0.0, 1.0, 0.0],
+            "fov": 90.0,
+            "z_near": 0.1,
+            "z_far": 100.0
+        }
+    ],
+
+    "lights": [
+        {
+            "type": "directional",
+            "color": [255, 200, 200],
+            "direction": [2, 0, 1]
+        }
+    ],
+
+    "hasSkybox": false,
+
+    "skyboxMesh": {
+            "name": "skybox_mesh"
+    },
+
+    "mesh_info_list": [
+        {
+            "name": "uv_sphere_mesh",
+            "path": "assets/mesh/uv_sphere.obj",
+            "diffuseTexture": [""],
+            "specularTexture": [""],
+            "normalMapName": ""
+        },
+
+        {
+            "name": "floor_mesh",
+            "path": "assets/mesh/floor.obj",
+            "diffuseTexture": ["grid_texture"],
+            "specularTexture": [""], 
+            "normalMapName": ""
+        }
+    ],
+
+    "texture_info_list": [
+        {
+            "textureName": "grid_texture",
+            "texturePath": "assets/texture/grid.png"
+        }
+    ],
+
+    "instance_list": [
+        {
+            "meshName": "uv_sphere_mesh",
+            "xform": {
+                "translation": [0, -0.0, -2.0],
+                "rotation": [0, 0, 0],
+                "scale":[0.5, 0.5, 0.5]
+            },
+            "movable": "false"
+        },
+
+        {
+            "meshName": "floor_mesh",
+            "xform": {
+                "translation": [0, -1.0, -1.8],
+                "rotation": [0, 0, 0],
+                "scale":[2.0, 2.0, 2.0]
+            },
+            "movable": "false"
+        }
+    ]
+}

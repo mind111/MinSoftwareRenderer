@@ -14,8 +14,8 @@
     "lights": [
         {
             "type": "directional",
-            "color": [255, 200, 200],
-            "direction": [1, 1, 1]
+            "color": [255, 255, 255],
+            "direction": [1, 1, 2]
         }
     ],
 
@@ -35,7 +35,7 @@
         },
 
         {
-            "name": "uv_sphere",
+            "name": "uv_sphere_mesh",
             "path": "assets/mesh/uv_sphere.obj",
             "diffuseTexture": [],
             "specularTexture": [],
@@ -99,12 +99,13 @@
         {
             "meshName": "diablo3_pose",
             "xform": {
-                "translation": [0.0, 0.0, -1.2],
+                "translation": [0.0, 0.0, -2.0],
                 "rotation": [0, 0, 0],
                 "scale": [1.0, 1.0, 1.0]
             },
             "movable": "true"
         },
+
 
         {
             "meshName": "floor_mesh",

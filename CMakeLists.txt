@@ -26,7 +26,7 @@ find_package(GLEW 2.0 REQUIRED)
 include_directories(${GLEW_INCLUDE_DIR})
 link_directories(minSoftwareRenderer PUBLIC ${GLEW_LIBRARY})
 message(${GLEW_LIBRARY})
-target_compile_options(minSoftwareRenderer PUBLIC -lgdi32)
+target_compile_options(minSoftwareRenderer PUBLIC /W1)
 #### linking to openmp ####
 if (OpenMP_CXX_FOUND)
     target_link_libraries(minSoftwareRenderer OpenMP::OpenMP_CXX ${GLFW_LIBRARY} ${GLEW_LIBRARY} ${OPENGL_LIBRARIES})

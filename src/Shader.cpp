@@ -17,7 +17,6 @@ void DrawLine(Vec2<int> Start, Vec2<int> End, TGAImage& image, const TGAColor& c
         {
             image.set(Start.x, i, color);
         }
-
         return;
     }
     // Always start from left marching toward right
@@ -69,18 +68,7 @@ void DrawLine(Vec2<int> Start, Vec2<int> End, TGAImage& image, const TGAColor& c
     }
 }
 
-void DrawTriangle(Vec2<int> V0, Vec2<int> V1, Vec2<int> V2, TGAImage& image, const TGAColor& color)
-{
-    DrawLine(V0, V1, image, color);
-    DrawLine(V1, V2, image, color);
-    DrawLine(V2, V0, image, color);
-}
-
-void Shader::BackfaceCulling()
-{
-
-}
-
+/*
 bool FragmentShader::IsInShadow(Vec4<float> Fragment_Model, 
                                 Mat4x4<float>& Transform, 
                                 Mat4x4<float>& Viewport,
@@ -106,6 +94,8 @@ bool FragmentShader::IsInShadow(Vec4<float> Fragment_Model,
 
     return false;
 }
+*/
+
 /*
 void Shader::DrawShadow(Model& Model, 
                         TGAImage& image, 
@@ -203,8 +193,7 @@ void Shader::draw_cubemap(Cubemap& cubemap, TGAImage& image, struct Camera& came
 
 }
 
-bool UpdateDepthBuffer(Vec3<float> V0, 
-                       Vec3<float> V1, 
+bool UpdateDepthBuffer(Vec3<float> V0, Vec3<float> V1, 
                        Vec3<float> V2, 
                        int ScreenX, 
                        int ScreenY, 
@@ -311,7 +300,7 @@ Vec3<float> Shader_Base::sampleTexture2D(Texture& texture, float u, float v) {
     uint32_t samplePosX = std::ceil(fmod(u, 1.f) * texture.textureWidth);
     // 1 - v here because the texture image coord y starts at the top while
     // texture coord y starts from bottom, thus flip vertically 
-    uint32_t samplePosY = std::ceil((1 - std::fmod(v, 1.f)) * texture.textureHeight);
+    uint32_t samplePosY = (1.f - (v - (int)v)) * texture.textureHeight;
     uint32_t pixelIdx = texture.textureWidth * samplePosY + samplePosX;
     res.x = (float)(texture.pixels[pixelIdx * texture.numChannels]);     // R
     res.y = (float)(texture.pixels[pixelIdx * texture.numChannels + 1]); // G
@@ -378,6 +367,7 @@ void Shader_Base::unbindTexture() {
 }
 
 void Shader_Base::clearFragmentAttribs() {
+    #pragma omp parallel for
     for (int fragment = 0; fragment < bufferHeight_ * bufferWidth_; fragment++) {
         fragmentAttribBuffer[fragment] = { };
         // TODO: do i need to refresh lighting params as well? probably not
@@ -428,6 +418,7 @@ Vec4<int> Phong_Shader::fragment_shader(int x, int y) {
 
     // default diffuse color
     diffuseSample = Vec3<float>(230.f, 154.f, 222.f);
+    gammaCorrection(diffuseSample, 2.2f);
     // TODO: Handle texture blending, right now simply add
     if (diffuseMaps.size() > 0) {
         Vec3<float> diffuseSampleSum(0.f, 0.f, 0.f);
@@ -462,23 +453,17 @@ Vec4<int> Phong_Shader::fragment_shader(int x, int y) {
     Vec3<float> viewDirection = Math::Normalize(cameraPos - lightingParams.viewSpaceFragmentPos);
     Vec3<float> reflectRay = Math::reflect(lightingParams.direction, normal);
     float specularCoef = Math::clamp_f(Math::DotProduct_Vec3(viewDirection, reflectRay), 0.f, 1.f);
-    if (specularMaps.size() > 0 && specularSample.x == 0.f) {
-        specularCoef = 0.f;
+    if (specularMaps.size() > 0) {
+        if (specularSample.x != 0.f) {
+            specularCoef = std::max(pow(specularCoef, specularSample.x), 0.f);
+        }  
     } else {
-        specularCoef = std::max(pow(specularCoef, specularSample.x), 0.f);
-    }
-    if (normalMap_) {
-        diffuse = diffuseSample * diffuseCoef;
-    } else {
-        diffuse = diffuseSample;
-    }
-    // // TODO: be careful of color exploding here
-    // gammaCorrection(lightingParams.color, 2.2f);
-    specular = diffuseSample * specularCoef;
-    Vec3<float> phongColor = diffuse + specular * .6f;
-    if (diffuseMaps.size() > 0) {
-        gammaCorrection(phongColor, 0.4545);
-    }
+        specularCoef = std::max(pow(specularCoef, 4.f), 0.f);
+    }  
+    specular = diffuseSample * specularCoef; 
+    diffuse = diffuseSample * diffuseCoef;
+    Vec3<float> phongColor = diffuse + specular * 2.0f;
+    gammaCorrection(phongColor, 0.4545);
     Vec4<int> fragmentColor(Math::clampRGB(phongColor), 255);
     return fragmentColor;
 }

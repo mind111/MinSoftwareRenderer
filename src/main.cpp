@@ -72,10 +72,10 @@ Vec3<int> gClearColor = Math::clampRGB(Vec3<float>(0.f, 0.f, 0.f) * 255);
 // TODO: @ SIMD 
 // TODO: @ Gouraud shading
 // TODO: @ Debug other scenes
-// TODO: @ PBR
+// TODO: @ SSAO
+// TODO: @ Other interesting post-processing techniques
 // TODO: @ Refactor handling of multiple light sources
 // TODO: @ Debug view matrix(issues with camera)
-// TODO: @ SSAO
 // TODO: @ Anti-aliasing
 // TODO: @ Optimization on rasterizing
 // TODO: @ Raster top-left rule

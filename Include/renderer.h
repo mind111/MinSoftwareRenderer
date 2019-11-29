@@ -28,7 +28,7 @@ class Rasterizer {
 
 class Renderer {
 public:
-    std::vector<Shader_Base*> shader_list; // shader pool that include all available style of shaders
+    std::vector<ShaderBase*> shader_list; // shader pool that include all available style of shaders
     SkyboxShader* skyboxShader_;
 
     // This maybe refactored to be part of rasterizer
@@ -43,11 +43,11 @@ public:
 
     uint8_t mesh_attrib_flag;
 
-    Shader_Base* activeShaderPtr_;
+    ShaderBase* activeShaderPtr_;
     Mat4x4<float> viewport;
     unsigned char* backbuffer;
     
-    uint32_t buffer_width, buffer_height;
+    uint32_t bufferWidth_, bufferHeight_;
 
     Renderer();
     void init();
@@ -61,19 +61,25 @@ public:
     void drawTriangleWireFrame(Vec2<int> v0, Vec2<int> v1, Vec2<int> v2);
     void drawTangents(Vec3<float>& vertexPos, Vec3<float>& tangent) {
         Vec3<float> end = vertexPos + tangent * 0.1f;
-        Vec4<float> vertexClip = activeShaderPtr_->vertex_shader(vertexPos);
+        Vec4<float> vertexClip = activeShaderPtr_->vertexShader(vertexPos);
         Vec4<float> vertexScreen = viewport * (vertexClip / vertexClip.w);
         Vec2<int> startScreen(vertexScreen.x, vertexScreen.y);
-        Vec4<float> endClip = activeShaderPtr_->vertex_shader(end);
+        Vec4<float> endClip = activeShaderPtr_->vertexShader(end);
         Vec4<float> endScreenVec4 = viewport * (endClip / endClip.w);
         Vec2<int> endScreen(endScreenVec4.x, endScreenVec4.y);
         drawLine(startScreen, endScreen);
     }
-    void clearBuffer();
+    void clearBuffer(Vec3<int>& clearColor);
     void clearDepth();
+    void clearNormalBuffer();
+    //-----------------
+    Vec3<float> reconstructViewPosFromDepth(int x, int y, float depth);
+    void sampleOcclusion(int x, int y, Vec2<float> dir);
+    void SSAO();
 
 private:
-    float* z_buffer;
+    float* zBuffer;
+    Vec3<float>* normalBuffer;
     void draw_mesh(Mesh& mesh);
     void drawDebugLines(Mesh&, uint32_t f_idx);
     bool backfaceCulling();

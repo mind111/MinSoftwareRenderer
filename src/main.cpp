@@ -10,14 +10,6 @@
 #include "renderer.h"
 #include "Shader.h"
 
-/// \TODO Clean up code to get rid of all the warnings
-const TGAColor white = TGAColor(255, 255, 255, 255);
-const TGAColor red = TGAColor(255, 0, 0, 255);
-Vec3<float> LightPos(3.0f, 0.5f, -2.0f);
-Vec3<float> LightColor(0.7f, 0.7f, 0.7f);
-Vec3<float> LightDir(1.f, 0, 0.f); // @Simple directional_light
-Vec3<float> CameraPos(0, 0, 1);
-
 /// \Note More optimized version of DrawLine, Inspired by GitHub ssloy/tinyrenderer
 void Line(Vec2<int> Start, Vec2<int> End, TGAImage& image, const TGAColor& color)
 {
@@ -68,18 +60,25 @@ void FillTriangle(Vec2<int>& V0, Vec2<int>& V1, Vec2<int>& V2, TGAImage& image, 
     }
 }
 
+// Vec3<int> gClearColor = Math::clampRGB(Vec3<float>(1.f, 0.98, 0.94) * 255);
+Vec3<int> gClearColor = Math::clampRGB(Vec3<float>(0.f, 0.f, 0.f) * 255);
+
 // TODO: @ Rewrite whole rendering procedure
 // TODO: @ Bulletproof .obj loading
 // TODO: @ Benchmark
 
 // TODO: @ Change to another .obj model
 // TODO: @ Debug phong shading specular component visual bug
+// TODO: @ SIMD 
 // TODO: @ Gouraud shading
 // TODO: @ Debug other scenes
-// TODO: @ Anti-aliasing
 // TODO: @ PBR
-// TODO: @ SIMD 
+// TODO: @ Refactor handling of multiple light sources
+// TODO: @ Debug view matrix(issues with camera)
 // TODO: @ SSAO
+// TODO: @ Anti-aliasing
+// TODO: @ Optimization on rasterizing
+// TODO: @ Raster top-left rule
 int main(int argc, char* argv[]) {
     // ---------------------------
     glfwInit();
@@ -94,10 +93,14 @@ int main(int argc, char* argv[]) {
     Renderer renderer;
     renderer.alloc_backbuffer(window);
     renderer.init();
-    Phong_Shader phongShader;
-    phongShader.initFragmentAttrib(renderer.buffer_width, renderer.buffer_height);
+    PhongShader phongShader;
+    PBRShader pbrShader;
+    phongShader.initFragmentAttrib(renderer.bufferWidth_, renderer.bufferHeight_);
+    pbrShader.initFragmentAttrib(renderer.bufferWidth_, renderer.bufferHeight_);
     renderer.shader_list.emplace_back(&phongShader);
+    renderer.shader_list.emplace_back(&pbrShader);
     renderer.activeShaderPtr_ = &phongShader;
+    renderer.activeShaderPtr_ = &pbrShader;
     SkyboxShader skyboxShader;
     renderer.skyboxShader_ = &skyboxShader;
     scene_manager.loadSceneFromFile(scene, "scenes/default_scene/scene_config.json");
@@ -137,11 +140,11 @@ int main(int argc, char* argv[]) {
     glEnableVertexAttribArray(1);
 
     glUseProgram(window.shader);
-    renderer.clearBuffer();
+    renderer.clearBuffer(gClearColor);
     {
          PerformanceTimer renderTimer;
          renderer.drawScene(scene);
-         window_manager.blit_buffer(renderer.backbuffer, renderer.buffer_width, renderer.buffer_height, 4, window);
+         window_manager.blit_buffer(renderer.backbuffer, renderer.bufferWidth_, renderer.bufferHeight_, 4, window);
     }
 
     while(!glfwWindowShouldClose(window.m_window)) {
@@ -149,10 +152,10 @@ int main(int argc, char* argv[]) {
         // scene_manager.updateScene(scene, 0.f);
         // Rendering
         glClear(GL_COLOR_BUFFER_BIT);
-        renderer.clearBuffer(); // clear color bit
+        renderer.clearBuffer(gClearColor); // clear color bit
         renderer.clearDepth();  // clear depth bit
         renderer.drawScene(scene);
-        window_manager.blit_buffer(renderer.backbuffer, renderer.buffer_width, renderer.buffer_height, 4, window);
+        window_manager.blit_buffer(renderer.backbuffer, renderer.bufferWidth_, renderer.bufferHeight_, 4, window);
         glDrawArrays(GL_TRIANGLES, 0, 6);
         glfwPollEvents();
         glfwSwapBuffers(window.m_window);

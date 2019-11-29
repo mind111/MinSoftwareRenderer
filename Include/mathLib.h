@@ -38,6 +38,10 @@ struct Vec2
         return Vec2<T>(this->x + Another.x, this->y + Another.y);
     }
 
+    Vec2<T> operator*(T scalar) {
+        return Vec2<T>(this->x * scalar, this->y * scalar);
+    }
+
     Vec2<T> operator=(const Vec2<T>& Another)
     {
         this->x = Another.x;
@@ -100,6 +104,12 @@ struct Vec3
         y = q;
         z = r;
     }
+    
+    Vec3(T s) {
+        x = s;
+        y = s;
+        z = s;
+    }
 
     Vec3(const Vec3<T>& Another)
     {
@@ -127,6 +137,13 @@ struct Vec3
     Vec3<T> operator/(T Scalar)
     {
       return Vec3<T>(this->x / Scalar, this->y / Scalar, this->z / Scalar);
+    }
+
+    Vec3<T>& operator/=(T scalar) {
+        this->x /= scalar;
+        this->y /= scalar;
+        this->z /= scalar;
+        return *this;
     }
   
     Vec3<T> operator=(const Vec3<T>& Another)
@@ -350,14 +367,15 @@ class Math
 {
 public:
     static float clamp_f(float x, float min, float max);
+    static void clampVec3f(Vec3<float>& v, float minValue, float maxValue);
     static Vec3<int> clampRGB(Vec3<float> color);
     static Vec3<float> reflect(Vec3<float>& v, Vec3<float> normal);
-    static Vec3<float> barycentric(Vec2<float>* triangle, int x, int y, float denominator);
+    static Vec3<float> barycentric(Vec2<float>* triangle, float x, float y, float denominator);
     static Vec3<float> bary_interpolate(Vec3<float>* vertices, const Vec3<float>& bary_coord); 
     static void bound_triangle(Vec2<float>* vertices, float* bounds);
     static Vec3<float> SampleAmbientDirection();
     static Vec3<float> CrossProduct(const Vec3<float>& V0, const Vec3<float>& V1);
-    static Vec3<float> Normalize(const Vec3<float>& v);
+    static Vec3<float> normalize(const Vec3<float>& v);
     static Mat4x4<float> constructTransformMatrix(const struct Transform& t);
     // transform
     static void translate(Mat4x4<float>& m, Vec3<float> translation);
@@ -366,7 +384,7 @@ public:
     template <class T>
     static float Length(const Vec3<T>& V0);
     template <class T>
-    inline static T DotProduct_Vec3(const Vec3<T>& V0, const Vec3<T>& V1)
+    inline static T dotProductVec3(const Vec3<T>& V0, const Vec3<T>& V1)
     {
         return (V0.x * V1.x + V0.y * V1.y + V0.z * V1.z);
     }
@@ -376,3 +394,5 @@ public:
         return (V0.x * V1.x + V0.y * V1.y);
     }
 };
+
+#define PI 3.1415926

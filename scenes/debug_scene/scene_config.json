@@ -14,8 +14,8 @@
     "lights": [
         {
             "type": "directional",
-            "color": [255, 200, 200],
-            "direction": [2, 0, 1]
+            "color": [0.88, 0.65, 0.2],
+            "direction": [0.5, 0, 1]
         }
     ],
 
@@ -46,7 +46,12 @@
     "texture_info_list": [
         {
             "textureName": "grid_texture",
-            "texturePath": "assets/texture/grid.png"
+            "texturePath": "assets/texture/grid_texture_002.png"
+        },
+
+        {
+            "textureName": "floor_texture",
+            "texturePath": "assets/texture/floor_diffuse.tga"
         }
     ],
 
@@ -56,17 +61,27 @@
             "xform": {
                 "translation": [0, -0.0, -2.0],
                 "rotation": [0, 0, 0],
-                "scale":[0.5, 0.5, 0.5]
+                "scale":[0.3, 0.3, 0.3]
             },
             "movable": "false"
         },
 
         {
-            "meshName": "floor_mesh",
+            "meshName": "uv_sphere_mesh",
             "xform": {
-                "translation": [0, -1.0, -1.8],
+                "translation": [-1.0, -0.0, -2.0],
                 "rotation": [0, 0, 0],
-                "scale":[2.0, 2.0, 2.0]
+                "scale":[0.3, 0.3, 0.3]
+            },
+            "movable": "false"
+        },
+
+        {
+            "meshName": "uv_sphere_mesh",
+            "xform": {
+                "translation": [1.0, -0.0, -2.0],
+                "rotation": [0, 0, 0],
+                "scale":[0.3, 0.3, 0.3]
             },
             "movable": "false"
         }

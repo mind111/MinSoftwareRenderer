@@ -3,41 +3,44 @@
 #include "omp.h"
 #include "renderer.h"
 
+float gSampleRadius = 0.f;
 
 Renderer::Renderer() {
     mesh_attrib_flag = 0;
     activeShaderPtr_ = nullptr;
-    buffer_width = 0;
-    buffer_height = 0;
+    bufferWidth_ = 0;
+    bufferHeight_ = 0;
+    normalBuffer = nullptr;
 }
 
 // depth bit is clear to 1.5 instead of 1 since later cubemap's depth is set to
 //  1. This way it avoid z-fighting when render cubemap
 void Renderer::init() {
-    z_buffer = new float[buffer_width * buffer_height];
+    zBuffer = new float[bufferWidth_ * bufferHeight_];
     // init z_buffer depth value to a huge number
-    for (int j = 0; j < buffer_height; j++) {
-        for (int i = 0; i < buffer_width; i++) {
-            z_buffer[buffer_width * j + i] = 1.5f;
+    for (int j = 0; j < bufferHeight_; j++) {
+        for (int i = 0; i < bufferWidth_; i++) {
+            zBuffer[bufferWidth_ * j + i] = 1.5f;
         }
     }
     // setup viewport matrix here
-    viewport = Mat4x4<float>::viewport(buffer_width, buffer_height);
-    // setup available shader here
+    viewport = Mat4x4<float>::viewport(bufferWidth_, bufferHeight_);
+    // normal buffer
+    normalBuffer = new Vec3<float>[bufferWidth_ * bufferHeight_];
 }
 
 void Renderer::alloc_backbuffer(Window& window) {
-    buffer_width = window.width;
-    buffer_height = window.height;
-    backbuffer = new unsigned char[4 * buffer_width * buffer_height];
+    bufferWidth_ = window.width;
+    bufferHeight_ = window.height;
+    backbuffer = new unsigned char[4 * bufferWidth_ * bufferHeight_];
 }
 
 bool Renderer::backfaceCulling() {
-    Vec3<float> v = Math::Normalize(triangleView[0] * -1.f);
-    Vec3<float> e1 = Math::Normalize(triangleView[1] - triangleView[0]);    
-    Vec3<float> e2 = Math::Normalize(triangleView[2] - triangleView[0]);    
+    Vec3<float> v = Math::normalize(triangleView[0] * -1.f);
+    Vec3<float> e1 = Math::normalize(triangleView[1] - triangleView[0]);    
+    Vec3<float> e2 = Math::normalize(triangleView[2] - triangleView[0]);    
     Vec3<float> facetNormal = Math::CrossProduct(e1, e2);
-    if (Math::DotProduct_Vec3(facetNormal, v) < 0.f) {
+    if (Math::dotProductVec3(facetNormal, v) < 0.f) {
         return true;
     }
     return false;
@@ -46,26 +49,33 @@ bool Renderer::backfaceCulling() {
 // @: Flipped the y coordinates to match OpenGL's screen space coordinates
 //    since I later pass this buffer as a texture data for OpenGL to render
 void Renderer::draw_pixel(int x, int y, Vec4<int>& color) {
-    backbuffer[(y * buffer_width + x) * 4] = (unsigned char)color.x;     // r
-    backbuffer[(y * buffer_width + x) * 4 + 1] = (unsigned char)color.y; // g
-    backbuffer[(y * buffer_width + x) * 4 + 2] = (unsigned char)color.z; // b
-    backbuffer[(y * buffer_width + x) * 4 + 3] = (unsigned char)color.w; // a
+    backbuffer[(y * bufferWidth_ + x) * 4] = (unsigned char)color.x;     // r
+    backbuffer[(y * bufferWidth_ + x) * 4 + 1] = (unsigned char)color.y; // g
+    backbuffer[(y * bufferWidth_ + x) * 4 + 2] = (unsigned char)color.z; // b
+    backbuffer[(y * bufferWidth_ + x) * 4 + 3] = (unsigned char)color.w; // a
 }
 
-void Renderer::clearBuffer() {
+void Renderer::clearBuffer(Vec3<int>& clearColor) {
     #pragma omp parallel for
-    for (int pixel = 0; pixel < buffer_width * buffer_height; pixel++) {
-        backbuffer[pixel * 4] = 0;
-        backbuffer[pixel * 4 + 1] = 0;
-        backbuffer[pixel * 4 + 2] = 0;
+    for (int pixel = 0; pixel < bufferWidth_ * bufferHeight_; pixel++) {
+        backbuffer[pixel * 4] = clearColor.x;
+        backbuffer[pixel * 4 + 1] = clearColor.y;
+        backbuffer[pixel * 4 + 2] = clearColor.z;
         backbuffer[pixel * 4 + 3] = 255;
     }
 }
 
 void Renderer::clearDepth() {
     #pragma omp parallel for
-    for (int pixel = 0; pixel < buffer_width * buffer_height; pixel++) {
-        z_buffer[pixel] = 1.5f;
+    for (int pixel = 0; pixel < bufferWidth_ * bufferHeight_; pixel++) {
+        zBuffer[pixel] = 1.5f;
+    }
+}
+
+void Renderer::clearNormalBuffer() {
+    #pragma omp parallel for
+    for (int pixel = 0; pixel < bufferWidth_ * bufferHeight_; pixel++) {
+        normalBuffer[pixel] = {};
     }
 }
 
@@ -73,11 +83,47 @@ void Renderer::drawSkybox(Scene& scene) {
     Mesh skyboxMesh = scene.mesh_list[scene.skyboxMeshID];
 }
 
+// Reconstruct view space position from fragment pos and depth
+Vec3<float> Renderer::reconstructViewPosFromDepth(int x, int y, float depth) {
+    float ndcX = x * 2.f / bufferWidth_ - 1.f; 
+    float ndcY = y * 2.f / bufferHeight_ - 1.f; 
+    Vec4<float> ndcPos(x, y, depth, 1.f);
+    Vec4<float> viewHomo = activeShaderPtr_->projection_.Inverse() * ndcPos; 
+    viewHomo = viewHomo / viewHomo.w;
+    return Vec3<float>(viewHomo.x, viewHomo.y, viewHomo.z);
+}
+
+void Renderer::sampleOcclusion(int x, int y, Vec2<float> dir) {
+    if (zBuffer[y * bufferWidth_ + x] >= 1.5f) return;
+    Vec3<float> v = reconstructViewPosFromDepth(x, y, zBuffer[y * bufferWidth_ + x]);
+    float occlusion = 0.f;
+    for (float step = 0; step < gSampleRadius; step++) {
+        Vec2<int> p = Vec2<int>((int)(x + dir.x * step), (int)(y + dir.y * step));
+        float depth = zBuffer[p.y * bufferWidth_ + p.x]; 
+        if (depth == 1.5f) {
+            continue;
+        }
+        Vec3<float> pView = reconstructViewPosFromDepth(p.x, p.y, depth);
+
+    }
+}
+
+void Renderer::SSAO() {
+    for (int y = 0; y < bufferHeight_; y++) {
+        for (int x = 0; x < bufferWidth_; x++) {
+            float depth = zBuffer[y * bufferWidth_ + x];
+            if (depth == 1.5f) {
+                continue;                
+            }
+        }
+    }
+}
+
 void Renderer::drawScene(Scene& scene) {
     // TODO: view should be updated per frame later when I impl camera control
     activeShaderPtr_->cameraPos = scene.main_camera.position; 
     Mat4x4<float> view = scene_manager.get_camera_view(scene.main_camera);
-    Mat4x4<float> projection = Mat4x4<float>::Perspective((float)buffer_width / (float)buffer_height, scene.main_camera.z_near, scene.main_camera.z_far, scene.main_camera.fov);
+    Mat4x4<float> projection = Mat4x4<float>::Perspective((float)bufferWidth_ / (float)bufferHeight_, scene.main_camera.z_near, scene.main_camera.z_far, scene.main_camera.fov);
     activeShaderPtr_->set_view_matrix(view);
     activeShaderPtr_->set_projection_matrix(projection);
     skyboxShader_->set_view_matrix(view);
@@ -109,8 +155,15 @@ void Renderer::drawScene(Scene& scene) {
             activeShaderPtr_->normalMap_ = nullptr;
         }
     }
+    // ---- Post processing ----
+
+
+
+
+    // --------------------------
+    
     if (scene.skyboxMeshID != -1) {
-        Shader_Base* oldShaderPtr = activeShaderPtr_;
+        ShaderBase* oldShaderPtr = activeShaderPtr_;
         // render skybox
         activeShaderPtr_ = skyboxShader_;
         for (auto& directionalLight : scene.directionalLightList) {
@@ -120,7 +173,6 @@ void Renderer::drawScene(Scene& scene) {
     }
 }
 
-// TODO: @ Shadow mapping
 // TODO: @ PBR
 // TODO: @ Should deal with instance xform in here
 void Renderer::drawInstance(Light* light, Mesh& mesh) {    
@@ -146,7 +198,7 @@ void Renderer::drawInstance(Light* light, Mesh& mesh) {
             // vertex transform
             Vec3<float> vertex = mesh_manager.get_vertex(mesh, f_idx * 3 + v);
             triangleView[v] = activeShaderPtr_->transformToViewSpace(vertex);
-            triangle_clip[v] = activeShaderPtr_->vertex_shader(vertex);
+            triangle_clip[v] = activeShaderPtr_->vertexShader(vertex);
             // viewport transform
             Vec4<float> v_screen = viewport * (triangle_clip[v] / triangle_clip[v].w);
             triangle_screen[v].x = v_screen.x;
@@ -162,12 +214,12 @@ void Renderer::drawInstance(Light* light, Mesh& mesh) {
                 // so using the same modelView transform should be suffice for now
                 // need to transform the normal here
                 normalIn[v] = mesh_manager.get_vn(mesh, f_idx * 3 + v);
-                normalOut[v] = Math::Normalize(activeShaderPtr_->transformNormal(normalIn[v]));
+                normalOut[v] = Math::normalize(activeShaderPtr_->transformNormal(normalIn[v]));
             } 
             // has vertex tangent
             if (mesh_attrib_flag & 0x0004) {
                 tangentIn[v] = mesh_manager.getTangent(mesh, f_idx * 3 + v);
-                tangentOut[v] = Math::Normalize(activeShaderPtr_->transformTangent(tangentIn[v]));
+                tangentOut[v] = Math::normalize(activeShaderPtr_->transformTangent(tangentIn[v]));
             }
         }
 
@@ -183,6 +235,10 @@ void Renderer::drawInstance(Light* light, Mesh& mesh) {
         // rasterization
         fill_triangle(light);
         // ---------------------------------
+        // wireframe debugging
+        // drawTriangleWireFrame(Vec2<int>(triangle_screen[0].x, triangle_screen[0].y), 
+        //                       Vec2<int>(triangle_screen[1].x, triangle_screen[1].y),
+        //                       Vec2<int>(triangle_screen[2].x, triangle_screen[2].y));
     }
 }
 
@@ -206,10 +262,10 @@ void Renderer::drawDebugLines(Mesh& mesh, uint32_t f_idx) {
 }
 
 bool Renderer::depthTest(int fragmentX, int fragmentY, Vec3<float> baryCoord) {
-    int index = fragmentY * buffer_width + fragmentX;
+    int index = fragmentY * bufferWidth_ + fragmentX;
     float fragmentZ = triangle_clip[0].z * baryCoord.x + triangle_clip[1].z * baryCoord.y + triangle_clip[2].z * baryCoord.z;
-    if (fragmentZ < z_buffer[index]) {
-        z_buffer[index] = fragmentZ;
+    if (fragmentZ < zBuffer[index]) {
+        zBuffer[index] = fragmentZ;
         return true;
     }
     return false;
@@ -245,14 +301,14 @@ void Renderer::fill_triangle(Light* light) {
 
     // TODO: Fix clamping
     Math::bound_triangle(triangle_screen, bbox);
-    int xMin = bbox[0], xMax = std::ceil(bbox[1]);
-    int yMin = bbox[2], yMax = std::ceil(bbox[3]);
+    int xMin = bbox[0], xMax = bbox[1];
+    int yMin = bbox[2], yMax = bbox[3];
     
     #pragma omp parallel for
     for (int x = xMin; x <= xMax; x++) {
         for (int y = yMin; y <= yMax; y++) {
             // compute barycentric coord
-            Vec3<float> bary_coord = Math::barycentric(triangle_screen, x, y, denom); // overlapping test
+            Vec3<float> bary_coord = Math::barycentric(triangle_screen, x + .5f, y + .5f, denom); // overlapping test
             // TODO: @Work-around
             if (bary_coord.x < 0.f || bary_coord.y < 0.f  || bary_coord.z < 0.f) {
                 continue;
@@ -267,7 +323,7 @@ void Renderer::fill_triangle(Light* light) {
             // TODO: may not even need to bother checking
             // TODO: if normal is not provided, pass in interpolated normal
             // interpolate given vertex attribute
-            uint32_t attribIdx = y * buffer_width + x; 
+            uint32_t attribIdx = y * bufferWidth_ + x; 
             // TODO: @ pass in light to fragment shader
             if (mesh_attrib_flag & 0x0001) {
                 activeShaderPtr_->fragmentAttribBuffer[attribIdx].textureCoord = Math::bary_interpolate(triangle_uv, bary_coord);
@@ -275,10 +331,10 @@ void Renderer::fill_triangle(Light* light) {
             // correct the interpolation for normal & tangents
             // note that the interpolation may make the length no longer unit 
             if (mesh_attrib_flag & 0x0002) {
-                activeShaderPtr_->fragmentAttribBuffer[attribIdx].normal = Math::Normalize(Math::bary_interpolate(normalOut, bary_coord));
+                activeShaderPtr_->fragmentAttribBuffer[attribIdx].normal = Math::normalize(Math::bary_interpolate(normalOut, bary_coord));
             }
             if (mesh_attrib_flag & 0x0004) {
-                activeShaderPtr_->fragmentAttribBuffer[attribIdx].tangent = Math::Normalize(Math::bary_interpolate(tangentOut, bary_coord));
+                activeShaderPtr_->fragmentAttribBuffer[attribIdx].tangent = Math::normalize(Math::bary_interpolate(tangentOut, bary_coord));
             }
             // TODO: Bulletproof this setup for lighting computation
             // point light
@@ -293,10 +349,11 @@ void Renderer::fill_triangle(Light* light) {
                 }
             }
             // compute fragment color
-            Vec4<int> fragmentColor = activeShaderPtr_->fragment_shader(x, y);
+            Vec4<int> fragmentColor = activeShaderPtr_->fragmentShader(x, y);
             // write to backbuffer
             draw_pixel(x, y, fragmentColor);
             // -------------------
+            normalBuffer[y * bufferWidth_ + x] = activeShaderPtr_->fragmentAttribBuffer[attribIdx].normal;
         }
     }
 }

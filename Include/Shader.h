@@ -5,14 +5,6 @@
 #include "Model.h"
 #include "scene.h"
 
-enum class Shader_Mode : int8_t
-{
-    Flat_Shader,
-    Gouraud_Shader,
-    Phong_Shader,
-    Toon_Shader
-};
-
 struct FragmentAttrib {
     Vec3<float> textureCoord;
     Vec3<float> normal;
@@ -26,7 +18,7 @@ struct LightingParams {
     float intensity;
 };
 
-class Shader_Base {
+class ShaderBase {
 public:
     // vertex in
     Mat4x4<float> model_;
@@ -46,7 +38,7 @@ public:
     std::vector<Texture*> specularMaps;
     Texture* normalMap_;
     
-    Shader_Base();
+    ShaderBase();
     void set_model_matrix(Mat4x4<float>& model);
     void set_view_matrix(Mat4x4<float>& view);
     void set_projection_matrix(Mat4x4<float>& projection);
@@ -55,8 +47,8 @@ public:
     void bindSpecTexture(Texture* texture);
     void unbindTexture();
 
-    virtual Vec4<float> vertex_shader(Vec3<float>& v) = 0;
-    virtual Vec4<int> fragment_shader(int x, int y) = 0;
+    virtual Vec4<float> vertexShader(Vec3<float>& v) = 0;
+    virtual Vec4<int> fragmentShader(int x, int y) = 0;
     void initFragmentAttrib(uint32_t bufferWidth, uint32_t bufferHeight);
     Vec3<float> sampleTexture2D(Texture& texture, float u, float v);
     Vec3<float> sampleNormal(Texture& normalMap, float u, float v);
@@ -65,7 +57,7 @@ public:
     Vec3<float> transformToViewSpace(Vec3<float>& v);
 };
 
-class Phong_Shader : public Shader_Base {
+class PhongShader : public ShaderBase {
     // Need
     // @ vertex normal
     // @ texture uv
@@ -73,14 +65,25 @@ class Phong_Shader : public Shader_Base {
     // @ specular map
     // @ view vector
 public:
-    Phong_Shader();
-    Vec4<float> vertex_shader(Vec3<float>& v) override;
-    Vec4<int> fragment_shader(int x, int y) override;
+    PhongShader();
+    Vec4<float> vertexShader(Vec3<float>& v) override;
+    Vec4<int> fragmentShader(int x, int y) override;
 };
 
-class SkyboxShader : public Shader_Base {
+class SkyboxShader : public ShaderBase {
 public:
     Texture* texture_[6];
-    Vec4<float> vertex_shader(Vec3<float>& v) override;
-    Vec4<int> fragment_shader(int x, int y) override;
+    Vec4<float> vertexShader(Vec3<float>& v) override;
+    Vec4<int> fragmentShader(int x, int y) override;
 };
+
+class DepthShader : public ShaderBase {
+    Vec4<float> vertexShader(Vec3<float>& v) override;
+    Vec4<int> fragmentShader(int x, int y) override;
+};
+
+class PBRShader : public ShaderBase {
+    Vec4<float> vertexShader(Vec3<float>& v) override;
+    Vec4<int> fragmentShader(int x, int y) override;
+}; 
+

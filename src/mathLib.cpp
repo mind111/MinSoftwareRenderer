@@ -2,7 +2,6 @@
 #include "scene.h"
 #include "mathLib.h"
 
-#define PI 3.1415926
 // Using basic elementary row operations to derive inverse matrix 
 template <>
 Mat4x4<float> Mat4x4<float>::Inverse()
@@ -160,11 +159,9 @@ Mat4x4<float> Mat4x4<float>::Perspective(float aspectRatio,
 }
 
 template <>
-Mat4x4<float> Mat4x4<float>::viewport(float VP_Width, float VP_Height)
-{
+Mat4x4<float> Mat4x4<float>::viewport(float VP_Width, float VP_Height) {
    // Map [-1, 1] to [0, VP_Width]
    Mat4x4<float> Res;
-   float aspectRatio = VP_Width / VP_Height;
 
    Res.Identity();
    Res.Mat[0][0] = .5f * VP_Width;
@@ -182,16 +179,25 @@ float Math::clamp_f(float x, float min, float max)
     return x;
 }
 
+void Math::clampVec3f(Vec3<float>& v, float minValue, float maxValue) {
+    if (v.x > maxValue) v.x = maxValue;
+    if (v.x < minValue) v.x = minValue;
+    if (v.y > maxValue) v.y = maxValue;
+    if (v.y < minValue) v.y = minValue;
+    if (v.z > maxValue) v.z = maxValue;
+    if (v.z < minValue) v.z = minValue;
+}
+
 // TODO: Do I need to do std::ceil(here) ?
 Vec3<int> Math::clampRGB(Vec3<float> color) {
     Vec3<int> result(color.x, color.y, color.z);
     if (result.x > 255) result.x = 255;
     if (result.y > 255) result.y = 255;
-    if (result.z > 255)  result.z = 255;
+    if (result.z > 255) result.z = 255;
     return result; 
 }
 
-Vec3<float> Math::barycentric(Vec2<float>* triangle, int x, int y, float denominator) {
+Vec3<float> Math::barycentric(Vec2<float>* triangle, float x, float y, float denominator) {
     Vec2<float> pa = triangle[0] - Vec2<float>(x, y);
     Vec2<float> e1 = triangle[1] - triangle[0];
     Vec2<float> e2 = triangle[2] - triangle[0];
@@ -266,11 +272,11 @@ Vec3<float> Math::CrossProduct(const Vec3<float>& V0, const Vec3<float>& V1)
 
 // reflected ray should be automatically normalized
 Vec3<float> Math::reflect(Vec3<float>& v, Vec3<float> normal) {
-    Vec3<float> result = normal * 2 * Math::DotProduct_Vec3(normal, v) - v;
+    Vec3<float> result = normal * 2 * Math::dotProductVec3(normal, v) - v;
     return result;
 }
 
-Vec3<float> Math::Normalize(const Vec3<float>& v)
+Vec3<float> Math::normalize(const Vec3<float>& v)
 {
     float Len = Length(v);
     return Vec3<float>(v.x / Len, v.y / Len, v.z / Len);

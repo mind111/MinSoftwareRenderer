@@ -60,7 +60,7 @@ Vec3<float>* PointLight::getDirection() {
 Mat4x4<float> Scene_Manager::get_camera_view(Camera& camera) {
     Mat4x4<float> model_view;
 
-    Vec3<float> forward = Math::Normalize(camera.position - camera.target);
+    Vec3<float> forward = Math::normalize(camera.position - camera.target);
     Vec3<float> right = Math::CrossProduct(camera.world_up, forward);   
     Vec3<float> up = Math::CrossProduct(forward, right);
 
@@ -166,7 +166,7 @@ Vec3<float> computeTangent(Vec3<float>& v0, Vec3<float>& v1, Vec3<float>& v2,
     tangent.x = aInv.Mat[0][0] * e1.x + aInv.Mat[0][1] * e2.x;
     tangent.y = aInv.Mat[0][0] * e1.y + aInv.Mat[0][1] * e2.y;
     tangent.z = aInv.Mat[0][0] * e1.z + aInv.Mat[0][1] * e2.z;
-    return Math::Normalize(tangent);
+    return Math::normalize(tangent);
 }
 
 // TODO: @ Maybe benchmark this?
@@ -331,7 +331,7 @@ void Scene_Manager::loadObj(Mesh& mesh, const char* filename) {
             Vec3<float> summedTangents(tangentBufferRaw[i * mesh.v_components],
                                        tangentBufferRaw[i * mesh.v_components + 1],
                                        tangentBufferRaw[i * mesh.v_components + 2]);
-            Vec3<float> normalizedTangent = Math::Normalize(summedTangents);
+            Vec3<float> normalizedTangent = Math::normalize(summedTangents);
             tangentBufferRaw[i * mesh.v_components] = normalizedTangent.x;
             tangentBufferRaw[i * mesh.v_components + 1] = normalizedTangent.y;
             tangentBufferRaw[i * mesh.v_components + 2] = normalizedTangent.z;
@@ -372,7 +372,7 @@ void Scene_Manager::loadSceneFromFile(Scene& scene, const char* filename) {
         PointLight pointLight;
         lightInfo.at("type").get_to(lightType);
         if (lightType == "directional") {
-            directionalLight.direction = Math::Normalize(lightInfo.at("direction").get<Vec3<float>>());
+            directionalLight.direction = Math::normalize(lightInfo.at("direction").get<Vec3<float>>());
             directionalLight.color = lightInfo.at("color").get<Vec3<float>>();
             scene.directionalLightList.emplace_back(directionalLight);
         } else {

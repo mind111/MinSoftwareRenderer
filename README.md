@@ -5,6 +5,7 @@
   assets from [ssloy/tinyrenderer](https://github.com/ssloy/tinyrenderer) by artist Samuel (arshlevon) Sharit, and it's used here only for educational and demonstration purpose.      
   * Phong shader  
   <img style="align: left;" src="images/phong/phong-diablo-pose.png" width="500"/>  
+
   * PBR shader  
   <img style="align: left;" src="images/pbr/pbr-diablo-pose.png" width="500"/>  
 

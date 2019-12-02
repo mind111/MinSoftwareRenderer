@@ -4,16 +4,16 @@
 * Current render  
   assets from [ssloy/tinyrenderer](https://github.com/ssloy/tinyrenderer) by artist Samuel (arshlevon) Sharit, and it's used here only for educational and demonstration purpose.    
   * Phong shader  
-  <img style="align: left;" src="images/phong/phong-diablo-pose.png" width="400"/>
+  <img style="align: left;" src="images/phong/phong-diablo-pose.png" width="500"/>  
   * PBR shader  
-  <img style="align: left;" src="images/pbr/pbr-diablo-pose.png" width="400"/>
+  <img style="align: left;" src="images/pbr/pbr-diablo-pose.png" width="500"/>
 
 ## Progress
 * Finished implementing Cook-Torrance specular BRDF and tested using debug_scene. 
 
 * Current implementation of SSAO computes occlusion in one direction only using difference in depth. Thus result is not as apparent as I expected in the final render. Here is a comparison. Flat shader is used to allow more obvious visual difference. I plan to implement another ssao algorithm that takes normal at each fragment into consideration to see if there is any apparent visual improvements.   
-  <img style="align: left;" src="images/ssao/no-ssao.png" width="400"/>  
-  <img style="align: left;" src="images/ssao/ssao.png" width="400"/>
+  <img style="align: left;" src="images/ssao/no-ssao.png" width="500"/>  
+  <img style="align: left;" src="images/ssao/ssao.png" width="500"/>
 
 ### TODO
 * Improve and debug ssao.

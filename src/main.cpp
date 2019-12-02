@@ -10,29 +10,6 @@
 #include "renderer.h"
 #include "Shader.h"
 
-/// \Note More optimized version of DrawLine, Inspired by GitHub ssloy/tinyrenderer
-void Line(Vec2<int> Start, Vec2<int> End, TGAImage& image, const TGAColor& color)
-{
-    bool Steep = false;
-    int d = 1;
-    if (Start.x > End.x) Start.Swap(End);
-    if (Start.y > End.y) d = -1;
-    // Slope < 1
-    if (std::abs(Start.x - End.x) > std::abs(Start.y - End.y))
-    {
-        Steep = true;
-        for (int i = Start.x; i <= End.x; i++)
-        {
-            float Ratio = (i - Start.x) / (End.x - Start.x);
-            int y = Start.y + d * Ratio * (End.y - Start.y);
-        }
-    }
-    else
-    {
-        
-    }
-}
-
 /// \Note: Using naive scan-line method
 void FillTriangle(Vec2<int>& V0, Vec2<int>& V1, Vec2<int>& V2, TGAImage& image, const TGAColor& color)
 {
@@ -68,11 +45,12 @@ Vec3<int> gClearColor = Math::clampRGB(Vec3<float>(0.f, 0.f, 0.f) * 255);
 // TODO: @ Benchmark
 
 // TODO: @ Change to another .obj model
-// TODO: @ Debug phong shading specular component visual bug
 // TODO: @ SIMD 
+// TODO: @ Speed up gamma correction by using gamma-lookup table
 // TODO: @ Gouraud shading
 // TODO: @ Debug other scenes
 // TODO: @ SSAO
+
 // TODO: @ Other interesting post-processing techniques
 // TODO: @ Refactor handling of multiple light sources
 // TODO: @ Debug view matrix(issues with camera)
@@ -95,12 +73,17 @@ int main(int argc, char* argv[]) {
     renderer.init();
     PhongShader phongShader;
     PBRShader pbrShader;
+    DepthShader depthShader;
     phongShader.initFragmentAttrib(renderer.bufferWidth_, renderer.bufferHeight_);
     pbrShader.initFragmentAttrib(renderer.bufferWidth_, renderer.bufferHeight_);
+    depthShader.initFragmentAttrib(renderer.bufferWidth_, renderer.bufferHeight_);
     renderer.shader_list.emplace_back(&phongShader);
     renderer.shader_list.emplace_back(&pbrShader);
-    renderer.activeShaderPtr_ = &phongShader;
+    renderer.shader_list.emplace_back(&depthShader);
+
+    // renderer.activeShaderPtr_ = &phongShader;
     renderer.activeShaderPtr_ = &pbrShader;
+    // renderer.activeShaderPtr_ = &depthShader;
     SkyboxShader skyboxShader;
     renderer.skyboxShader_ = &skyboxShader;
     scene_manager.loadSceneFromFile(scene, "scenes/default_scene/scene_config.json");
@@ -153,8 +136,10 @@ int main(int argc, char* argv[]) {
         // Rendering
         glClear(GL_COLOR_BUFFER_BIT);
         renderer.clearBuffer(gClearColor); // clear color bit
-        renderer.clearDepth();  // clear depth bit
+        renderer.clearDepth();             // clear depth bit
+        renderer.clearNormalBuffer();
         renderer.drawScene(scene);
+        renderer.SSAO();
         window_manager.blit_buffer(renderer.backbuffer, renderer.bufferWidth_, renderer.bufferHeight_, 4, window);
         glDrawArrays(GL_TRIANGLES, 0, 6);
         glfwPollEvents();

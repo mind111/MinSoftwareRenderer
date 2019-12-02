@@ -85,6 +85,7 @@ void Renderer::drawSkybox(Scene& scene) {
 
 // Reconstruct view space position from fragment pos and depth
 Vec3<float> Renderer::reconstructViewPosFromDepth(int x, int y, float depth) {
+    float radius = 10.f;
     float ndcX = x * 2.f / bufferWidth_ - 1.f; 
     float ndcY = y * 2.f / bufferHeight_ - 1.f; 
     Vec4<float> ndcPos(x, y, depth, 1.f);
@@ -96,24 +97,71 @@ Vec3<float> Renderer::reconstructViewPosFromDepth(int x, int y, float depth) {
 void Renderer::sampleOcclusion(int x, int y, Vec2<float> dir) {
     if (zBuffer[y * bufferWidth_ + x] >= 1.5f) return;
     Vec3<float> v = reconstructViewPosFromDepth(x, y, zBuffer[y * bufferWidth_ + x]);
-    float occlusion = 0.f;
+    float ao = 0.f;
     for (float step = 0; step < gSampleRadius; step++) {
         Vec2<int> p = Vec2<int>((int)(x + dir.x * step), (int)(y + dir.y * step));
+        if (p.x >= bufferWidth_ || p.x < 0 || p.y >= bufferHeight_ || p.y < 0) {
+            continue;
+        }
         float depth = zBuffer[p.y * bufferWidth_ + p.x]; 
         if (depth == 1.5f) {
             continue;
         }
         Vec3<float> pView = reconstructViewPosFromDepth(p.x, p.y, depth);
-
+        Vec3<float> vp = Math::normalize(pView - v);
+        Vec3<float> normal = normalBuffer[p.y * bufferWidth_ + x];
+        float occlusion = Math::dotProductVec3(normal, vp); 
     }
 }
 
+float Renderer::doAmbientOcclusion(int x, int y, Vec2<float>& sampleDir) {
+    float radius = 10.f;
+    float ao = 1.f;
+    Vec3<float> p(2.f * x / bufferHeight_ - 1.f, 2.f * y / bufferHeight_ - 1.f, zBuffer[y * bufferWidth_ + x]);
+    for (float i = 0; i < radius; i += 1.f) {
+        int targetX = i * sampleDir.x + x, targetY = i * sampleDir.y + y;
+        if (targetX >= bufferWidth_ || targetX < 0 || targetY >= bufferHeight_ || targetY < 0) {
+            continue;
+        }
+        float targetDepth = zBuffer[targetY * bufferWidth_ + targetX];  
+        if (targetDepth >= 1.5f) {
+            continue;
+        }
+        Vec3<float> v = Math::normalize(Vec3<float>(2.f * targetX / bufferHeight_ - 1.f , 2.f * targetY / bufferHeight_ - 1.f, targetDepth) - p);
+        Vec3<float> pPrime = Math::normalize(Vec3<float>(v.x, v.y, 0.f));
+        float cos = Math::dotProductVec3(pPrime, v);
+        if (cos < ao) {
+            ao = cos; 
+        }
+    }
+    return (1 - ao);
+}
+
+float Renderer::ambientOcclusion(int x, int y, Vec2<float>& sampleDir) {
+    float ao = 1.f, depth = zBuffer[y * bufferWidth_ + x];
+    Vec3<float> reconstructViewPosFromDepth(x, y, depth);
+    return (1 - ao);
+}
+
 void Renderer::SSAO() {
+    int numOfSamples = 16;
+    float anglePerSample = 2 * PI / (float)numOfSamples;
     for (int y = 0; y < bufferHeight_; y++) {
         for (int x = 0; x < bufferWidth_; x++) {
+            int pixelIdx = y * bufferWidth_ + x;
             float depth = zBuffer[y * bufferWidth_ + x];
             if (depth == 1.5f) {
                 continue;                
+            }
+            float ao = 0.f;
+            for (int i = 0; i < numOfSamples; i++) {
+                Vec2<float> sampleDir(std::cos(i * anglePerSample), std::sin(i * anglePerSample));
+                ao += doAmbientOcclusion(x, y, sampleDir);
+            }
+            ao /= numOfSamples;
+            for (int channel = 0; channel < 3; channel++) {
+                // pow to increase the contrast of the shadow around edges
+                backbuffer[pixelIdx * 4 + channel] *= pow(1 - ao, 5.f);
             }
         }
     }
@@ -128,32 +176,37 @@ void Renderer::drawScene(Scene& scene) {
     activeShaderPtr_->set_projection_matrix(projection);
     skyboxShader_->set_view_matrix(view);
     skyboxShader_->set_projection_matrix(projection);
+
+    // Setup lighting
+    activeShaderPtr_->dirLights.clear();
+    for (auto directionalLight : scene.directionalLightList) {
+        activeShaderPtr_->dirLights.push_back(directionalLight);
+    }
+
     for (auto& instance : scene.instance_list) {
-        for (auto directionalLight : scene.directionalLightList) {
-            Mesh& mesh = scene.mesh_list[instance.mesh_id];
-            // bind the texture to active shader
-            if (mesh.diffuseMapTable.size() > 0) {
-                for (auto itr = mesh.diffuseMapTable.begin(); itr != mesh.diffuseMapTable.end(); itr++) {
-                    activeShaderPtr_->bindDiffuseTexture(&scene.texture_list[itr->second]);
-                }
+        Mesh& mesh = scene.mesh_list[instance.mesh_id];
+        // bind the texture to active shader
+        if (mesh.diffuseMapTable.size() > 0) {
+            for (auto itr = mesh.diffuseMapTable.begin(); itr != mesh.diffuseMapTable.end(); itr++) {
+                activeShaderPtr_->bindDiffuseTexture(&scene.texture_list[itr->second]);
             }
-            if (mesh.specularMapTable.size() > 0) {
-                for (auto itr = mesh.specularMapTable.begin(); itr != mesh.specularMapTable.end(); itr++) {
-                    activeShaderPtr_->bindSpecTexture(&scene.texture_list[itr->second]);
-                }
-            }
-            if (mesh.normalMapID != -1) {
-                activeShaderPtr_->normalMap_ = &scene.texture_list[mesh.normalMapID];  
-            }
-            Mat4x4<float> model = Math::constructTransformMatrix(scene.xform_list[instance.instance_id]);
-            activeShaderPtr_->set_model_matrix(model);
-            drawInstance(&directionalLight, mesh);
-            // clear shader's per fragment attrib buffer
-            activeShaderPtr_->clearFragmentAttribs();
-            // unbind texture and normal map
-            activeShaderPtr_->unbindTexture();
-            activeShaderPtr_->normalMap_ = nullptr;
         }
+        if (mesh.specularMapTable.size() > 0) {
+            for (auto itr = mesh.specularMapTable.begin(); itr != mesh.specularMapTable.end(); itr++) {
+                activeShaderPtr_->bindSpecTexture(&scene.texture_list[itr->second]);
+            }
+        }
+        if (mesh.normalMapID != -1) {
+            activeShaderPtr_->normalMap_ = &scene.texture_list[mesh.normalMapID];  
+        }
+        Mat4x4<float> model = Math::constructTransformMatrix(scene.xform_list[instance.instance_id]);
+        activeShaderPtr_->set_model_matrix(model);
+        drawInstance(mesh);
+        // clear shader's per fragment attrib buffer
+        activeShaderPtr_->clearFragmentAttribs();
+        // unbind texture and normal map
+        activeShaderPtr_->unbindTexture();
+        activeShaderPtr_->normalMap_ = nullptr;
     }
     // ---- Post processing ----
 
@@ -167,7 +220,7 @@ void Renderer::drawScene(Scene& scene) {
         // render skybox
         activeShaderPtr_ = skyboxShader_;
         for (auto& directionalLight : scene.directionalLightList) {
-            drawInstance(&directionalLight, scene.mesh_list[scene.skyboxMeshID]);
+            drawInstance(scene.mesh_list[scene.skyboxMeshID]);
         }
         activeShaderPtr_ = oldShaderPtr;
     }
@@ -175,7 +228,7 @@ void Renderer::drawScene(Scene& scene) {
 
 // TODO: @ PBR
 // TODO: @ Should deal with instance xform in here
-void Renderer::drawInstance(Light* light, Mesh& mesh) {    
+void Renderer::drawInstance(Mesh& mesh) {    
     mesh_attrib_flag = 0; // reset the flag
     if (mesh.texture_uv_buffer) {
         mesh_attrib_flag = mesh_attrib_flag | 1;
@@ -233,7 +286,7 @@ void Renderer::drawInstance(Light* light, Mesh& mesh) {
          }
         // -------------
         // rasterization
-        fill_triangle(light);
+        fillTriangle();
         // ---------------------------------
         // wireframe debugging
         // drawTriangleWireFrame(Vec2<int>(triangle_screen[0].x, triangle_screen[0].y), 
@@ -282,7 +335,7 @@ void Renderer::perspectiveCorrection(Vec3<float>& baryCoord) {
 // TODO: Improve normal mapping
 // TODO: Create multiple fragmentShader instance
 // TODO: Maybe something like fragmentShaderPools[bufferWidth][bufferHeight]
-void Renderer::fill_triangle(Light* light) {
+void Renderer::fillTriangle() {
     // TODO: @ Clean up using a determinant()
     Vec2<float> e1 = triangle_screen[1] - triangle_screen[0];
     Vec2<float> e2 = triangle_screen[2] - triangle_screen[0];
@@ -300,7 +353,7 @@ void Renderer::fill_triangle(Light* light) {
     }; 
 
     // TODO: Fix clamping
-    Math::bound_triangle(triangle_screen, bbox);
+    Math::boundTriangle(triangle_screen, bbox, bufferWidth_, bufferHeight_);
     int xMin = bbox[0], xMax = bbox[1];
     int yMin = bbox[2], yMax = bbox[3];
     
@@ -308,16 +361,16 @@ void Renderer::fill_triangle(Light* light) {
     for (int x = xMin; x <= xMax; x++) {
         for (int y = yMin; y <= yMax; y++) {
             // compute barycentric coord
-            Vec3<float> bary_coord = Math::barycentric(triangle_screen, x + .5f, y + .5f, denom); // overlapping test
+            Vec3<float> baryCoord = Math::barycentric(triangle_screen, x + .5f, y + .5f, denom); // overlapping test
             // TODO: @Work-around
-            if (bary_coord.x < 0.f || bary_coord.y < 0.f  || bary_coord.z < 0.f) {
+            if (baryCoord.x < 0.f || baryCoord.y < 0.f  || baryCoord.z < 0.f) {
                 continue;
             }
             // perspective correct interpolation of vertex attribs
-            perspectiveCorrection(bary_coord);
+            perspectiveCorrection(baryCoord);
             // ------------------------------------------------------
             // depth test
-            if (!depthTest(x, y, bary_coord)) {
+            if (!depthTest(x, y, baryCoord)) {
                 continue;
             }
             // TODO: may not even need to bother checking
@@ -326,33 +379,25 @@ void Renderer::fill_triangle(Light* light) {
             uint32_t attribIdx = y * bufferWidth_ + x; 
             // TODO: @ pass in light to fragment shader
             if (mesh_attrib_flag & 0x0001) {
-                activeShaderPtr_->fragmentAttribBuffer[attribIdx].textureCoord = Math::bary_interpolate(triangle_uv, bary_coord);
+                activeShaderPtr_->fragmentAttribBuffer[attribIdx].textureCoord = Math::bary_interpolate(triangle_uv, baryCoord);
             }
             // correct the interpolation for normal & tangents
             // note that the interpolation may make the length no longer unit 
             if (mesh_attrib_flag & 0x0002) {
-                activeShaderPtr_->fragmentAttribBuffer[attribIdx].normal = Math::normalize(Math::bary_interpolate(normalOut, bary_coord));
+                activeShaderPtr_->fragmentAttribBuffer[attribIdx].normal = Math::normalize(Math::bary_interpolate(normalOut, baryCoord));
             }
             if (mesh_attrib_flag & 0x0004) {
-                activeShaderPtr_->fragmentAttribBuffer[attribIdx].tangent = Math::normalize(Math::bary_interpolate(tangentOut, bary_coord));
+                activeShaderPtr_->fragmentAttribBuffer[attribIdx].tangent = Math::normalize(Math::bary_interpolate(tangentOut, baryCoord));
             }
-            // TODO: Bulletproof this setup for lighting computation
-            // point light
-            if (light->getPosition()) {
-                // compute per fragment light direction
-            } else {
-                if (activeShaderPtr_->lightingParamBuffer) {
-                    activeShaderPtr_->lightingParamBuffer[attribIdx].color = light->color;
-                    activeShaderPtr_->lightingParamBuffer[attribIdx].intensity = light->intensity;
-                    activeShaderPtr_->lightingParamBuffer[attribIdx].direction = *(light->getDirection());
-                    activeShaderPtr_->lightingParamBuffer[attribIdx].viewSpaceFragmentPos = Math::bary_interpolate(triangleView, bary_coord);
-                }
-            }
+            // Shading related
+            // TODO: Maybe instead of interpolation, I can compute the fragment position in viewspace using depth
+            activeShaderPtr_->lightParamsBuffer[attribIdx].viewSpaceFragmentPos = Math::bary_interpolate(triangleView, baryCoord);
             // compute fragment color
             Vec4<int> fragmentColor = activeShaderPtr_->fragmentShader(x, y);
             // write to backbuffer
             draw_pixel(x, y, fragmentColor);
             // -------------------
+            // write to normal buffer
             normalBuffer[y * bufferWidth_ + x] = activeShaderPtr_->fragmentAttribBuffer[attribIdx].normal;
         }
     }

@@ -11,11 +11,8 @@ struct FragmentAttrib {
     Vec3<float> tangent;
 };
 
-struct LightingParams {
-    Vec3<float> color;
-    Vec3<float> direction;
+struct LightParams {
     Vec3<float> viewSpaceFragmentPos;
-    float intensity;
 };
 
 class ShaderBase {
@@ -27,17 +24,18 @@ public:
     Mat4x4<float> projection_;
 
     Vec3<float> cameraPos;
+    std::vector<DirectionalLight> dirLights;
 
     uint8_t vertexAttribFlag;
     // per fragment attrib
     FragmentAttrib* fragmentAttribBuffer;
-    LightingParams* lightingParamBuffer;
+    LightParams* lightParamsBuffer;
     uint32_t bufferWidth_, bufferHeight_;
 
     std::vector<Texture*> diffuseMaps;
     std::vector<Texture*> specularMaps;
     Texture* normalMap_;
-    
+
     ShaderBase();
     void set_model_matrix(Mat4x4<float>& model);
     void set_view_matrix(Mat4x4<float>& view);

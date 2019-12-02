@@ -214,7 +214,7 @@ Vec3<float> Math::bary_interpolate(Vec3<float>* vertices, const Vec3<float>& bar
 }
 
 // TODO: Bug here
-void Math::bound_triangle(Vec2<float>* vertices, float* bounds)
+void Math::boundTriangle(Vec2<float>* vertices, float* bounds, float bufferWidth, float bufferHeight)
 {
     for (int i = 0; i < 3; i++)
     {
@@ -225,9 +225,9 @@ void Math::bound_triangle(Vec2<float>* vertices, float* bounds)
     }
 
     for (int i = 0; i < 2; i++)
-        bounds[i] = Math::clamp_f(bounds[i], 0.f, 799.f);
+        bounds[i] = Math::clamp_f(bounds[i], 0.f, bufferWidth);
     for (int i = 2; i < 4; i++)
-        bounds[i] = Math::clamp_f(bounds[i], 0.f, 599.f);
+        bounds[i] = Math::clamp_f(bounds[i], 0.f, bufferHeight);
 }
 
 // TODO: Fix this so that it samples uniformly from the surface
@@ -251,7 +251,7 @@ Vec3<float> Math::SampleAmbientDirection()
 }
 
 template <class T>
-inline float Math::Length(const Vec3<T>& V0)
+inline float Math::length(const Vec3<T>& V0)
 {
     return sqrt(V0.x * V0.x + V0.y * V0.y + V0.z * V0.z);
 }
@@ -278,7 +278,7 @@ Vec3<float> Math::reflect(Vec3<float>& v, Vec3<float> normal) {
 
 Vec3<float> Math::normalize(const Vec3<float>& v)
 {
-    float Len = Length(v);
+    float Len = length(v);
     return Vec3<float>(v.x / Len, v.y / Len, v.z / Len);
 }
 

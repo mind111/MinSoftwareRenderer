@@ -56,7 +56,7 @@ public:
     void draw_pixel(int x, int y, Vec4<int>& color);
     void drawScene(Scene& scene);
     void drawSkybox(Scene& scene);
-    void drawInstance(Light* light, Mesh& mesh);
+    void drawInstance(Mesh& mesh);
     void drawLine(Vec2<int> start, Vec2<int> end);
     void drawTriangleWireFrame(Vec2<int> v0, Vec2<int> v1, Vec2<int> v2);
     void drawTangents(Vec3<float>& vertexPos, Vec3<float>& tangent) {
@@ -85,6 +85,8 @@ private:
     bool backfaceCulling();
     void perspectiveCorrection(Vec3<float>& baryCoord);
     bool depthTest(int x, int y, Vec3<float> baryCoord);
-    void fill_triangle(Light* light);
+    void fillTriangle();
+    float doAmbientOcclusion(int x, int y, Vec2<float>& sampleDir);
+    float ambientOcclusion(int x, int y, Vec2<float>& sampleDir);
 };
 

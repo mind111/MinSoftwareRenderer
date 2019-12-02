@@ -71,14 +71,14 @@ ShaderBase::ShaderBase() {
     vertexAttribFlag = 1;
     normalMap_ = nullptr;
     fragmentAttribBuffer = nullptr;
-    lightingParamBuffer = nullptr;
+    lightParamsBuffer = nullptr;
 }
 
 void ShaderBase::initFragmentAttrib(uint32_t bufferWidth, uint32_t bufferHeight) {
     bufferWidth_ = bufferWidth;
     bufferHeight_ = bufferHeight;
     fragmentAttribBuffer = new FragmentAttrib[bufferWidth * bufferHeight];
-    lightingParamBuffer = new LightingParams[bufferWidth * bufferHeight];
+    lightParamsBuffer = new LightParams[bufferWidth * bufferHeight];
 }
 
 Vec3<float> ShaderBase::sampleTexture2D(Texture& texture, float u, float v) {
@@ -197,9 +197,11 @@ void gammaCorrection(Vec3<float>& color, float pow) {
 //     : generate normals at loading and feed interpolated vn in here instead
 //     : of using normal map
 // TODO: still need to figure out why specular highlight looks kinda weird
+// TODO: Fix the gamma
 Vec4<int> PhongShader::fragmentShader(int x, int y) {
+    Vec3<float> phongColor(0.f);
     FragmentAttrib& attribs = fragmentAttribBuffer[y * bufferWidth_ + x];
-    LightingParams& lightingParams = lightingParamBuffer[y * bufferWidth_ + x];
+    LightParams& lightParams = lightParamsBuffer[y * bufferWidth_ + x];
     Vec3<float> diffuseSample = {}, specularSample = {}, diffuse = {}, specular = {};
 
     // default diffuse color
@@ -210,6 +212,7 @@ Vec4<int> PhongShader::fragmentShader(int x, int y) {
         Vec3<float> diffuseSampleSum(0.f, 0.f, 0.f);
         for (auto diffuseMap : diffuseMaps) {
             diffuseSample = sampleTexture2D(*diffuseMap, attribs.textureCoord.x, attribs.textureCoord.y);
+            diffuseSample /= 255.f;
             gammaCorrection(diffuseSample, 2.2);
             diffuseSampleSum += diffuseSample;
         }
@@ -217,7 +220,7 @@ Vec4<int> PhongShader::fragmentShader(int x, int y) {
     }
     if (specularMaps.size() > 0) {
         // rn there is only one specular map, so
-        for(auto specularMap : specularMaps) {
+        for (auto specularMap : specularMaps) {
             specularSample = sampleTexture2D(*specularMap, attribs.textureCoord.x, attribs.textureCoord.y);
         }
     }
@@ -234,24 +237,25 @@ Vec4<int> PhongShader::fragmentShader(int x, int y) {
         normal.y = tangent.y * sampledNormal.x + biTangent.y * sampledNormal.y + interpolatedNormal.y * sampledNormal.z;
         normal.z = tangent.z * sampledNormal.x + biTangent.z * sampledNormal.y + interpolatedNormal.z * sampledNormal.z;
     } 
-    // Assuming that lightDirection is already normalized
-    float diffuseCoef = Math::clamp_f(Math::dotProductVec3(normal, lightingParams.direction), 0.f, 1.f);
-    Vec3<float> viewDirection = Math::normalize(cameraPos - lightingParams.viewSpaceFragmentPos);
-    Vec3<float> reflectRay = Math::reflect(lightingParams.direction, normal);
-    float specularCoef = Math::clamp_f(Math::dotProductVec3(viewDirection, reflectRay), 0.f, 1.f);
-    if (specularMaps.size() > 0) {
-        if (specularSample.x != 0.f) {
-            specularCoef = std::max(pow(specularCoef, specularSample.x), 0.f);
+
+    Vec3<float> viewDirection = Math::normalize(cameraPos - lightParams.viewSpaceFragmentPos);
+    for (auto light : dirLights) {
+        Vec3<float> reflectRay = Math::reflect(light.direction, normal);
+        float diffuseCoef = Math::clamp_f(Math::dotProductVec3(normal, light.direction), 0.f, 1.f);
+        float specularCoef = Math::clamp_f(Math::dotProductVec3(viewDirection, reflectRay), 0.f, 1.f);
+        if (specularMaps.size() > 0) {
+            if (specularSample.x != 0.f) {
+                specularCoef = std::max(pow(specularCoef, specularSample.x), 0.f);
+            }  
+        } else {
+            specularCoef = std::max(pow(specularCoef, 4.f), 0.f);
         }  
-    } else {
-        specularCoef = std::max(pow(specularCoef, 4.f), 0.f);
-    }  
-    specular = diffuseSample * specularCoef; 
-    diffuse = diffuseSample * diffuseCoef;
-    Vec3<float> phongColor = diffuse + specular * 2.0f;
+        specular = diffuseSample * specularCoef; 
+        diffuse = diffuseSample * diffuseCoef;
+        phongColor += diffuse + specular * 2.0f;
+    }
     gammaCorrection(phongColor, 0.4545);
-    Vec4<int> fragmentColor(Math::clampRGB(phongColor), 255);
-    return fragmentColor;
+    return Vec4<int>(Math::clampRGB(phongColor * 255.f), 255);
 }
 
 Vec4<float> DepthShader::vertexShader(Vec3<float>& v) {
@@ -259,8 +263,27 @@ Vec4<float> DepthShader::vertexShader(Vec3<float>& v) {
 }
 
 Vec4<int> DepthShader::fragmentShader(int x, int y) {
-    Vec4<int> fragmentColor;
-    return fragmentColor;
+    Vec3<float> flatColor(.7f), color(0.f);
+    uint32_t attribIdx = y * bufferWidth_ + x;
+    FragmentAttrib fragmentAttrib = fragmentAttribBuffer[attribIdx];
+    Vec3<float> normal = fragmentAttrib.normal;
+    if (normalMap_) {
+        // Vec3<float> sampledNormal = sampleNormal(*normalMap_, fragmentAttrib.textureCoord.x, fragmentAttrib.textureCoord.y); 
+        // // TODO: Need to consider the handed-ness of the tangent space where normals are defined in
+        // Vec3<float> interpolatedNormal = fragmentAttrib.normal;
+        // Vec3<float> tangent = fragmentAttrib.tangent;
+        // // Gram-Schemidt process to re-orthoganize the tangent and fragmentNormal
+        // tangent = Math::normalize(tangent - interpolatedNormal * Math::dotProductVec3(tangent, interpolatedNormal));
+        // Vec3<float> biTangent = Math::CrossProduct(tangent, interpolatedNormal);
+        // normal.x = tangent.x * sampledNormal.x + biTangent.x * sampledNormal.y + interpolatedNormal.x * sampledNormal.z;
+        // normal.y = tangent.y * sampledNormal.x + biTangent.y * sampledNormal.y + interpolatedNormal.y * sampledNormal.z;
+        // normal.z = tangent.z * sampledNormal.x + biTangent.z * sampledNormal.y + interpolatedNormal.z * sampledNormal.z;
+    }
+    for (auto light : dirLights) {
+        color += flatColor * Math::clamp_f(Math::dotProductVec3(normal, light.direction), 0.f, 1.f);
+    }
+    gammaCorrection(color, .4545f);
+    return Vec4<int>(Math::clampRGB(color * 255.f), 255);
 }
 
 Vec4<float> PBRShader::vertexShader(Vec3<float>& v) {
@@ -326,12 +349,11 @@ Vec3<float> cookTorranceBRDF(Vec3<float>& h, Vec3<float>& v, Vec3<float>& l, Vec
 
 // Two parameters that control the appearance, metal and roughness
 Vec4<int> PBRShader::fragmentShader(int x, int y) {
-    Vec3<float> linearColor, normal;
+    Vec3<float> linearColor(0.f), normal;
     Vec3<float> diffuseAlbedo(0.f, 0.f, 0.f), diffuseTerm, specularTerm; // in linear color space
     FragmentAttrib fragmentAttrib = fragmentAttribBuffer[y * bufferWidth_ + x];
-    LightingParams lightingParam = lightingParamBuffer[y * bufferWidth_ + x];
-    Vec3<float> viewDir = Math::normalize(lightingParamBuffer[y * bufferWidth_ + x].viewSpaceFragmentPos * -1.f);
-    Vec3<float> halfVector = Math::normalize(viewDir + lightingParam.direction);
+    LightParams lightParams = lightParamsBuffer[y * bufferWidth_ + x];
+    Vec3<float> viewDir = Math::normalize(lightParamsBuffer[y * bufferWidth_ + x].viewSpaceFragmentPos * -1.f);
     
     if (diffuseMaps.size() > 0) {
         for (auto diffuseMap : diffuseMaps) {
@@ -359,17 +381,19 @@ Vec4<int> PBRShader::fragmentShader(int x, int y) {
         normal.z = tangent.z * sampledNormal.x + biTangent.z * sampledNormal.y + interpolatedNormal.z * sampledNormal.z;
     } 
 
-    float metal = 0.8f;
-    // TODO: if the object is dieletric then ignore diffuseAlbedo, else tint the reflection with diffuse color (one property of conductior)
-    //       maybe should use index of refraction to compute f0 to be more accurate?
-    Vec3<float> specularColor = Vec3<float>(.02f) * (1 - metal) + diffuseAlbedo * metal;
-    Vec3<float> lightColor = lightingParam.color;
-    // Diffuse term: Lambertian BRDF
-    diffuseTerm = lambertianBRDF(diffuseAlbedo);
-    // Specular term: Cook-Torrance microfacet specular BRDF
-    specularTerm = cookTorranceBRDF(halfVector, viewDir, lightingParam.direction, normal, diffuseAlbedo, specularColor, 0.5f);
-    // Put together diffuse and specular and attenuate it with cos
-    linearColor = (diffuseTerm * 1.f + specularTerm * 1.f) * Math::clamp_f(Math::dotProductVec3(fragmentAttrib.normal, lightingParam.direction), 0.f, 1.f); 
+    float metal = .8f, roughness = .0f;
+    for (auto light : dirLights) {
+        Vec3<float> halfVector = Math::normalize(viewDir + light.direction);
+        // TODO: if the object is dieletric then ignore diffuseAlbedo, else tint the reflection with diffuse color (one property of conductior)
+        //       maybe should use index of refraction to compute f0 to be more accurate?
+        Vec3<float> specularColor = Vec3<float>(.02f) * (1 - metal) + diffuseAlbedo * metal;
+        // Diffuse term: Lambertian BRDF
+        diffuseTerm = lambertianBRDF(diffuseAlbedo);
+        // Specular term: Cook-Torrance microfacet specular BRDF
+        specularTerm = cookTorranceBRDF(halfVector, viewDir, light.direction, normal, diffuseAlbedo, specularColor, roughness);
+        // Put together diffuse and specular and attenuate it with cos
+        linearColor += (diffuseTerm * 1.f + specularTerm * 1.f) * Math::clamp_f(Math::dotProductVec3(normal, light.direction), 0.f, 1.f); 
+    }
     gammaCorrection(linearColor, .4545f);
     return Vec4<int>(Math::clampRGB(linearColor * 255.f), 255);
 }

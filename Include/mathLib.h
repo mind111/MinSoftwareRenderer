@@ -372,7 +372,7 @@ public:
     static Vec3<float> reflect(Vec3<float>& v, Vec3<float> normal);
     static Vec3<float> barycentric(Vec2<float>* triangle, float x, float y, float denominator);
     static Vec3<float> bary_interpolate(Vec3<float>* vertices, const Vec3<float>& bary_coord); 
-    static void bound_triangle(Vec2<float>* vertices, float* bounds);
+    static void boundTriangle(Vec2<float>* vertices, float* bounds, float bufferWidth, float bufferHeight);
     static Vec3<float> SampleAmbientDirection();
     static Vec3<float> CrossProduct(const Vec3<float>& V0, const Vec3<float>& V1);
     static Vec3<float> normalize(const Vec3<float>& v);
@@ -382,7 +382,7 @@ public:
     static void rotate(Mat4x4<float>& m, Vec3<float> rotAxis, float degree);
     static void scale(Mat4x4<float>& m, Vec3<float> scaleVector);
     template <class T>
-    static float Length(const Vec3<T>& V0);
+    static float length(const Vec3<T>& V0);
     template <class T>
     inline static T dotProductVec3(const Vec3<T>& V0, const Vec3<T>& V1)
     {

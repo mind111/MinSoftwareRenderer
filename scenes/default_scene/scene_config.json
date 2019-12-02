@@ -16,6 +16,12 @@
             "type": "directional",
             "color": [1.0, 0.8, 0.8],
             "direction": [0, 0.5, 2]
+        },
+
+        {
+            "type": "directional",
+            "color": [1.0, 0.8, 0.8],
+            "direction": [0.5, 1, 2]
         }
     ],
 

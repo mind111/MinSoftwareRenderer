@@ -1,18 +1,23 @@
 #  SoftwareRenderer
 * This project is still a work in progress until I am satisfied with the work that I put in :)  
 
+* Current render
+  * Phong shader
+  ![phong-diablo class=thumbnail](images/phong/phong-diablo-pose.png)
+  * PBR shader
+  ![pbr-diablo class=thumbnail](images/pbr/pbr-diablo-pose.png)
+
 ## Progress
 * Finished implementing Cook-Torrance specular BRDF and tested using debug_scene. 
 
-* Current implementation of SSAO computes occlusion in one direction only using difference in depth. Thus result is not as apparent as I expected in the final render. Here is a comparison. Flat shader is used to allow more obvious visual difference.   
-![no-ssao-iamge](images/ssao/no-ssao.png)
-
+* Current implementation of SSAO computes occlusion in one direction only using difference in depth. Thus result is not as apparent as I expected in the final render. Here is a comparison. Flat shader is used to allow more obvious visual difference. I plan to implement another ssao algorithm that takes normal at each fragment into consideration to see if there is any apparent visual improvements. 
+  ![no-ssao class=thumbnail](images/ssao/no-ssao.png)
+  ![ssao class=thumbnail](images/ssao/ssao.png)
 
 ### TODO
 * Add few other scenes, and tweak the posing of models used in the scene
-* Maybe camera control?? or maybe give a simple gui that allow me to easily adjust camera 
+* Maybe camera control?? or maybe add a simple gui widget that allows me to easily adjust camera related parameters at run time. 
 * SIMD for performance improvements, currently in debug build, drawing one frame of default_scene can goes up to 160ms with SSAO turned on. 
-
 * Multi-threading
 
 ## Overview

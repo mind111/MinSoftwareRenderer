@@ -6,7 +6,7 @@
   * Phong shader  
   <img style="align: left;" src="images/phong/phong-diablo-pose.png" width="500"/>  
   * PBR shader  
-  <img style="align: left;" src="images/pbr/pbr-diablo-pose.png" width="500"/>
+  <img style="align: left;" src="images/pbr/pbr-diablo-pose.png" width="500"/>  
 
 ## Progress
 * Finished implementing Cook-Torrance specular BRDF and tested using debug_scene. 

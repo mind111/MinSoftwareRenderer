@@ -38,7 +38,7 @@ void FillTriangle(Vec2<int>& V0, Vec2<int>& V1, Vec2<int>& V2, TGAImage& image, 
 }
 
 // Vec3<int> gClearColor = Math::clampRGB(Vec3<float>(1.f, 0.98, 0.94) * 255);
-Vec3<int> gClearColor = Math::clampRGB(Vec3<float>(0.f, 0.f, 0.f) * 255);
+Vec3<int> gClearColor = Math::clampRGB(Vec3<float>(0.5f, 0.5f, 0.5f) * 255);
 
 // TODO: @ Rewrite whole rendering procedure
 // TODO: @ Bulletproof .obj loading

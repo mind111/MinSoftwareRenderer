@@ -1,20 +1,22 @@
 #  SoftwareRenderer
 * This project is still a work in progress until I am satisfied with the work that I put in :)  
 
-* Current render
-  * Phong shader
-  ![phong-diablo class=thumbnail](images/phong/phong-diablo-pose.png)
-  * PBR shader
-  ![pbr-diablo class=thumbnail](images/pbr/pbr-diablo-pose.png)
+* Current render  
+  assets from [ssloy/tinyrenderer](https://github.com/ssloy/tinyrenderer) by artist Samuel (arshlevon) Sharit, and it's used here only for educational and demonstration purpose.    
+  * Phong shader  
+  <img style="align: left;" src="images/phong/phong-diablo-pose.png" width="400"/>
+  * PBR shader  
+  <img style="align: left;" src="images/pbr/pbr-diablo-pose.png" width="400"/>
 
 ## Progress
 * Finished implementing Cook-Torrance specular BRDF and tested using debug_scene. 
 
-* Current implementation of SSAO computes occlusion in one direction only using difference in depth. Thus result is not as apparent as I expected in the final render. Here is a comparison. Flat shader is used to allow more obvious visual difference. I plan to implement another ssao algorithm that takes normal at each fragment into consideration to see if there is any apparent visual improvements. 
-  ![no-ssao class=thumbnail](images/ssao/no-ssao.png)
-  ![ssao class=thumbnail](images/ssao/ssao.png)
+* Current implementation of SSAO computes occlusion in one direction only using difference in depth. Thus result is not as apparent as I expected in the final render. Here is a comparison. Flat shader is used to allow more obvious visual difference. I plan to implement another ssao algorithm that takes normal at each fragment into consideration to see if there is any apparent visual improvements.   
+  <img style="align: left;" src="images/ssao/no-ssao.png" width="400"/>  
+  <img style="align: left;" src="images/ssao/ssao.png" width="400"/>
 
 ### TODO
+* Improve and debug ssao.
 * Add few other scenes, and tweak the posing of models used in the scene
 * Maybe camera control?? or maybe add a simple gui widget that allows me to easily adjust camera related parameters at run time. 
 * SIMD for performance improvements, currently in debug build, drawing one frame of default_scene can goes up to 160ms with SSAO turned on. 
@@ -26,7 +28,7 @@
 
 ######  This documentation is meant as study notes that compiled from my experiences of implementing this project, so that I can keep things more organized and make it a more meaningful learning experience
 
-* This personal project is inspired by following two amazing works https://github.com/ssloy/tinyrenderer/wiki and https://github.com/Angelo1211/SoftwareRenderer. It serves the purpose for me to get into nitty-gritty details of computer graphics out of my strong interest in the discipline.
+* This personal project is inspired by following two amazing works [ssloy/tinyrenderer](https://github.com/ssloy/tinyrenderer/wiki) and [Angelo1211/softwareRenderer](https://github.com/Angelo1211/SoftwareRenderer). It serves the purpose for me to get into nitty-gritty details of computer graphics out of my strong interest in the discipline.
 
 ###### Triangle Rasterization
 

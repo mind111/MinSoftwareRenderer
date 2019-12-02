@@ -5,7 +5,7 @@
 * Finished implementing Cook-Torrance specular BRDF and tested using debug_scene. 
 
 * Current implementation of SSAO computes occlusion in one direction only using difference in depth. Thus result is not as apparent as I expected in the final render. Here is a comparison. Flat shader is used to allow more obvious visual difference.   
-![no-ssao-iamge](https://github.com/mind111/minSoftwareRenderer/blob/master/images/ssao/no-ssao.png)
+![no-ssao-iamge](images/ssao/no-ssao.png)
 
 
 ### TODO

@@ -2,7 +2,7 @@
 * This project is still a work in progress until I am satisfied with the work that I put in :)  
 
 * Current render  
-  assets from [ssloy/tinyrenderer](https://github.com/ssloy/tinyrenderer) by artist Samuel (arshlevon) Sharit, and it's used here only for educational and demonstration purpose.    
+  assets from [ssloy/tinyrenderer](https://github.com/ssloy/tinyrenderer) by artist Samuel (arshlevon) Sharit, and it's used here only for educational and demonstration purpose.      
   * Phong shader  
   <img style="align: left;" src="images/phong/phong-diablo-pose.png" width="500"/>  
   * PBR shader  

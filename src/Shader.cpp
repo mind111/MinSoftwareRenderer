@@ -251,8 +251,8 @@ Vec4<int> PhongShader::fragmentShader(int x, int y) {
             specularCoef = std::max(pow(specularCoef, 4.f), 0.f);
         }  
         specular = diffuseSample * specularCoef; 
-        diffuse = diffuseSample * diffuseCoef;
-        phongColor += diffuse + specular * 2.0f;
+        diffuse = diffuseSample * light.color * diffuseCoef;
+        phongColor += diffuse * .3 + specular * .7f;
     }
     gammaCorrection(phongColor, 0.4545);
     return Vec4<int>(Math::clampRGB(phongColor * 255.f), 255);

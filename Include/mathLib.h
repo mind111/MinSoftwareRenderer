@@ -139,6 +139,14 @@ struct Vec3
       return Vec3<T>(this->x / Scalar, this->y / Scalar, this->z / Scalar);
     }
 
+    Vec3<T> operator*(Vec3<T>& rhs) {
+        Vec3<T> res;
+        res.x = this->x * rhs.x;
+        res.y = this->y * rhs.y;
+        res.z = this->z * rhs.z;
+        return res;
+    }
+
     Vec3<T>& operator/=(T scalar) {
         this->x /= scalar;
         this->y /= scalar;

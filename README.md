@@ -24,13 +24,28 @@
 * Multi-threading
 
 ## Overview
+  * A software renderer wrote from scratch in C++, right now lack of parallelism.
+  * This personal project is inspired by following two amazing works [ssloy/tinyrenderer](https://github.com/ssloy/tinyrenderer/wiki) and [Angelo1211/softwareRenderer](https://github.com/Angelo1211/SoftwareRenderer). It serves the purpose for me to get into nitty-gritty details of computer graphics out of my strong interest in the discipline.
+### timeline
+  * I started writing this project outside of work during my summer internship as a game programmer in July 2019 for fun, and I have been working on it on and off after I returned to school to finish my master's degree in computer science.  
+### implementation
+  Following is the list of real-time rendering techniques that I researched and implemented. 
+  * Triangle rasterization
+  * Architected to immitate modern graphics pipeline 
+  * Perspective correct interpolation
+  * Texture mapping
+  * Tangent space normal mapping
+  * Phong shading
+  * Physically based shading
+  * SSAO post-processing
+### libraries 
+  * Windowing backend using glew and glfw.
+  * Scene is defined in customzied JSON format. I use a JSON parser library [nlohmann/json](https://github.com/nlohmann/json) for scene file parsing.
+  * Texture resources loading is handled using handy [stbi_image.h](https://github.com/nothings/stb/blob/master/stb_image.h).
 
 ##  Study Notes
 
 ######  This documentation is meant as study notes that compiled from my experiences of implementing this project, so that I can keep things more organized and make it a more meaningful learning experience
-
-* This personal project is inspired by following two amazing works [ssloy/tinyrenderer](https://github.com/ssloy/tinyrenderer/wiki) and [Angelo1211/softwareRenderer](https://github.com/Angelo1211/SoftwareRenderer). It serves the purpose for me to get into nitty-gritty details of computer graphics out of my strong interest in the discipline.
-
 ###### Triangle Rasterization
 
 * Given three vertices of a triangle, define a bounding box to minimize number of pixels that we need to scan through

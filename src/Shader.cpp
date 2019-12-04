@@ -299,20 +299,17 @@ float computeNDF(float ndoth, float roughness) {
     float alpha = roughness * roughness;
     float denominator = ndoth * ndoth * (alpha * alpha - 1.f) + 1.f;
     denominator *= denominator;
-    float nominator = alpha * alpha * ONE_OVER_PI;
-    return nominator / denominator;
+    float numerator = alpha * alpha * ONE_OVER_PI;
+    return numerator / denominator;
 }
 
 // schlick GGX
 float computeGTerm(float ndotw, float roughness) {
-    // float r = (roughness + 1.f);
-    // float k = (r * r) / 8.f;
-    // return ndotw / (ndotw * (1.f - k) + k);
     float alpha = roughness * roughness;
-    float nominator = 2 * ndotw;
+    float numerator = 2 * ndotw;
     // Approximate divide by 0
     float denominator = std::max(ndotw + sqrt(alpha * alpha + (1 - alpha * alpha) * ndotw * ndotw), 0.00001f);
-    float g = Math::clamp_f(nominator / denominator, 0.f, 1.f);
+    float g = Math::clamp_f(numerator / denominator, 0.f, 1.f);
     return g;
 }
 
@@ -339,10 +336,10 @@ Vec3<float> cookTorranceBRDF(Vec3<float>& h, Vec3<float>& v, Vec3<float>& l, Vec
     float ndotv = Math::clamp_f(Math::dotProductVec3(n, v), 0.f, 1.f);
     float ndotl = Math::clamp_f(Math::dotProductVec3(n, l), 0.f, 1.f);
     float ndoth = Math::clamp_f(Math::dotProductVec3(n, h), 0.f, 1.f);
-    float d = computeNDF(ndoth, 0.5f);
+    float d = computeNDF(ndoth, roughness);
     float g = computeGeometricShadowing(ndotv, ndotl, roughness); 
 
-    cookTorranceSpecular = specularColor * d * g; 
+    cookTorranceSpecular = specularColor * (d * g); 
     // Approximate the case when denominator becomes 0
     float oneOverDenominator = 1.f / std::max(4.f * ndotv * ndotl, 0.00001f); 
     Math::clampVec3f(cookTorranceSpecular * oneOverDenominator, 0.f, 1.f);
@@ -383,7 +380,7 @@ Vec4<int> PBRShader::fragmentShader(int x, int y) {
         normal.z = tangent.z * sampledNormal.x + biTangent.z * sampledNormal.y + interpolatedNormal.z * sampledNormal.z;
     } 
 
-    float metal = 1.0f, roughness = .4f;
+    float metal = 1.0f, roughness = .5f;
     for (auto light : dirLights) {
         Vec3<float> halfVector = Math::normalize(viewDir + light.direction);
         // TODO: if the object is dieletric then ignore diffuseAlbedo, else tint the reflection with diffuse color (one property of conductior)

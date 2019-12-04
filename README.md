@@ -7,7 +7,7 @@
   <img style="align: left;" src="images/phong/phong-diablo-pose.png" width="500"/>  
 
   * PBR shader  
-  with metal = 1.f, roughness = .4f 
+  with metal = 1.f, roughness = .5f 
   <img style="align: left;" src="images/pbr/pbr-diablo-pose2.png" width="500"/>  
 
 ## Progress

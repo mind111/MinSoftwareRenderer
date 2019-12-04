@@ -2,7 +2,7 @@
 #include "scene.h"
 #include "mathLib.h"
 
-#define ONE_OVER_PI 1 / PI
+#define ONE_OVER_PI 0.318309886
 
 /// \TODO: Simplify logic and optimization
 void DrawLine(Vec2<int> Start, Vec2<int> End, TGAImage& image, const TGAColor& color)
@@ -295,8 +295,7 @@ Vec3<float> lambertianBRDF(Vec3<float> albedo) {
 }
 
 // GGX normal distribution function
-float computeNDF(Vec3<float>& n, Vec3<float>& h, float roughness) {
-    float ndoth = Math::dotProductVec3(n, h); 
+float computeNDF(float ndoth, float roughness) {
     float alpha = roughness * roughness;
     float denominator = ndoth * ndoth * (alpha * alpha - 1.f) + 1.f;
     denominator *= denominator;
@@ -304,12 +303,16 @@ float computeNDF(Vec3<float>& n, Vec3<float>& h, float roughness) {
     return nominator / denominator;
 }
 
+// schlick GGX
 float computeGTerm(float ndotw, float roughness) {
+    // float r = (roughness + 1.f);
+    // float k = (r * r) / 8.f;
+    // return ndotw / (ndotw * (1.f - k) + k);
     float alpha = roughness * roughness;
-    float alpha2 = alpha * alpha;
     float nominator = 2 * ndotw;
-    float denominator = ndotw + sqrt(alpha2 + (1 - alpha2) * ndotw * ndotw);
-    float g = denominator != 0.f ? (nominator / denominator) : 0.f;
+    // Approximate divide by 0
+    float denominator = std::max(ndotw + sqrt(alpha * alpha + (1 - alpha * alpha) * ndotw * ndotw), 0.00001f);
+    float g = Math::clamp_f(nominator / denominator, 0.f, 1.f);
     return g;
 }
 
@@ -336,14 +339,13 @@ Vec3<float> cookTorranceBRDF(Vec3<float>& h, Vec3<float>& v, Vec3<float>& l, Vec
     float ndotv = Math::clamp_f(Math::dotProductVec3(n, v), 0.f, 1.f);
     float ndotl = Math::clamp_f(Math::dotProductVec3(n, l), 0.f, 1.f);
     float ndoth = Math::clamp_f(Math::dotProductVec3(n, h), 0.f, 1.f);
-    float d = computeNDF(n, h, 0.5f);
+    float d = computeNDF(ndoth, 0.5f);
     float g = computeGeometricShadowing(ndotv, ndotl, roughness); 
-    // third parameter denotes reflectivity at normal incidence or
-    // it controls "metalness" of the material
-    Vec3<float> fresnel = computeFresnel(v, h, specularColor); 
-    cookTorranceSpecular = fresnel * d * g; 
-    cookTorranceSpecular = (ndotl == 0.f || ndotv == 0.f) ? 0.f : cookTorranceSpecular / (4.f * ndotl * ndotv);
-    Math::clampVec3f(cookTorranceSpecular, 0.f, 1.f);
+
+    cookTorranceSpecular = specularColor * d * g; 
+    // Approximate the case when denominator becomes 0
+    float oneOverDenominator = 1.f / std::max(4.f * ndotv * ndotl, 0.00001f); 
+    Math::clampVec3f(cookTorranceSpecular * oneOverDenominator, 0.f, 1.f);
     return cookTorranceSpecular;
 }
 
@@ -381,7 +383,7 @@ Vec4<int> PBRShader::fragmentShader(int x, int y) {
         normal.z = tangent.z * sampledNormal.x + biTangent.z * sampledNormal.y + interpolatedNormal.z * sampledNormal.z;
     } 
 
-    float metal = .8f, roughness = .0f;
+    float metal = 1.0f, roughness = .4f;
     for (auto light : dirLights) {
         Vec3<float> halfVector = Math::normalize(viewDir + light.direction);
         // TODO: if the object is dieletric then ignore diffuseAlbedo, else tint the reflection with diffuse color (one property of conductior)
@@ -390,9 +392,13 @@ Vec4<int> PBRShader::fragmentShader(int x, int y) {
         // Diffuse term: Lambertian BRDF
         diffuseTerm = lambertianBRDF(diffuseAlbedo);
         // Specular term: Cook-Torrance microfacet specular BRDF
-        specularTerm = cookTorranceBRDF(halfVector, viewDir, light.direction, normal, diffuseAlbedo, specularColor, roughness);
+        Vec3<float> fresnel = computeFresnel(viewDir, halfVector, specularColor);
+        specularTerm = cookTorranceBRDF(halfVector, viewDir, light.direction, normal, diffuseAlbedo, fresnel, roughness);
         // Put together diffuse and specular and attenuate it with cos
-        linearColor += (diffuseTerm * 1.f + specularTerm * 1.f) * Math::clamp_f(Math::dotProductVec3(normal, light.direction), 0.f, 1.f); 
+        // TODO: take the light color into consideration
+        Vec3<float> kd = Vec3<float>(1.f) - fresnel;
+        kd *=  1 - metal;
+        linearColor += (diffuseTerm * kd + specularTerm) * Math::clamp_f(Math::dotProductVec3(normal, light.direction), 0.f, 1.f); 
     }
     gammaCorrection(linearColor, .4545f);
     return Vec4<int>(Math::clampRGB(linearColor * 255.f), 255);

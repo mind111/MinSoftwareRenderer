@@ -8,7 +8,7 @@
             "fov": 90.0,
             "z_near": 0.1,
             "z_far": 100.0
-            }
+        }
     ],
 
     "lights": [
@@ -43,8 +43,8 @@
         {
             "name": "uv_sphere_mesh",
             "path": "assets/mesh/uv_sphere.obj",
-            "diffuseTexture": [],
-            "specularTexture": [],
+            "diffuseTexture": [""],
+            "specularTexture": [""],
             "normalMapName": ""
         },
 

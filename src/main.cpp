@@ -81,8 +81,8 @@ int main(int argc, char* argv[]) {
     renderer.shader_list.emplace_back(&pbrShader);
     renderer.shader_list.emplace_back(&depthShader);
 
-    renderer.activeShaderPtr_ = &phongShader;
-    // renderer.activeShaderPtr_ = &pbrShader;
+    // renderer.activeShaderPtr_ = &phongShader;
+    renderer.activeShaderPtr_ = &pbrShader;
     // renderer.activeShaderPtr_ = &depthShader;
     SkyboxShader skyboxShader;
     renderer.skyboxShader_ = &skyboxShader;

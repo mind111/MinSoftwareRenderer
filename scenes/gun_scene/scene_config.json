@@ -1,0 +1,49 @@
+{
+    "cameras": [
+        {
+            "name": "main_camera",
+            "position": [0.0, 0.0, 0.0],
+            "target": [0.0, 0.0, -1.0],
+            "world_up": [0.0, 1.0, 0.0],
+            "fov": 90.0,
+            "z_near": 0.1,
+            "z_far": 100.0
+        }
+    ],
+
+    "lights": [
+        {
+            "type": "directional",
+            "color": [1.0, 0.4, 0.7],
+            "direction": [0, 1, 1]
+        }
+    ],
+
+    "hasSkybox": false,
+
+    "mesh_info_list": [
+        {
+            "name": "gun_mesh",
+            "path": "assets/mesh/gun.obj",
+            "diffuseTexture": [""],
+            "specularTexture": [""], 
+            "normalMapName": ""
+        }
+    ],
+
+    "texture_info_list": [
+
+    ],
+
+    "instance_list": [
+        {
+            "meshName": "gun_mesh",
+            "xform": {
+                "translation": [0.0, 0.0, -1.5],
+                "rotation": [0, 0, 90],
+                "scale": [1.0, 1.0, 1.0]
+            },
+            "movable": "true"
+        }
+    ]
+}

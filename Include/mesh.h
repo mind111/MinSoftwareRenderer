@@ -18,7 +18,7 @@ public:
     std::string name;
     std::map<std::string, int> diffuseMapTable;
     std::map<std::string, int> specularMapTable;
-    std::string normalMapName;
+    std::string normalMapName, aoMapName, roughnessMapName;
     float* vertex_buffer;
     float* texture_uv_buffer;
     float* normal_buffer;
@@ -27,8 +27,7 @@ public:
 
     int num_vertices, num_faces, num_texture_coord, num_normal;
     int v_components, vt_components, vn_components, idx_components;
-    int colorMaps[3];
-    int textureID, normalMapID;
+    int normalMapID, aoMapID, roughnessMapID;
 
     // TODO: These methods should be moved into Mesh_Manager
     Mesh();

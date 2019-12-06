@@ -31,18 +31,7 @@ public:
     std::vector<ShaderBase*> shader_list; // shader pool that include all available style of shaders
     SkyboxShader* skyboxShader_;
 
-    // This maybe refactored to be part of rasterizer
-    Vec3<float> triangleView[3];
-    Vec4<float> triangle_clip[3];
-    Vec2<float> triangle_screen[3];
-    Vec3<float> triangle_uv[3]; // if uv only has two components then fill z with 0
-    Vec3<float> normalIn[3];
-    Vec3<float> normalOut[3];
-    Vec3<float> tangentIn[3];
-    Vec3<float> tangentOut[3];
-
     uint8_t mesh_attrib_flag;
-
     ShaderBase* activeShaderPtr_;
     Mat4x4<float> viewport;
     unsigned char* backbuffer;
@@ -81,12 +70,13 @@ private:
     float* zBuffer;
     Vec3<float>* normalBuffer;
     void draw_mesh(Mesh& mesh);
-    void drawDebugLines(Mesh&, uint32_t f_idx);
-    bool backfaceCulling();
-    void perspectiveCorrection(Vec3<float>& baryCoord);
-    bool depthTest(int x, int y, Vec3<float> baryCoord);
-    void fillTriangle();
+    void drawDebugLines(Mesh&, Vec3<float>* vPosView, uint32_t f_idx);
+    bool backfaceCulling(Vec3<float>* vPosView);
+    void perspectiveCorrection(Vec3<float>* vPosView, Vec3<float>& baryCoord);
+    bool depthTest(int x, int y, Vec3<float> baryCoord, Vec3<float>* vPosScreen);
+    void fillTriangle(Vec3<float>* vPosScreen, Vec3<float>* vPosView, Vec3<float>* normals, Vec3<float>* textureCoords, Vec3<float>* tangents);
     float doAmbientOcclusion(int x, int y, Vec2<float>& sampleDir);
     float ambientOcclusion(int x, int y, Vec2<float>& sampleDir);
+    void bindMeshTextures(Scene& scene, const Mesh& mesh);
 };
 

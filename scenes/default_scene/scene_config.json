@@ -37,39 +37,8 @@
             "path": "assets/mesh/diablo3_pose.obj",
             "diffuseTexture": ["diablo_diffuse", "diablo_glow"],
             "specularTexture": ["diablo_specular"], 
-            "normalMapName": "diablo_normal_map"
-        },
-
-        {
-            "name": "uv_sphere_mesh",
-            "path": "assets/mesh/uv_sphere.obj",
-            "diffuseTexture": [""],
-            "specularTexture": [""],
-            "normalMapName": ""
-        },
-
-        {
-            "name": "teapot_mesh",
-            "path": "assets/mesh/utah_teapot.obj",
-            "diffuseTexture": [""],
-            "specularTexture": [""], 
-            "normalMapName": ""
-        },
-
-        {
-            "name": "floor_mesh",
-            "path": "assets/mesh/floor.obj",
-            "diffuseTexture": ["grid_texture"],
-            "specularTexture": [""], 
-            "normalMapName": ""
-        },
-        
-        {
-            "name": "skybox_mesh",
-            "path": "assets/mesh/skybox.obj",
-            "diffuseTexture": [""],
-            "specularTexture": [""], 
-            "normalMapName": ""
+            "normalMapName": "diablo_normal_map",
+            "aoMapName": ""
         }
     ],
 
@@ -92,11 +61,6 @@
         {
             "textureName": "diablo_normal_map",
             "texturePath": "assets/texture/diablo3_pose_nm_tangent.tga"
-        },
-
-        {
-            "textureName": "grid_texture",
-            "texturePath": "assets/texture/grid_texture_002.png"
         }
 
     ],
@@ -105,7 +69,7 @@
         {
             "meshName": "diablo3_pose",
             "xform": {
-                "translation": [0.0, 0.0, -1.3],
+                "translation": [0.0, 0.0, -1.8],
                 "rotation": [0, 0, 0],
                 "scale": [1.0, 1.0, 1.0]
             },

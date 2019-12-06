@@ -3,12 +3,12 @@
 #include <cmath>
 #include <vector>
 #include "tgaimage.h"
-#include "Globals.h"
-#include "Model.h"
+#include "globals.h"
+#include "model.h"
 #include "window.h"
 #include "scene.h"
 #include "renderer.h"
-#include "Shader.h"
+#include "shader.h"
 
 /// \Note: Using naive scan-line method
 void FillTriangle(Vec2<int>& V0, Vec2<int>& V1, Vec2<int>& V2, TGAImage& image, const TGAColor& color)
@@ -37,8 +37,8 @@ void FillTriangle(Vec2<int>& V0, Vec2<int>& V1, Vec2<int>& V2, TGAImage& image, 
     }
 }
 
-// Vec3<int> gClearColor = Math::clampRGB(Vec3<float>(1.f, 0.98, 0.94) * 255);
-Vec3<int> gClearColor = Math::clampRGB(Vec3<float>(0.f, 0.f, 0.f) * 255);
+Vec3<int> gClearColor = Math::clampRGB(Vec3<float>(1.f, 0.98, 0.94) * 255);
+// Vec3<int> gClearColor = Math::clampRGB(Vec3<float>(0.f, 0.f, 0.f) * 255);
 
 // TODO: @ Rewrite whole rendering procedure
 // TODO: @ Bulletproof .obj loading
@@ -47,12 +47,10 @@ Vec3<int> gClearColor = Math::clampRGB(Vec3<float>(0.f, 0.f, 0.f) * 255);
 // TODO: @ Change to another .obj model
 // TODO: @ SIMD 
 // TODO: @ Speed up gamma correction by using gamma-lookup table
-// TODO: @ Gouraud shading
 // TODO: @ Debug other scenes
 // TODO: @ SSAO
 
 // TODO: @ Other interesting post-processing techniques
-// TODO: @ Refactor handling of multiple light sources
 // TODO: @ Debug view matrix(issues with camera)
 // TODO: @ Anti-aliasing
 // TODO: @ Optimization on rasterizing
@@ -86,7 +84,7 @@ int main(int argc, char* argv[]) {
     // renderer.activeShaderPtr_ = &depthShader;
     SkyboxShader skyboxShader;
     renderer.skyboxShader_ = &skyboxShader;
-    scene_manager.loadSceneFromFile(scene, "scenes/default_scene/scene_config.json");
+    scene_manager.loadSceneFromFile(scene, "scenes/debug_scene/scene_config.json");
 
     // TODO: this should be move to part of Window class
     float quad[18] = {
@@ -139,7 +137,7 @@ int main(int argc, char* argv[]) {
         renderer.clearDepth();             // clear depth bit
         renderer.clearNormalBuffer();
         renderer.drawScene(scene);
-        renderer.SSAO();
+        // renderer.SSAO();
         window_manager.blit_buffer(renderer.backbuffer, renderer.bufferWidth_, renderer.bufferHeight_, 4, window);
         glDrawArrays(GL_TRIANGLES, 0, 6);
         glfwPollEvents();

@@ -5,7 +5,7 @@
             "position": [0.0, 0.0, 0.0],
             "target": [0.0, 0.0, -1.0],
             "world_up": [0.0, 1.0, 0.0],
-            "fov": 90.0,
+            "fov": 50.0,
             "z_near": 0.1,
             "z_far": 100.0
         }
@@ -14,9 +14,28 @@
     "lights": [
         {
             "type": "directional",
-            "color": [0.88, 0.65, 0.2],
-            "direction": [0.5, 1, 1]
+            "color": [1, 0.95, 0.9],
+            "direction": [0, 1, 1]
+        },
+
+        {
+            "type": "directional",
+            "color": [1, 0.95, 0.9],
+            "direction": [2, 1, 0]
+        },
+
+        {
+            "type": "directional",
+            "color": [1, 0.95, 0.9],
+            "direction": [-2, 1, 0]
+        },
+
+        {
+            "type": "directional",
+            "color": [1, 0.95, 0.9],
+            "direction": [0, 0, 1]
         }
+
     ],
 
     "hasSkybox": false,
@@ -27,43 +46,158 @@
 
     "mesh_info_list": [
         {
-            "name": "uv_sphere_mesh",
+            "name": "uv_sphere_mesh_rock",
             "path": "assets/mesh/uv_sphere.obj",
-            "diffuseTexture": [""],
+            "diffuseTexture": ["rock_albedo"],
             "specularTexture": [""],
-            "normalMapName": ""
+            "normalMapName": "rock_normal",
+            "aoMapName": "rock_ao",
+            "roughnessMapName": "rock_rough"
         },
 
         {
-            "name": "floor_mesh",
-            "path": "assets/mesh/floor.obj",
-            "diffuseTexture": ["grid_texture"],
-            "specularTexture": [""], 
-            "normalMapName": ""
+            "name": "uv_sphere_mesh_stone",
+            "path": "assets/mesh/uv_sphere.obj",
+            "diffuseTexture": ["stonewall_albedo"],
+            "specularTexture": [""],
+            "normalMapName": "stonewall_normal",
+            "aoMapName": "stonewall_ao",
+            "roughnessMapName": "stonewall_rough"
+        },
+
+        {
+            "name": "uv_sphere_mesh_plaster",
+            "path": "assets/mesh/uv_sphere.obj",
+            "diffuseTexture": ["plasterwall_albedo"],
+            "specularTexture": [""],
+            "normalMapName": "plasterwall_normal",
+            "aoMapName": "",
+            "roughnessMapName": ""
+        },
+
+        {
+            "name": "uv_sphere_mesh_rust",
+            "path": "assets/mesh/uv_sphere.obj",
+            "diffuseTexture": ["rust_albedo"],
+            "specularTexture": [""],
+            "normalMapName": "rust_normal",
+            "aoMapName": "",
+            "roughnessMapName": "rust_rough"
         }
     ],
 
     "texture_info_list": [
         {
-            "textureName": "grid_texture",
-            "texturePath": "assets/texture/grid_texture_002.png"
+            "textureName": "rock_albedo",
+            "texturePath": "assets/texture/rock_albedo.jpg"
         },
 
         {
-            "textureName": "floor_texture",
-            "texturePath": "assets/texture/floor_diffuse.tga"
+            "textureName": "rock_ao",
+            "texturePath": "assets/texture/rock_ao.jpg"
+        },
+
+        {
+            "textureName": "rock_rough",
+            "texturePath": "assets/texture/rock_rough.jpg"
+        },
+
+        {
+            "textureName": "rock_normal",
+            "texturePath": "assets/texture/rock_normal.jpg"
+        },
+        
+        {
+            "textureName": "stonewall_albedo",
+            "texturePath": "assets/texture/stonewall_albedo.jpg"
+        },
+
+        {
+            "textureName": "stonewall_ao",
+            "texturePath": "assets/texture/stonewall_ao.jpg"
+        },
+
+        {
+            "textureName": "stonewall_normal",
+            "texturePath": "assets/texture/stonewall_normal.jpg"
+        },
+
+        {
+            "textureName": "stonewall_rough",
+            "texturePath": "assets/texture/stonewall_rough.jpg"
+        },
+
+        {
+            "textureName": "plasterwall_albedo",
+            "texturePath": "assets/texture/plasterwall_albedo.jpg"
+        },
+
+        {
+            "textureName": "plasterwall_ao",
+            "texturePath": "assets/texture/plasterwall_ao.jpg"
+        },
+
+        {
+            "textureName": "plasterwall_normal",
+            "texturePath": "assets/texture/plasterwall_normal.jpg"
+        },
+
+        {
+            "textureName": "rust_albedo",
+            "texturePath": "assets/texture/rust_albedo.png"
+        },
+        
+        {
+            "textureName": "rust_normal",
+            "texturePath": "assets/texture/rust_normal.png"
+        },
+
+        {
+            "textureName": "rust_rough",
+            "texturePath": "assets/texture/rust_rough.png"
         }
     ],
 
     "instance_list": [
         {
-            "meshName": "uv_sphere_mesh",
+            "meshName": "uv_sphere_mesh_rock",
             "xform": {
-                "translation": [0, -0.0, -2.0],
+                "translation": [0.6, -0.0, -6.0],
                 "rotation": [0, 0, 0],
-                "scale":[0.6, 0.6, 0.6]
+                "scale":[0.7, 0.7, 0.7]
+            },
+            "movable": "false"
+        },
+
+        {
+            "meshName": "uv_sphere_mesh_stone",
+            "xform": {
+                "translation": [2.2, -0.0, -6.0],
+                "rotation": [0, 0, 0],
+                "scale":[0.7, 0.7, 0.7]
+            },
+            "movable": "false"
+        },
+
+        {
+            "meshName": "uv_sphere_mesh_plaster",
+            "xform": {
+                "translation": [-0.9, -0.0, -6.0],
+                "rotation": [0, 0, 0],
+                "scale":[0.7, 0.7, 0.7]
+            },
+            "movable": "false"
+        },
+
+        {
+            "meshName": "uv_sphere_mesh_rust",
+            "xform": {
+                "translation": [-2.5, -0.0, -6.0],
+                "rotation": [0, 0, 0],
+                "scale":[0.7, 0.7, 0.7]
             },
             "movable": "false"
         }
+
     ]
 }

@@ -7,10 +7,17 @@
   <img style="align: left;" src="images/phong/phong-diablo-pose.png" width="500"/>  
 
   * PBR shader  
-  with metal = 1.f, roughness = .5f 
+  with uniform metal = 1.f, roughness = .5f 
   <img style="align: left;" src="images/pbr/pbr-diablo-pose2.png" width="500"/>  
-
+  <img style="align: left;" src="images/pbr/pbr-debug-balls.png" width="500"/>  
+  pbr assets found from:  
+  [Quixel/tmenafmn](https://quixel.com/assets/tmenafmn)  
+  [Quixel/tihgbicfw](https://quixel.com/assets/tihgbicfw)  
+  [Quixel/smokagcp](https://quixel.com/assets/smokagcp)  
+  [learnOpenGL](https://learnopengl.com/PBR/Lighting)
 ## Progress
+* Next goal is to add support for pbr materials, metal map, roughness map, ao map...
+
 * Finished implementing Cook-Torrance specular BRDF and tested using debug_scene. 
 
 * Current implementation of SSAO computes occlusion in one direction only using difference in depth. Thus result is not as apparent as I expected in the final render. Here is a comparison. Flat shader is used to allow more obvious visual difference. I plan to implement another ssao algorithm that takes normal at each fragment into consideration to see if there is any apparent visual improvements.   

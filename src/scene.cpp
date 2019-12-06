@@ -5,7 +5,7 @@
 #include "../lib/stb_image/include/stb_image.h"
 #include "../lib/json/json.hpp"
 
-Scene_Manager scene_manager;
+SceneManager scene_manager;
 
 //---- Utilities for loading the scene data from json
 void from_json(const nlohmann::json& j, Vec3<float>& v) { 
@@ -57,7 +57,7 @@ Vec3<float>* PointLight::getDirection() {
     return nullptr;
 }
 
-Mat4x4<float> Scene_Manager::get_camera_view(Camera& camera) {
+Mat4x4<float> SceneManager::get_camera_view(Camera& camera) {
     Mat4x4<float> model_view;
 
     Vec3<float> forward = Math::normalize(camera.position - camera.target);
@@ -170,7 +170,7 @@ Vec3<float> computeTangent(Vec3<float>& v0, Vec3<float>& v1, Vec3<float>& v2,
 }
 
 // TODO: @ Maybe benchmark this?
-void Scene_Manager::loadObj(Mesh& mesh, const char* filename) {
+void SceneManager::loadObj(Mesh& mesh, const char* filename) {
     using std::string;
     using std::stringstream;
 
@@ -353,7 +353,7 @@ void Scene_Manager::loadObj(Mesh& mesh, const char* filename) {
     delete []mesh.indices;
 }
 
-void Scene_Manager::loadSceneFromFile(Scene& scene, const char* filename) {
+void SceneManager::loadSceneFromFile(Scene& scene, const char* filename) {
     nlohmann::json sceneJson;
     std::ifstream sceneFile(filename);
     sceneFile >> sceneJson;
@@ -409,6 +409,8 @@ void Scene_Manager::loadSceneFromFile(Scene& scene, const char* filename) {
             mesh.specularMapTable.insert(std::pair<std::string, int>(textureName, -1));
         }
         meshInfo.at("normalMapName").get_to(mesh.normalMapName);
+        meshInfo.at("aoMapName").get_to(mesh.aoMapName);
+        meshInfo.at("roughnessMapName").get_to(mesh.roughnessMapName);
         
         // binding diffuse map ids
         for(auto itr = mesh.diffuseMapTable.begin(); itr != mesh.diffuseMapTable.end(); itr++) {
@@ -426,7 +428,7 @@ void Scene_Manager::loadSceneFromFile(Scene& scene, const char* filename) {
         }
 
         loadObj(mesh, path.c_str());
-        findNormalMapForMesh(scene, mesh);
+        findTexturesForMesh(scene, mesh);
         scene.mesh_list.emplace_back(mesh);
     }
     int instanceID = 0;
@@ -463,33 +465,47 @@ void Scene_Manager::loadSceneFromFile(Scene& scene, const char* filename) {
     }
 }
 
-void Scene_Manager::loadTextureFromFile(Scene& scene, std::string& name, const char* filename) {
+void SceneManager::loadTextureFromFile(Scene& scene, std::string& name, const char* filename) {
     Texture newTexture = { };
     newTexture.textureName = name;
     newTexture.texturePath = filename;
     newTexture.pixels = stbi_load(filename, &newTexture.textureWidth, &newTexture.textureHeight, &newTexture.numChannels, 0);
-    scene.texture_list.emplace_back(newTexture);
+    scene.textureList.emplace_back(newTexture);
 }
 
-int Scene_Manager::findTextureIndex(const Scene& scene, const std::string& textureName) {
-    for (int i = 0; i < scene.texture_list.size(); i++) {
-            if (scene.texture_list[i].textureName == textureName) {
+int SceneManager::findTextureIndex(const Scene& scene, const std::string& textureName) {
+    for (int i = 0; i < scene.textureList.size(); i++) {
+            if (scene.textureList[i].textureName == textureName) {
                 return i;
             }
     }
     return -1;
 }
 
-void Scene_Manager::findNormalMapForMesh(Scene& scene, Mesh& mesh) {
-    for (int i = 0; i < scene.texture_list.size(); i++) {
-        if (scene.texture_list[i].textureName == mesh.normalMapName) {
+void SceneManager::findNormalMapForMesh(Scene& scene, Mesh& mesh) {
+    for (int i = 0; i < scene.textureList.size(); i++) {
+        if (scene.textureList[i].textureName == mesh.normalMapName) {
             mesh.normalMapID = i;
         }
     }
 }
 
+void SceneManager::findTexturesForMesh(Scene& scene, Mesh& mesh) {
+    for (int i = 0; i < scene.textureList.size(); i++) {
+        if (scene.textureList[i].textureName == mesh.normalMapName) {
+            mesh.normalMapID = i;
+        }
+        if (scene.textureList[i].textureName == mesh.aoMapName) {
+            mesh.aoMapID = i;
+        }
+        if (scene.textureList[i].textureName == mesh.roughnessMapName) {
+            mesh.roughnessMapID = i;
+        }
+    }
+}
+
 // TODO: stop moving every object in the scene
-void Scene_Manager::updateScene(Scene& scene, float deltaTime) {
+void SceneManager::updateScene(Scene& scene, float deltaTime) {
     for (auto& instance : scene.instance_list) {
         scene.xform_list[instance.instance_id].rotation.x += 0.005f;
     }

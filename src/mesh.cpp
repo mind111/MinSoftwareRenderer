@@ -19,8 +19,9 @@ Mesh::Mesh() {
     vt_components = -1;
     vn_components = -1;
     idx_components = -1;
-    textureID = -1;
     normalMapID = -1;
+    aoMapID = -1;
+    roughnessMapID = -1;
 }
 
 

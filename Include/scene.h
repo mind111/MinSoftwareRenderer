@@ -54,24 +54,25 @@ struct Scene {
     std::vector<Mesh> mesh_list;
     std::vector<Transform> xform_list;
     std::vector<Mesh_Instance> instance_list;
-    std::vector<Texture> texture_list;
+    std::vector<Texture> textureList;
 
     Camera main_camera;
     std::vector<PointLight> pointLightList;
     std::vector<DirectionalLight> directionalLightList;
 };
 
-class Scene_Manager {
+class SceneManager {
 public:
-    Scene_Manager() {}
+    SceneManager() {}
     void loadObj(Mesh& mesh, const char* filename);
     void loadSceneFromFile(Scene& scene, const char* filename);
     void add_instance(Scene& scene, uint32_t mesh_id);
     void loadTextureFromFile(Scene& scene, std::string& name, const char* filename);
     int findTextureIndex(const Scene& scene, const std::string& textureName);
-    void findNormalMapForMesh(Scene& scene, Mesh& diablo_mesh);
+    void findNormalMapForMesh(Scene& scene, Mesh& mesh);
+    void findTexturesForMesh(Scene& scene, Mesh& mesh);
     void updateScene(Scene& scene, float deltaTime);
     Mat4x4<float> get_camera_view(Camera& camera);
 };
 
-extern Scene_Manager scene_manager;
+extern SceneManager scene_manager;

@@ -1,4 +1,4 @@
-#include "Shader.h"
+#include "shader.h"
 #include "scene.h"
 #include "mathLib.h"
 
@@ -74,6 +74,12 @@ ShaderBase::ShaderBase() {
     lightParamsBuffer = nullptr;
 }
 
+void gammaCorrection(Vec3<float>& color, float pow) {
+    color.x = std::pow(color.x, pow);
+    color.y = std::pow(color.y, pow);
+    color.z = std::pow(color.z, pow);
+}
+
 void ShaderBase::initFragmentAttrib(uint32_t bufferWidth, uint32_t bufferHeight) {
     bufferWidth_ = bufferWidth;
     bufferHeight_ = bufferHeight;
@@ -110,6 +116,15 @@ Vec3<float> ShaderBase::sampleNormal(Texture& normalMap, float u, float v) {
     res.z = (float)res.z / 255.f * 2 - 1.f; 
     // Do I need to normalize the remapped result here?
     return Math::normalize(res);
+}
+
+float ShaderBase::sampleGreyScale(Texture& textureMap, float u, float v) {
+    float res;
+    uint32_t samplePosX = u * textureMap.textureWidth;
+    uint32_t samplePosY = (1 - v) * textureMap.textureHeight;
+    uint32_t pixelIdx = textureMap.textureWidth * samplePosY + samplePosX;
+    res = textureMap.pixels[pixelIdx * textureMap.numChannels];
+    return res / 255.f;
 }
 
 Vec3<float> ShaderBase::transformToViewSpace(Vec3<float>& v) {
@@ -181,12 +196,6 @@ PhongShader::PhongShader() {
 
 Vec4<float> PhongShader::vertexShader(Vec3<float>& v) {
     return projection_ * modelView_ * Vec4<float>(v, 1.f);    
-}
-
-void gammaCorrection(Vec3<float>& color, float pow) {
-    color.x = std::pow(color.x, pow);
-    color.y = std::pow(color.y, pow);
-    color.z = std::pow(color.z, pow);
 }
 
 // Fragment normal
@@ -267,18 +276,7 @@ Vec4<int> DepthShader::fragmentShader(int x, int y) {
     uint32_t attribIdx = y * bufferWidth_ + x;
     FragmentAttrib fragmentAttrib = fragmentAttribBuffer[attribIdx];
     Vec3<float> normal = fragmentAttrib.normal;
-    if (normalMap_) {
-        // Vec3<float> sampledNormal = sampleNormal(*normalMap_, fragmentAttrib.textureCoord.x, fragmentAttrib.textureCoord.y); 
-        // // TODO: Need to consider the handed-ness of the tangent space where normals are defined in
-        // Vec3<float> interpolatedNormal = fragmentAttrib.normal;
-        // Vec3<float> tangent = fragmentAttrib.tangent;
-        // // Gram-Schemidt process to re-orthoganize the tangent and fragmentNormal
-        // tangent = Math::normalize(tangent - interpolatedNormal * Math::dotProductVec3(tangent, interpolatedNormal));
-        // Vec3<float> biTangent = Math::CrossProduct(tangent, interpolatedNormal);
-        // normal.x = tangent.x * sampledNormal.x + biTangent.x * sampledNormal.y + interpolatedNormal.x * sampledNormal.z;
-        // normal.y = tangent.y * sampledNormal.x + biTangent.y * sampledNormal.y + interpolatedNormal.y * sampledNormal.z;
-        // normal.z = tangent.z * sampledNormal.x + biTangent.z * sampledNormal.y + interpolatedNormal.z * sampledNormal.z;
-    }
+
     for (auto light : dirLights) {
         color += flatColor * Math::clamp_f(Math::dotProductVec3(normal, light.direction), 0.f, 1.f);
     }
@@ -380,12 +378,20 @@ Vec4<int> PBRShader::fragmentShader(int x, int y) {
         normal.z = tangent.z * sampledNormal.x + biTangent.z * sampledNormal.y + interpolatedNormal.z * sampledNormal.z;
     } 
 
-    float metal = 1.0f, roughness = .5f;
+    // Default roughness and metal
+    float metallic = 0.2f, roughness = 1.0f, ao = 1.f;
+    if (roughnessMap_) {
+        roughness = sampleGreyScale(*roughnessMap_, fragmentAttrib.textureCoord.x, fragmentAttrib.textureCoord.y);
+        // metallic = 1.f - roughness;
+    }
+    if (aoMap_) {
+        ao = sampleGreyScale(*aoMap_, fragmentAttrib.textureCoord.x, fragmentAttrib.textureCoord.y);
+    }
     for (auto light : dirLights) {
         Vec3<float> halfVector = Math::normalize(viewDir + light.direction);
         // TODO: if the object is dieletric then ignore diffuseAlbedo, else tint the reflection with diffuse color (one property of conductior)
         //       maybe should use index of refraction to compute f0 to be more accurate?
-        Vec3<float> specularColor = Vec3<float>(.02f) * (1 - metal) + diffuseAlbedo * metal;
+        Vec3<float> specularColor = Vec3<float>(.02f) * (1 - metallic) + diffuseAlbedo * metallic;
         // Diffuse term: Lambertian BRDF
         diffuseTerm = lambertianBRDF(diffuseAlbedo);
         // Specular term: Cook-Torrance microfacet specular BRDF
@@ -394,8 +400,8 @@ Vec4<int> PBRShader::fragmentShader(int x, int y) {
         // Put together diffuse and specular and attenuate it with cos
         // TODO: take the light color into consideration
         Vec3<float> kd = Vec3<float>(1.f) - fresnel;
-        kd *=  1 - metal;
-        linearColor += (diffuseTerm * kd + specularTerm) * Math::clamp_f(Math::dotProductVec3(normal, light.direction), 0.f, 1.f); 
+        kd *=  1 - metallic;
+        linearColor += (diffuseTerm * ao * kd + specularTerm) * light.color * Math::clamp_f(Math::dotProductVec3(normal, light.direction), 0.f, 1.f); 
     }
     gammaCorrection(linearColor, .4545f);
     return Vec4<int>(Math::clampRGB(linearColor * 255.f), 255);

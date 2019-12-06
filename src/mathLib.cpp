@@ -197,10 +197,11 @@ Vec3<int> Math::clampRGB(Vec3<float> color) {
     return result; 
 }
 
-Vec3<float> Math::barycentric(Vec2<float>* triangle, float x, float y, float denominator) {
-    Vec2<float> pa = triangle[0] - Vec2<float>(x, y);
-    Vec2<float> e1 = triangle[1] - triangle[0];
-    Vec2<float> e2 = triangle[2] - triangle[0];
+Vec3<float> Math::barycentric(Vec3<float>* triangle, float x, float y, float denominator) {
+    Vec2<float> vScreen0(triangle[0].x, triangle[0].y);
+    Vec2<float> pa = vScreen0 - Vec2<float>(x, y);
+    Vec2<float> e1 = Vec2<float>(triangle[1].x, triangle[1].y) - vScreen0;
+    Vec2<float> e2 = Vec2<float>(triangle[2].x, triangle[2].y) - vScreen0;
     float u = (-1 * pa.x * e2.y + pa.y * e2.x) / denominator;
     float v = (-1 * pa.y * e1.x + pa.x * e1.y) / denominator;
     float w = 1 - u - v;
@@ -214,7 +215,7 @@ Vec3<float> Math::bary_interpolate(Vec3<float>* vertices, const Vec3<float>& bar
 }
 
 // TODO: Bug here
-void Math::boundTriangle(Vec2<float>* vertices, float* bounds, float bufferWidth, float bufferHeight)
+void Math::boundTriangle(Vec3<float>* vertices, float* bounds, float bufferWidth, float bufferHeight)
 {
     for (int i = 0; i < 3; i++)
     {
@@ -274,12 +275,6 @@ Vec3<float> Math::CrossProduct(const Vec3<float>& V0, const Vec3<float>& V1)
 Vec3<float> Math::reflect(Vec3<float>& v, Vec3<float> normal) {
     Vec3<float> result = normal * 2 * Math::dotProductVec3(normal, v) - v;
     return result;
-}
-
-Vec3<float> Math::normalize(const Vec3<float>& v)
-{
-    float Len = length(v);
-    return Vec3<float>(v.x / Len, v.y / Len, v.z / Len);
 }
 
 void Math::translate(Mat4x4<float>& m, const Vec3<float> v) {

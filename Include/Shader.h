@@ -34,7 +34,9 @@ public:
 
     std::vector<Texture*> diffuseMaps;
     std::vector<Texture*> specularMaps;
-    Texture* normalMap_;
+    Texture* normalMap_;     
+    Texture* aoMap_;
+    Texture* roughnessMap_;
 
     ShaderBase();
     void set_model_matrix(Mat4x4<float>& model);
@@ -50,6 +52,7 @@ public:
     void initFragmentAttrib(uint32_t bufferWidth, uint32_t bufferHeight);
     Vec3<float> sampleTexture2D(Texture& texture, float u, float v);
     Vec3<float> sampleNormal(Texture& normalMap, float u, float v);
+    float sampleGreyScale(Texture& textureMap, float u, float v);
     Vec3<float> transformNormal(Vec3<float>& normal);
     Vec3<float> transformTangent(Vec3<float>& tangent);
     Vec3<float> transformToViewSpace(Vec3<float>& v);

@@ -92,7 +92,6 @@ struct Vec3
     T y;
     T z;
 
-
     //**** Constructor
     Vec3() {
 
@@ -378,12 +377,11 @@ public:
     static void clampVec3f(Vec3<float>& v, float minValue, float maxValue);
     static Vec3<int> clampRGB(Vec3<float> color);
     static Vec3<float> reflect(Vec3<float>& v, Vec3<float> normal);
-    static Vec3<float> barycentric(Vec2<float>* triangle, float x, float y, float denominator);
+    static Vec3<float> barycentric(Vec3<float>* triangle, float x, float y, float denominator);
     static Vec3<float> bary_interpolate(Vec3<float>* vertices, const Vec3<float>& bary_coord); 
-    static void boundTriangle(Vec2<float>* vertices, float* bounds, float bufferWidth, float bufferHeight);
+    static void boundTriangle(Vec3<float>* vertices, float* bounds, float bufferWidth, float bufferHeight);
     static Vec3<float> SampleAmbientDirection();
     static Vec3<float> CrossProduct(const Vec3<float>& V0, const Vec3<float>& V1);
-    static Vec3<float> normalize(const Vec3<float>& v);
     static Mat4x4<float> constructTransformMatrix(const struct Transform& t);
     // transform
     static void translate(Mat4x4<float>& m, Vec3<float> translation);
@@ -400,6 +398,11 @@ public:
     inline static T DotProduct_Vec2(const Vec2<T>& V0, const Vec2<T>& V1)
     {
         return (V0.x * V1.x + V0.y * V1.y);
+    }
+
+    inline static Vec3<float> normalize(const Vec3<float>& v) {
+        float len = sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
+        return Vec3<float>(v.x / len, v.y / len, v.z / len);
     }
 };
 

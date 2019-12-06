@@ -7,14 +7,14 @@
   <img style="align: left;" src="images/phong/phong-diablo-pose.png" width="500"/>  
 
   * PBR shader  
-  with uniform metal = 1.f, roughness = .5f 
+  with uniform metal = 1.f, roughness = .5f  
   <img style="align: left;" src="images/pbr/pbr-diablo-pose2.png" width="500"/>  
-  <img style="align: left;" src="images/pbr/pbr-debug-balls.png" width="500"/>  
-  pbr assets found from:  
-  [Quixel/tmenafmn](https://quixel.com/assets/tmenafmn)  
-  [Quixel/tihgbicfw](https://quixel.com/assets/tihgbicfw)  
+  <img style="align: left;" src="images/pbr/pbr-debug-balls.png" width="500"/>    
+  pbr assets found from:    
+  [Quixel/tmenafmn](https://quixel.com/assets/tmenafmn)    
+  [Quixel/tihgbicfw](https://quixel.com/assets/tihgbicfw)   
   [Quixel/smokagcp](https://quixel.com/assets/smokagcp)  
-  [learnOpenGL](https://learnopengl.com/PBR/Lighting)
+  [learnOpenGL](https://learnopengl.com/PBR/Lighting)  
 ## Progress
 * Next goal is to add support for pbr materials, metal map, roughness map, ao map...
 

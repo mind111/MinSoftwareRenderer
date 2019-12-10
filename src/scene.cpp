@@ -409,9 +409,12 @@ void SceneManager::loadSceneFromFile(Scene& scene, const char* filename) {
             mesh.specularMapTable.insert(std::pair<std::string, int>(textureName, -1));
         }
         meshInfo.at("normalMapName").get_to(mesh.normalMapName);
-        meshInfo.at("aoMapName").get_to(mesh.aoMapName);
-        meshInfo.at("roughnessMapName").get_to(mesh.roughnessMapName);
-        
+        if (meshInfo.at("aoMapName") != "") {
+            meshInfo.at("aoMapName").get_to(mesh.aoMapName);
+        } 
+        if (meshInfo.at("roughnessMapName") != "") {
+            meshInfo.at("roughnessMapName").get_to(mesh.roughnessMapName);
+        } 
         // binding diffuse map ids
         for(auto itr = mesh.diffuseMapTable.begin(); itr != mesh.diffuseMapTable.end(); itr++) {
             int idx = findTextureIndex(scene, itr->first);

@@ -38,7 +38,8 @@
             "diffuseTexture": ["diablo_diffuse", "diablo_glow"],
             "specularTexture": ["diablo_specular"], 
             "normalMapName": "diablo_normal_map",
-            "aoMapName": ""
+            "aoMapName": "",
+            "roughnessMapName": ""
         }
     ],
 

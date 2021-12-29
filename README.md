@@ -17,18 +17,10 @@
   [Quixel/smokagcp](https://quixel.com/assets/smokagcp)  
   [learnOpenGL](https://learnopengl.com/PBR/Lighting)
 
-### TODO
-* Revisit my PBR shader implementation as it probably has manay issues!
-* SIMD and multi-threading for performance improvements.
-
 ## Overview
   * A software renderer wrote from scratch in C++, right now lack of parallelism.
   * This personal project is inspired by following two amazing works [ssloy/tinyrenderer](https://github.com/ssloy/tinyrenderer/wiki) and [Angelo1211/softwareRenderer](https://github.com/Angelo1211/SoftwareRenderer). It serves the purpose for me to get into nitty-gritty details of computer graphics out of my strong interest in the discipline.
-******
-### timeline
-  * I started writing this project outside of work during my summer internship as a game programmer in July 2019 for fun, and I have been working on it on and off after I returned to school to finish my master's degree in computer science.
-******
-### implementation
+
   Following is a list of features that I studied and implemented. 
   * Triangle rasterization
   * Structured to immitate modern graphics pipeline 
